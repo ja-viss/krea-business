@@ -28,7 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, PanelLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 // Simulación de un usuario que ha iniciado sesión
@@ -87,11 +87,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarHeader>
            <div className="flex items-center gap-2">
             <Logo />
-            <div className="flex flex-col">
-              <span className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                {user?.store?.name ?? 'Cargando...'}
-              </span>
-            </div>
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -166,7 +161,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <header className="flex h-14 items-center justify-start gap-4 border-b bg-card px-4">
-           <SidebarTrigger />
+           <SidebarTrigger>
+             <PanelLeft />
+           </SidebarTrigger>
         </header>
         {children}
       </SidebarInset>
