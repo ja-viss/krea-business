@@ -1,4 +1,5 @@
 import { Logo } from '@/components/logo';
+import { Card } from '@/components/ui/card';
 import type { ReactNode } from 'react';
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
@@ -8,10 +9,12 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="mb-8 flex justify-center">
           <Logo />
         </div>
-        <div className="rounded-lg border bg-card text-card-foreground shadow-lg">
+        <Card className="shadow-lg">
           {children}
-        </div>
+        </Card>
       </div>
     </div>
   );
 }
+
+    
