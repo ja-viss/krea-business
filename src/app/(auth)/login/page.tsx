@@ -12,14 +12,43 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implement actual login logic
     router.push('/dashboard');
+  };
+
+  const handleVerifyConnection = async () => {
+    setIsVerifying(true);
+    try {
+      const response = await fetch('/api/check-db');
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: 'Conexión Exitosa',
+          description: data.message,
+        });
+      } else {
+        throw new Error(data.message || 'Error al verificar la conexión.');
+      }
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error de Conexión',
+        description: error.message,
+      });
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -51,6 +80,15 @@ export default function LoginPage() {
       <CardFooter className="flex flex-col gap-4">
         <Button className="w-full" type="submit">
           Iniciar Sesión
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={handleVerifyConnection}
+          disabled={isVerifying}
+        >
+          {isVerifying ? 'Verificando...' : 'Verificar Conexión a BD'}
         </Button>
         <div className="text-center text-sm text-muted-foreground">
           ¿No tienes una cuenta?{' '}
