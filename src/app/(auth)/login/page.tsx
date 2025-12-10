@@ -18,12 +18,45 @@ import { useState } from 'react';
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual login logic
-    router.push('/dashboard');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al iniciar sesión.');
+      }
+
+      toast({
+        title: '¡Bienvenido!',
+        description: 'Has iniciado sesión correctamente.',
+      });
+      router.push('/dashboard');
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error de autenticación',
+        description: error.message || 'Ocurrió un error inesperado.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyConnection = async () => {
@@ -62,7 +95,15 @@ export default function LoginPage() {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="m@ejemplo.com" required />
+          <Input 
+            id="email" 
+            type="email" 
+            placeholder="m@ejemplo.com" 
+            required 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+          />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -74,19 +115,26 @@ export default function LoginPage() {
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
-          <Input id="password" type="password" required />
+          <Input 
+            id="password" 
+            type="password" 
+            required 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+          />
         </div>
       </CardContent>
       <CardFooter className="flex flex-col gap-4">
-        <Button className="w-full" type="submit">
-          Iniciar Sesión
+        <Button className="w-full" type="submit" disabled={isLoading}>
+          {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
         </Button>
         <Button
           type="button"
           variant="outline"
           className="w-full"
           onClick={handleVerifyConnection}
-          disabled={isVerifying}
+          disabled={isVerifying || isLoading}
         >
           {isVerifying ? 'Verificando...' : 'Verificar Conexión a BD'}
         </Button>
