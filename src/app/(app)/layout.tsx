@@ -67,7 +67,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+      <Sidebar collapsible="offcanvas" className="border-r border-sidebar-border">
         <SidebarHeader>
           <Logo />
         </SidebarHeader>
