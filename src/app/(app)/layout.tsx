@@ -85,7 +85,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 >
                   <Link href={link.href}>
                     <link.icon />
-                    <span>{link.label}</span>
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      {link.label}
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
