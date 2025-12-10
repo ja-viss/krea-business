@@ -1,17 +1,16 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { useId } from 'react';
 
-const KreaIcon = (props: React.SVGProps<SVGSVGElement> & { gradientId: string }) => {
-  const { gradientId, ...rest } = props;
+const KreaIcon = (props: React.SVGProps<SVGSVGElement>) => {
+  const gradientId = "krea-logo-gradient";
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 100 60"
       width="40"
       height="40"
-      {...rest}
+      {...props}
     >
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -30,10 +29,9 @@ const KreaIcon = (props: React.SVGProps<SVGSVGElement> & { gradientId: string })
 
 
 export function Logo({ className }: { className?: string }) {
-  const gradientId = useId();
   return (
     <div className={cn('flex items-center gap-3', className)}>
-      <KreaIcon gradientId={gradientId} />
+      <KreaIcon />
       <span className="font-headline text-3xl font-bold text-primary group-data-[collapsible=icon]:hidden">Krea</span>
     </div>
   );
