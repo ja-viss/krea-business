@@ -13,6 +13,23 @@ const ROLES = {
   INVENTORY: 'Inventario',
 };
 
+async function getOrCreateAdminRole(storeId: mongoose.Types.ObjectId, session: mongoose.ClientSession): Promise<IRole> {
+    let adminRole = await RoleModel.findOne({ store: storeId, name: ROLES.ADMIN }).session(session);
+    if (!adminRole) {
+        // Si no existen roles, creamos el set inicial para la tienda
+        const rolesToCreate = [
+            { name: ROLES.ADMIN, store: storeId, permissions: ['all'] },
+            { name: ROLES.MANAGER, store: storeId, permissions: ['manage_inventory', 'view_reports'] },
+            { name: ROLES.CASHIER, store: storeId, permissions: ['use_pos'] },
+            { name: ROLES.INVENTORY, store: storeId, permissions: ['manage_products'] },
+        ];
+        const createdRoles = await RoleModel.create(rolesToCreate, { session });
+        adminRole = createdRoles.find(role => role.name === ROLES.ADMIN)!;
+    }
+    return adminRole;
+}
+
+
 export async function POST(req: NextRequest) {
   await dbConnect();
   const session = await mongoose.startSession();
@@ -32,13 +49,11 @@ export async function POST(req: NextRequest) {
     });
     await newStore.save({ session });
 
-    // 2. Crear los roles para esta nueva tienda
-    const adminRoleData = { name: ROLES.ADMIN, store: newStore._id, permissions: ['all'] };
-    const managerRoleData = { name: ROLES.MANAGER, store: newStore._id, permissions: ['manage_inventory', 'view_reports'] };
-    const cashierRoleData = { name: ROLES.CASHIER, store: newStore._id, permissions: ['use_pos'] };
-    const inventoryRoleData = { name: ROLES.INVENTORY, store: newStore._id, permissions: ['manage_products'] };
-
-    const [adminRole] = await RoleModel.create([adminRoleData, managerRoleData, cashierRoleData, inventoryRoleData], { session });
+    // 2. Obtener o crear el rol de administrador para la nueva tienda
+    const adminRole = await getOrCreateAdminRole(newStore._id, session);
+    if (!adminRole) {
+        throw new Error('No se pudo crear o encontrar el rol de administrador.');
+    }
 
     // 3. Hashear la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
