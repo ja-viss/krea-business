@@ -66,7 +66,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <Sidebar collapsible="offcanvas" className="border-r border-sidebar-border">
         <SidebarHeader>
           <Logo />
@@ -142,11 +142,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-14 items-center justify-start gap-4 border-b bg-card px-4">
+        <header className="flex h-14 items-center justify-start gap-4 border-b bg-card px-4 md:hidden">
           <SidebarTrigger />
           <div className="md:hidden">
             <Logo />
           </div>
+        </header>
+        <header className="hidden h-14 items-center justify-start gap-4 border-b bg-card px-4 md:flex">
+           <SidebarTrigger />
         </header>
         {children}
       </SidebarInset>
