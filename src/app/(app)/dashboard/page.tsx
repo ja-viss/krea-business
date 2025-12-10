@@ -8,7 +8,6 @@ import { KpiCard } from '@/components/kpi-card';
 import { MonthlyProfitChart } from '@/components/dashboard/monthly-profit-chart';
 import { RecentSales } from '@/components/dashboard/recent-sales';
 import { ExpenseDistributionChart } from '@/components/dashboard/expense-distribution-chart';
-import { MobileHeader } from '../layout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -95,7 +94,6 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="flex flex-1 flex-col">
-        <MobileHeader />
         <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
             <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -109,7 +107,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <MobileHeader />
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Dashboard"

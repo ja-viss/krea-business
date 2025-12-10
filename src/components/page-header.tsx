@@ -29,7 +29,7 @@ export function PageHeader({
           <p className="mt-1 text-muted-foreground">{description}</p>
         )}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">{actions}</div>}
     </header>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
-import { MobileHeader } from '../layout';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
 import {
@@ -72,7 +71,6 @@ export default function AccountsPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <MobileHeader />
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Cuentas"

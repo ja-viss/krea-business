@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
-import { MobileHeader } from '../layout';
 import { Button } from '@/components/ui/button';
 import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle } from 'lucide-react';
 import {
@@ -65,7 +64,6 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <MobileHeader />
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Gastos"

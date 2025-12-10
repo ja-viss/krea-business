@@ -141,18 +141,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </DropdownMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset>
+        <header className="flex h-14 items-center justify-start gap-4 border-b bg-card px-4">
+          <SidebarTrigger />
+          <div className="md:hidden">
+            <Logo />
+          </div>
+        </header>
+        {children}
+      </SidebarInset>
     </SidebarProvider>
-  );
-}
-
-export function MobileHeader() {
-  return (
-    <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:hidden">
-      <div className="flex items-center gap-4">
-        <SidebarTrigger />
-        <Logo />
-      </div>
-    </header>
   );
 }
