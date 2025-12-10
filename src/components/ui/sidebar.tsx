@@ -69,10 +69,29 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const [isMounted, setIsMounted] = React.useState(false);
+
+    const getInitialOpen = () => {
+      if (typeof window === "undefined") {
+        return defaultOpen;
+      }
+      try {
+        const cookie = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
+        if (cookie) {
+          return cookie.split("=")[1] === "true";
+        }
+      } catch (error) {
+        // Ignore error
+      }
+      return defaultOpen;
+    };
+
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen)
+    const [_open, _setOpen] = React.useState(getInitialOpen())
     const open = openProp ?? _open
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
@@ -95,6 +114,18 @@ const SidebarProvider = React.forwardRef<
         ? setOpenMobile((open) => !open)
         : setOpen((open) => !open)
     }, [isMobile, setOpen, setOpenMobile])
+
+    React.useEffect(() => {
+      setIsMounted(true);
+    }, []);
+
+    React.useEffect(() => {
+      if (isMounted) {
+        _setOpen(getInitialOpen());
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isMounted]);
+
 
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
@@ -128,6 +159,10 @@ const SidebarProvider = React.forwardRef<
       }),
       [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
     )
+
+    if (!isMounted) {
+      return null;
+    }
 
     return (
       <SidebarContext.Provider value={contextValue}>
@@ -188,7 +223,9 @@ const Sidebar = React.forwardRef<
           if (trigger && trigger.contains(event.target as Node)) {
             return;
           }
-          setOpen(false)
+          if (collapsible === 'offcanvas' || variant === 'floating') {
+             setOpen(false)
+          }
         }
       }
 
@@ -201,7 +238,7 @@ const Sidebar = React.forwardRef<
       return () => {
         document.removeEventListener("mousedown", handleClickOutside)
       }
-    }, [open, isMobile, setOpen])
+    }, [open, isMobile, setOpen, collapsible, variant])
     
     const handleExpand = () => {
       if (state === "collapsed") {
