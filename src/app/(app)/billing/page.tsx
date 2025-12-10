@@ -20,6 +20,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// NOTE: This component still uses static data.
+// It will be connected to the database in a future step.
 
 const invoicesData = [
   {
@@ -49,6 +53,7 @@ const invoicesData = [
 ];
 
 export default function BillingPage() {
+    const loading = false; // Placeholder for future state
   return (
     <div className="flex flex-1 flex-col">
       <MobileHeader />
@@ -83,46 +88,66 @@ export default function BillingPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoicesData.map((invoice) => (
-                <TableRow key={invoice.invoiceId}>
-                  <TableCell className="font-medium">
-                    {invoice.invoiceId}
-                  </TableCell>
-                  <TableCell>{invoice.customer}</TableCell>
-                  <TableCell>{invoice.issueDate}</TableCell>
-                  <TableCell>{invoice.dueDate}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        invoice.status === 'Pagada'
-                          ? 'secondary'
-                          : invoice.status === 'Pendiente'
-                          ? 'outline'
-                          : 'destructive'
-                      }
-                      className={invoice.status === 'Pagada' ? 'bg-green-100 text-green-800' : ''}
-                    >
-                      {invoice.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{invoice.amount}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menú</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver</DropdownMenuItem>
-                        <DropdownMenuItem>Descargar PDF</DropdownMenuItem>
-                        <DropdownMenuItem>Enviar por correo</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    </TableRow>
+                ))
+              ) : invoicesData.length > 0 ? (
+                invoicesData.map((invoice) => (
+                  <TableRow key={invoice.invoiceId}>
+                    <TableCell className="font-medium">
+                      {invoice.invoiceId}
+                    </TableCell>
+                    <TableCell>{invoice.customer}</TableCell>
+                    <TableCell>{invoice.issueDate}</TableCell>
+                    <TableCell>{invoice.dueDate}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          invoice.status === 'Pagada'
+                            ? 'secondary'
+                            : invoice.status === 'Pendiente'
+                            ? 'outline'
+                            : 'destructive'
+                        }
+                        className={invoice.status === 'Pagada' ? 'bg-green-100 text-green-800' : ''}
+                      >
+                        {invoice.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{invoice.amount}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menú</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Ver</DropdownMenuItem>
+                          <DropdownMenuItem>Descargar PDF</DropdownMenuItem>
+                          <DropdownMenuItem>Enviar por correo</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No se encontraron facturas.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

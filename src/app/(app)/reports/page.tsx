@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { MobileHeader } from '../layout';
 import {
@@ -10,42 +11,74 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, AlertTriangle } from 'lucide-react';
 import { MonthlyProfitChart } from '@/components/dashboard/monthly-profit-chart';
 import { ExpenseDistributionChart } from '@/components/dashboard/expense-distribution-chart';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
-const reports = [
-  {
-    title: 'Reporte de Ventas Mensuales',
-    description: 'Análisis detallado de las ventas del último mes.',
-    component: <MonthlyProfitChart />,
-  },
-  {
-    title: 'Distribución de Gastos',
-    description: 'Desglose de los gastos por categoría.',
-    component: <ExpenseDistributionChart />,
-  },
-  {
-    title: 'Reporte de Inventario',
-    description: 'Estado actual del stock y productos más vendidos.',
-    component: (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        Próximamente...
-      </div>
-    ),
-  },
-  {
-    title: 'Análisis de Clientes',
-    description: 'Información sobre la demografía y comportamiento de compra.',
-     component: (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        Próximamente...
-      </div>
-    ),
-  },
-];
+interface ReportData {
+  monthlyProfit: { month: string; profit: number }[];
+  expenseDistribution: { name: string; value: number; fill: string }[];
+}
 
 export default function ReportsPage() {
+  const [data, setData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        // We can reuse the dashboard API endpoint for these charts
+        const response = await fetch('/api/dashboard');
+        if (!response.ok) {
+          throw new Error('No se pudieron cargar los datos para los reportes.');
+        }
+        const result = await response.json();
+        setData(result);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+
+  const reports = [
+    {
+      title: 'Reporte de Ventas Mensuales',
+      description: 'Análisis detallado de las ventas del último mes.',
+      component: loading ? <Skeleton className="h-[250px] w-full" /> : <MonthlyProfitChart data={data?.monthlyProfit} />,
+    },
+    {
+      title: 'Distribución de Gastos',
+      description: 'Desglose de los gastos por categoría.',
+      component: loading ? <Skeleton className="h-[250px] w-full" /> : <ExpenseDistributionChart data={data?.expenseDistribution} />,
+    },
+    {
+      title: 'Reporte de Inventario',
+      description: 'Estado actual del stock y productos más vendidos.',
+      component: (
+        <div className="flex h-full items-center justify-center text-muted-foreground">
+          Próximamente...
+        </div>
+      ),
+    },
+    {
+      title: 'Análisis de Clientes',
+      description: 'Información sobre la demografía y comportamiento de compra.',
+       component: (
+        <div className="flex h-full items-center justify-center text-muted-foreground">
+          Próximamente...
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col">
       <MobileHeader />
@@ -54,7 +87,14 @@ export default function ReportsPage() {
           title="Reportes"
           description="Visualiza el rendimiento de tu negocio."
         />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2">
           {reports.map((report) => (
             <Card key={report.title} className="flex flex-col">
               <CardHeader className='flex-row items-start justify-between'>
