@@ -26,6 +26,8 @@ import { IProduct } from '@/models/Product';
 import { getInventoryOptimizationRecommendations, InventoryOptimizationInput } from '@/ai/flows/inventory-optimization-recommendations';
 import { TopStockChart } from '@/components/inventory/top-stock-chart';
 import { Input } from '@/components/ui/input';
+import Link from 'next/link';
+
 
 interface InventoryMetrics {
   totalValue: number;
@@ -128,9 +130,11 @@ export default function InventoryPage() {
                 <FileDown />
                 Exportar
               </Button>
-              <Button className='w-full sm:w-auto'>
-                <PlusCircle />
-                Añadir Producto
+              <Button asChild className='w-full sm:w-auto'>
+                <Link href="/inventory/new-product">
+                    <PlusCircle />
+                    Añadir Producto
+                </Link>
               </Button>
             </div>
           }
@@ -332,5 +336,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-
-    
