@@ -1,9 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { useId } from 'react';
 
 const KreaIcon = (props: React.SVGProps<SVGSVGElement>) => {
-  const gradientId = "krea-logo-gradient";
+  const gradientId = useId();
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
