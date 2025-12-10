@@ -1,9 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { MobileHeader } from '../layout';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, AlertTriangle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -15,46 +16,60 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-
-// NOTE: This component still uses static data.
-// It will be connected to the database in a future step.
-
-const accountsReceivableData = [
-  {
-    id: 'AR001',
-    customer: 'Cliente A',
-    dueDate: '2024-06-15',
-    amount: '$1200.00',
-    status: 'Pendiente',
-  },
-  {
-    id: 'AR002',
-    customer: 'Cliente B',
-    dueDate: '2024-05-20',
-    amount: '$800.00',
-    status: 'Atrasado',
-  },
-];
-
-const accountsPayableData = [
-  {
-    id: 'AP001',
-    vendor: 'Proveedor X',
-    dueDate: '2024-06-10',
-    amount: '$500.00',
-    status: 'Pendiente',
-  },
-  {
-    id: 'AP002',
-    vendor: 'Proveedor Y',
-    dueDate: '2024-05-25',
-    amount: '$300.00',
-    status: 'Pagado',
-  },
-];
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { IAccountPayable } from '@/models/AccountPayable';
+import { IAccountReceivable } from '@/models/AccountReceivable';
 
 export default function AccountsPage() {
-  const loading = false; // Placeholder for future state
+  const [receivable, setReceivable] = useState<IAccountReceivable[]>([]);
+  const [payable, setPayable] = useState<IAccountPayable[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [receivableRes, payableRes] = await Promise.all([
+          fetch('/api/accounts/receivable'),
+          fetch('/api/accounts/payable'),
+        ]);
+
+        if (!receivableRes.ok || !payableRes.ok) {
+          throw new Error('No se pudieron obtener los datos de las cuentas.');
+        }
+
+        const receivableData = await receivableRes.json();
+        const payableData = await payableRes.json();
+
+        setReceivable(receivableData);
+        setPayable(payableData);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(value);
+  };
+
   return (
     <div className="flex flex-1 flex-col">
       <MobileHeader />
@@ -69,6 +84,13 @@ export default function AccountsPage() {
             </Button>
           }
         />
+        {error && (
+            <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        )}
         <Tabs defaultValue="receivable">
           <TabsList>
             <TabsTrigger value="receivable">Cuentas por Cobrar</TabsTrigger>
@@ -97,12 +119,12 @@ export default function AccountsPage() {
                         <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
                       </TableRow>
                     ))
-                  ) : accountsReceivableData.length > 0 ? (
-                    accountsReceivableData.map((account) => (
-                      <TableRow key={account.id}>
-                        <TableCell>{account.id}</TableCell>
+                  ) : receivable.length > 0 ? (
+                    receivable.map((account) => (
+                      <TableRow key={account._id}>
+                        <TableCell>AR{String(account._id).slice(-5)}</TableCell>
                         <TableCell>{account.customer}</TableCell>
-                        <TableCell>{account.dueDate}</TableCell>
+                        <TableCell>{formatDate(String(account.dueDate))}</TableCell>
                         <TableCell>
                           <Badge
                             variant={
@@ -115,7 +137,7 @@ export default function AccountsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          {account.amount}
+                          {formatCurrency(account.amount)}
                         </TableCell>
                       </TableRow>
                     ))
@@ -153,12 +175,12 @@ export default function AccountsPage() {
                         <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
                       </TableRow>
                     ))
-                  ) : accountsPayableData.length > 0 ? (
-                    accountsPayableData.map((account) => (
-                      <TableRow key={account.id}>
-                        <TableCell>{account.id}</TableCell>
+                  ) : payable.length > 0 ? (
+                    payable.map((account) => (
+                      <TableRow key={account._id}>
+                        <TableCell>AP{String(account._id).slice(-5)}</TableCell>
                         <TableCell>{account.vendor}</TableCell>
-                        <TableCell>{account.dueDate}</TableCell>
+                        <TableCell>{formatDate(String(account.dueDate))}</TableCell>
                         <TableCell>
                           <Badge
                             variant={
@@ -172,7 +194,7 @@ export default function AccountsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          {account.amount}
+                          {formatCurrency(account.amount)}
                         </TableCell>
                       </TableRow>
                     ))
