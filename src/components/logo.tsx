@@ -9,8 +9,8 @@ const KreaIcon = (props: React.SVGProps<SVGSVGElement> & { gradientId: string })
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 100 60"
-      width="32"
-      height="32"
+      width="40"
+      height="40"
       {...rest}
     >
       <defs>
@@ -32,9 +32,9 @@ const KreaIcon = (props: React.SVGProps<SVGSVGElement> & { gradientId: string })
 export function Logo({ className }: { className?: string }) {
   const gradientId = useId();
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex items-center gap-3', className)}>
       <KreaIcon gradientId={gradientId} />
-      <span className="font-headline text-2xl font-bold text-primary">Krea</span>
+      <span className="font-headline text-3xl font-bold text-primary">Krea</span>
     </div>
   );
 }
