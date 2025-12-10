@@ -1,9 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { MobileHeader } from '../layout';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -19,41 +20,51 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ISale } from '@/models/Sale';
 
-// NOTE: This component still uses static data.
-// It will be connected to the database in a future step.
-
-const invoicesData = [
-  {
-    invoiceId: 'FAC-001',
-    customer: 'Empresa ABC',
-    issueDate: '2024-05-01',
-    dueDate: '2024-05-31',
-    amount: '$1,250.00',
-    status: 'Pagada',
-  },
-  {
-    invoiceId: 'FAC-002',
-    customer: 'Negocios XYZ',
-    issueDate: '2024-05-10',
-    dueDate: '2024-06-10',
-    amount: '$800.50',
-    status: 'Pendiente',
-  },
-  {
-    invoiceId: 'FAC-003',
-    customer: 'Servicios Rápidos',
-    issueDate: '2024-04-15',
-    dueDate: '2024-05-15',
-    amount: '$2,500.00',
-    status: 'Atrasada',
-  },
-];
 
 export default function BillingPage() {
-    const loading = false; // Placeholder for future state
+    const [invoices, setInvoices] = useState<ISale[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchInvoices = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch('/api/sales');
+                if (!response.ok) {
+                    throw new Error('No se pudieron obtener las facturas.');
+                }
+                const data = await response.json();
+                setInvoices(data);
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchInvoices();
+    }, []);
+
+    const formatDate = (dateString: string) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        });
+    };
+    
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        }).format(value);
+    }
+
   return (
     <div className="flex flex-1 flex-col">
       <MobileHeader />
@@ -74,6 +85,13 @@ export default function BillingPage() {
             </>
           }
         />
+        {error && (
+            <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        )}
         <div className="rounded-lg border bg-card shadow-sm">
           <Table>
             <TableHeader>
@@ -81,7 +99,6 @@ export default function BillingPage() {
                 <TableHead>Nº Factura</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Fecha Emisión</TableHead>
-                <TableHead>Fecha Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
@@ -94,36 +111,34 @@ export default function BillingPage() {
                         <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
                         <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                     </TableRow>
                 ))
-              ) : invoicesData.length > 0 ? (
-                invoicesData.map((invoice) => (
-                  <TableRow key={invoice.invoiceId}>
+              ) : invoices.length > 0 ? (
+                invoices.map((invoice) => (
+                  <TableRow key={invoice._id}>
                     <TableCell className="font-medium">
-                      {invoice.invoiceId}
+                      INV{String(invoice._id).slice(-4)}
                     </TableCell>
-                    <TableCell>{invoice.customer}</TableCell>
-                    <TableCell>{invoice.issueDate}</TableCell>
-                    <TableCell>{invoice.dueDate}</TableCell>
+                    <TableCell>{invoice.customerName}</TableCell>
+                    <TableCell>{formatDate(String(invoice.createdAt))}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
-                          invoice.status === 'Pagada'
+                          invoice.status === 'Pagado'
                             ? 'secondary'
                             : invoice.status === 'Pendiente'
                             ? 'outline'
                             : 'destructive'
                         }
-                        className={invoice.status === 'Pagada' ? 'bg-green-100 text-green-800' : ''}
+                        className={invoice.status === 'Pagado' ? 'bg-green-100 text-green-800' : ''}
                       >
                         {invoice.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{invoice.amount}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(invoice.amount)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -143,7 +158,7 @@ export default function BillingPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No se encontraron facturas.
                   </TableCell>
                 </TableRow>
