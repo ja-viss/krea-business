@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { IProduct } from '@/models/Product';
 import { getInventoryOptimizationRecommendations, InventoryOptimizationInput } from '@/ai/flows/inventory-optimization-recommendations';
 import { TopStockChart } from '@/components/inventory/top-stock-chart';
+import { Input } from '@/components/ui/input';
 
 interface InventoryMetrics {
   totalValue: number;
@@ -39,6 +40,7 @@ export default function InventoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -94,6 +96,18 @@ export default function InventoryPage() {
       setLoadingRecommendations(false);
     }
   };
+
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery) {
+      return products;
+    }
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return products.filter(product =>
+      product.name.toLowerCase().includes(lowercasedQuery) ||
+      String(product._id).toLowerCase().includes(lowercasedQuery)
+    );
+  }, [products, searchQuery]);
+
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -217,82 +231,106 @@ export default function InventoryPage() {
             </div>
         </div>
 
-        <div className="rounded-lg border bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Producto</TableHead>
-                <TableHead className='text-right'>Precio</TableHead>
-                <TableHead className='text-right'>Stock</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
-                    <TableCell className='text-right'><Skeleton className="h-4 w-[50px] ml-auto" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                  </TableRow>
-                ))
-              ) : products.length > 0 ? (
-                products.map((product) => (
-                  <TableRow key={product._id}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
-                    <TableCell className='text-right'>{product.stock}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          product.status === 'En Stock'
-                            ? 'secondary'
-                            : product.status === 'Stock Bajo'
-                            ? 'outline'
-                            : 'destructive'
-                        }
-                        className={
-                          product.status === 'En Stock' ? 'bg-green-100 text-green-800'
-                          : product.status === 'Stock Bajo' ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                        }
-                      >
-                        {product.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+        <Card>
+          <CardHeader>
+            <div className='flex flex-col sm:flex-row justify-between sm:items-center gap-4'>
+              <div>
+                <CardTitle>Todos los Productos</CardTitle>
+                <CardDescription>Busca, filtra y gestiona todos los productos de tu inventario.</CardDescription>
+              </div>
+              <div className="relative w-full sm:max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nombre o ID..."
+                  className="pl-9"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                        No se encontraron productos.
-                    </TableCell>
+                  <TableHead>Producto</TableHead>
+                  <TableHead className='text-right'>Precio</TableHead>
+                  <TableHead className='text-right'>Stock</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                      <TableCell className='text-right'><Skeleton className="h-4 w-[50px] ml-auto" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredProducts.length > 0 ? (
+                  filteredProducts.map((product) => (
+                    <TableRow key={product._id}>
+                      <TableCell>
+                        <div className="font-medium">{product.name}</div>
+                        <div className="text-xs text-muted-foreground">ID: {String(product._id).slice(-6)}</div>
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
+                      <TableCell className='text-right'>{product.stock}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            product.status === 'En Stock'
+                              ? 'secondary'
+                              : product.status === 'Stock Bajo'
+                              ? 'outline'
+                              : 'destructive'
+                          }
+                          className={
+                            product.status === 'En Stock' ? 'bg-green-100 text-green-800'
+                            : product.status === 'Stock Bajo' ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                          }
+                        >
+                          {product.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Abrir menú</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+                            <DropdownMenuItem>Editar</DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600">
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center">
+                          No se encontraron productos que coincidan con la búsqueda.
+                      </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
 }
+
+    
