@@ -12,7 +12,6 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
-  useSidebar,
 } from '@/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import { navLinks, type NavLink } from '@/lib/nav-links';
