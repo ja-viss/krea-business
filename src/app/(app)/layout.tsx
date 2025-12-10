@@ -46,17 +46,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <SidebarMenu>
             {navLinks.map((link: NavLink) => (
               <SidebarMenuItem key={link.href}>
-                <Link href={link.href} legacyBehavior passHref>
-                  <SidebarMenuButton
-                    isActive={pathname === link.href}
-                    tooltip={{
-                      children: link.label,
-                    }}
-                  >
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === link.href}
+                  tooltip={{
+                    children: link.label,
+                  }}
+                >
+                  <Link href={link.href}>
                     <link.icon />
                     <span>{link.label}</span>
-                  </SidebarMenuButton>
-                </Link>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
