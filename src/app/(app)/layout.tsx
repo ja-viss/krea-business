@@ -29,12 +29,41 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ChevronDown, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+// Simulación de un usuario que ha iniciado sesión
+interface User {
+  businessName: string;
+  email: string;
+}
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const userAvatar = PlaceHolderImages.find(
     (img) => img.id === 'user-avatar-1'
   );
+
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // En una aplicación real, obtendrías esto de una sesión de usuario.
+    // Por ahora, vamos a buscar el primer usuario para simularlo.
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const users = await response.json();
+          if (users.length > 0) {
+            setUser(users[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user", error);
+        setUser({ businessName: "Negocio", email: "email@ejemplo.com" });
+      }
+    };
+    fetchUser();
+  }, []);
 
   return (
     <SidebarProvider>
@@ -78,9 +107,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                         data-ai-hint={userAvatar.imageHint}
                       />
                     )}
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarFallback>
+                      {user?.businessName?.charAt(0) ?? 'U'}
+                    </AvatarFallback>
                   </Avatar>
-                  <span className="truncate">Juan Dela Cruz</span>
+                  <span className="truncate">{user?.businessName ?? 'Cargando...'}</span>
                 </div>
                 <ChevronDown className="size-4 shrink-0 opacity-50 transition-transform duration-200 group-data-[state=open]/user-menu-button:rotate-180" />
               </Button>
@@ -116,8 +147,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 export function MobileHeader() {
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:hidden">
-      <Logo />
-      <SidebarTrigger />
+      <div className="flex items-center gap-4">
+        <SidebarTrigger />
+        <Logo />
+      </div>
     </header>
   );
 }
