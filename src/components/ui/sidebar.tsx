@@ -202,6 +202,12 @@ const Sidebar = React.forwardRef<
         document.removeEventListener("mousedown", handleClickOutside)
       }
     }, [open, isMobile, setOpen])
+    
+    const handleExpand = () => {
+      if (state === "collapsed") {
+        setOpen(true);
+      }
+    }
 
     if (collapsible === "none") {
       return (
@@ -241,6 +247,7 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={desktopSidebarRef}
+        onClick={handleExpand}
         className="group peer hidden md:block text-sidebar-foreground"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}

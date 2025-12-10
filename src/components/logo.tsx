@@ -34,7 +34,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center gap-3', className)}>
       <KreaIcon gradientId={gradientId} />
-      <span className="font-headline text-3xl font-bold text-primary">Krea</span>
+      <span className="font-headline text-3xl font-bold text-primary group-data-[collapsible=icon]:hidden">Krea</span>
     </div>
   );
 }

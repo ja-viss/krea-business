@@ -12,6 +12,7 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import { navLinks, type NavLink } from '@/lib/nav-links';
@@ -111,9 +112,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       {user?.businessName?.charAt(0) ?? 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="truncate">{user?.businessName ?? 'Cargando...'}</span>
+                  <span className="truncate group-data-[collapsible=icon]:hidden">{user?.businessName ?? 'Cargando...'}</span>
                 </div>
-                <ChevronDown className="size-4 shrink-0 opacity-50 transition-transform duration-200 group-data-[state=open]/user-menu-button:rotate-180" />
+                <ChevronDown className="size-4 shrink-0 opacity-50 transition-transform duration-200 group-data-[state=open]/user-menu-button:rotate-180 group-data-[collapsible=icon]:hidden" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
