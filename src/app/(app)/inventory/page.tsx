@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -21,12 +21,24 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { IProduct } from '@/models/Product';
+import { getInventoryOptimizationRecommendations, InventoryOptimizationInput } from '@/ai/flows/inventory-optimization-recommendations';
+import { TopStockChart } from '@/components/inventory/top-stock-chart';
+
+interface InventoryMetrics {
+  totalValue: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+}
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<IProduct[]>([]);
+  const [metrics, setMetrics] = useState<InventoryMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -40,8 +52,9 @@ export default function InventoryPage() {
         if (!response.ok) {
           throw new Error('No se pudieron obtener los productos.');
         }
-        const data = await response.json();
+        const data: IProduct[] = await response.json();
         setProducts(data);
+        calculateMetrics(data);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -50,6 +63,37 @@ export default function InventoryPage() {
     };
     fetchProducts();
   }, []);
+
+  const calculateMetrics = (productsData: IProduct[]) => {
+    const totalValue = productsData.reduce((acc, p) => acc + p.stock * p.price, 0);
+    const lowStockCount = productsData.filter(p => p.status === 'Stock Bajo').length;
+    const outOfStockCount = productsData.filter(p => p.status === 'Sin Stock').length;
+    setMetrics({ totalValue, lowStockCount, outOfStockCount });
+  };
+
+  const handleGetRecommendations = async () => {
+    setLoadingRecommendations(true);
+    setError(null);
+    try {
+      const input: InventoryOptimizationInput = {
+        products: products.map(p => ({
+          productId: String(p._id),
+          productName: p.name,
+          currentStock: p.stock,
+          // Placeholder data - in a real app, this would come from sales data
+          averageMonthlySales: Math.floor(Math.random() * 50) + 10,
+          holdingCostPerUnit: p.price * 0.05,
+          leadTimeInMonths: 0.5,
+        })),
+      };
+      const result = await getInventoryOptimizationRecommendations(input);
+      setAiRecommendations(result.recommendations);
+    } catch (err: any) {
+      setError("Error al obtener las recomendaciones de la IA.");
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -63,18 +107,18 @@ export default function InventoryPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Inventario"
-          description="Gestiona tus productos y stock."
+          description="Gestiona tus productos, analiza el stock y obtén recomendaciones."
           actions={
-            <>
-              <Button variant="outline">
+            <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
+              <Button variant="outline" className='w-full sm:w-auto'>
                 <FileDown />
                 Exportar
               </Button>
-              <Button>
+              <Button className='w-full sm:w-auto'>
                 <PlusCircle />
                 Añadir Producto
               </Button>
-            </>
+            </div>
           }
         />
         {error && (
@@ -84,15 +128,103 @@ export default function InventoryPage() {
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
+
+        <div className="grid gap-4 md:grid-cols-3">
+            {loading ? Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i}><CardHeader className='pb-2'><Skeleton className='h-4 w-1/2' /></CardHeader><CardContent><Skeleton className='h-7 w-1/3' /></CardContent></Card>
+            )) : metrics && (
+                <>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Valor Total del Inventario</CardTitle>
+                            <Boxes className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(metrics.totalValue)}</div>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Productos con Stock Bajo</CardTitle>
+                            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{metrics.lowStockCount}</div>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Productos Agotados</CardTitle>
+                            <Ban className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{metrics.outOfStockCount}</div>
+                        </CardContent>
+                    </Card>
+                </>
+            )}
+        </div>
+        
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+              <Card>
+                  <CardHeader>
+                      <CardTitle>Recomendaciones de IA para Inventario</CardTitle>
+                      <CardDescription>Obtén sugerencias para optimizar tu stock y evitar quiebres.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      {loadingRecommendations ? (
+                          <div className='space-y-2'>
+                              <Skeleton className='h-8 w-full' />
+                              <Skeleton className='h-8 w-full' />
+                              <Skeleton className='h-8 w-4/5' />
+                          </div>
+                      ) : aiRecommendations.length > 0 ? (
+                         <Table>
+                             <TableHeader>
+                                 <TableRow>
+                                     <TableHead>Producto</TableHead>
+                                     <TableHead className='text-center'>Nivel Rec.</TableHead>
+                                     <TableHead className='text-center'>Cantidad a Reponer</TableHead>
+                                 </TableRow>
+                             </TableHeader>
+                             <TableBody>
+                                 {aiRecommendations.slice(0, 5).map(rec => (
+                                     <TableRow key={rec.productId}>
+                                         <TableCell>
+                                             <div className='font-medium'>{products.find(p => String(p._id) === rec.productId)?.name}</div>
+                                             <p className='text-xs text-muted-foreground hidden sm:block'>{rec.reasoning}</p>
+                                         </TableCell>
+                                         <TableCell className='text-center font-bold'>{rec.recommendedStockLevel}</TableCell>
+                                         <TableCell className='text-center font-bold text-primary'>{rec.reorderQuantity}</TableCell>
+                                     </TableRow>
+                                 ))}
+                             </TableBody>
+                         </Table>
+                      ) : (
+                          <div className="text-center p-4 border-dashed border-2 rounded-lg">
+                              <p className="text-muted-foreground mb-2">Analiza tu inventario con IA</p>
+                              <Button onClick={handleGetRecommendations} disabled={loading}>
+                                  Generar Recomendaciones
+                              </Button>
+                          </div>
+                      )}
+                  </CardContent>
+              </Card>
+          </div>
+            <div className="lg:col-span-2">
+                {loading ? <Skeleton className="h-[400px] w-full" /> : <TopStockChart data={products} />}
+            </div>
+        </div>
+
         <div className="rounded-lg border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID Producto</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Stock</TableHead>
+                <TableHead>Producto</TableHead>
+                <TableHead className='text-right'>Precio</TableHead>
+                <TableHead className='text-right'>Stock</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Precio</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -100,20 +232,19 @@ export default function InventoryPage() {
               {loading ? (
                  Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[50px]" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                    <TableCell className='text-right'><Skeleton className="h-4 w-[50px] ml-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                   </TableRow>
                 ))
               ) : products.length > 0 ? (
                 products.map((product) => (
                   <TableRow key={product._id}>
-                    <TableCell className="font-medium">PROD{String(product._id).slice(-4)}</TableCell>
-                    <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.stock}</TableCell>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
+                    <TableCell className='text-right'>{product.stock}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -132,7 +263,6 @@ export default function InventoryPage() {
                         {product.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -154,7 +284,7 @@ export default function InventoryPage() {
                 ))
               ) : (
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                         No se encontraron productos.
                     </TableCell>
                 </TableRow>
@@ -166,3 +296,5 @@ export default function InventoryPage() {
     </div>
   );
 }
+
+    
