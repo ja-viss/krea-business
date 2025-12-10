@@ -27,7 +27,11 @@ const UserSchema: Schema = new Schema({
 // Para asegurar que un email sea único por tienda
 UserSchema.index({ email: 1, store: 1 }, { unique: true });
 
+// Forzar la recompilación del modelo para evitar errores de HMR en desarrollo
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
 
-const UserModel = (mongoose.models.User || mongoose.model<IUser>('User', UserSchema)) as mongoose.Model<IUser>;
+const UserModel = mongoose.model<IUser>('User', UserSchema);
 
 export default UserModel;
