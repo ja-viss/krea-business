@@ -6,8 +6,13 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    // Proyectar solo los campos necesarios y excluir la contraseña
-    const users = await UserModel.find({}).select('businessName email role createdAt');
+    // Se filtra por storeId para asegurar el aislamiento de datos
+    const storeId = req.nextUrl.searchParams.get('storeId');
+    if (!storeId) {
+      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    }
+    
+    const users = await UserModel.find({ store: storeId }).select('-password').populate('role store');
 
     return NextResponse.json(users, { status: 200 });
 

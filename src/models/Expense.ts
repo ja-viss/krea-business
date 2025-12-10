@@ -1,6 +1,8 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
+import { IStore } from './Store';
 
 export interface IExpense extends Document {
+  store: Types.ObjectId | IStore;
   category: string;
   description: string;
   amount: number;
@@ -10,6 +12,7 @@ export interface IExpense extends Document {
 }
 
 const ExpenseSchema: Schema = new Schema({
+  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   category: { type: String, required: true },
   description: { type: String, required: true },
   amount: { type: Number, required: true },

@@ -5,18 +5,23 @@ import AccountPayableModel from '@/models/AccountPayable';
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
+    const storeId = req.nextUrl.searchParams.get('storeId');
 
-    // For demonstration, let's create some data if the collection is empty.
-    const count = await AccountPayableModel.countDocuments();
+    if (!storeId) {
+      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    }
+
+    // For demonstration, let's create some data if the collection is empty for this store.
+    const count = await AccountPayableModel.countDocuments({ store: storeId });
     if (count === 0) {
       await AccountPayableModel.create([
-        { vendor: 'Proveedor X', dueDate: new Date('2024-07-10'), amount: 500.00, status: 'Pendiente' },
-        { vendor: 'Proveedor Y', dueDate: new Date('2024-06-25'), amount: 300.00, status: 'Pagado' },
-        { vendor: 'Servicios Z', dueDate: new Date('2024-07-15'), amount: 750.00, status: 'Pendiente' },
+        { store: storeId, vendor: 'Proveedor X', dueDate: new Date('2024-07-10'), amount: 500.00, status: 'Pendiente' },
+        { store: storeId, vendor: 'Proveedor Y', dueDate: new Date('2024-06-25'), amount: 300.00, status: 'Pagado' },
+        { store: storeId, vendor: 'Servicios Z', dueDate: new Date('2024-07-15'), amount: 750.00, status: 'Pendiente' },
       ]);
     }
 
-    const accountsPayable = await AccountPayableModel.find({}).sort({ dueDate: 1 });
+    const accountsPayable = await AccountPayableModel.find({ store: storeId }).sort({ dueDate: 1 });
 
     return NextResponse.json(accountsPayable, { status: 200 });
 

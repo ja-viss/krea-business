@@ -29,9 +29,15 @@ export default function AccountsPage() {
     async function fetchData() {
       try {
         setLoading(true);
+        // En una app real, el storeId vendría de la sesión del usuario
+        const storeId = localStorage.getItem('storeId');
+        if (!storeId) {
+            throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
+        }
+
         const [receivableRes, payableRes] = await Promise.all([
-          fetch('/api/accounts/receivable'),
-          fetch('/api/accounts/payable'),
+          fetch(`/api/accounts/receivable?storeId=${storeId}`),
+          fetch(`/api/accounts/payable?storeId=${storeId}`),
         ]);
 
         if (!receivableRes.ok || !payableRes.ok) {

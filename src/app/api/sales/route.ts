@@ -6,7 +6,12 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    const sales = await SaleModel.find({}).sort({ createdAt: -1 });
+    const storeId = req.nextUrl.searchParams.get('storeId');
+    if (!storeId) {
+      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    }
+
+    const sales = await SaleModel.find({ store: storeId }).sort({ createdAt: -1 });
 
     return NextResponse.json(sales, { status: 200 });
 

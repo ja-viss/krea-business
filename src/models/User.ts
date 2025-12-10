@@ -1,22 +1,32 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { IStore } from './Store';
+import { IRole } from './Role';
 
 export interface IUser extends Document {
-  businessName: string;
+  store: IStore['_id'];
+  name: string;
   email: string;
   password: string;
-  role: string;
+  role: IRole['_id'];
+  active: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const UserSchema: Schema = new Schema({
-  businessName: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
   password: { type: String, required: true },
-  role: { type: String, default: 'Admin' }, // Añadido campo de rol
+  role: { type: Schema.Types.ObjectId, ref: 'Role', required: true },
+  active: { type: Boolean, default: true },
 }, {
   timestamps: true
 });
+
+// Para asegurar que un email sea único por tienda
+UserSchema.index({ email: 1, store: 1 }, { unique: true });
+
 
 const UserModel = (mongoose.models.User || mongoose.model<IUser>('User', UserSchema)) as mongoose.Model<IUser>;
 

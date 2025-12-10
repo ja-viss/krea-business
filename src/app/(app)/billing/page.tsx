@@ -33,7 +33,11 @@ export default function BillingPage() {
         const fetchInvoices = async () => {
             try {
                 setLoading(true);
-                const response = await fetch('/api/sales');
+                const storeId = localStorage.getItem('storeId');
+                if (!storeId) {
+                    throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
+                }
+                const response = await fetch(`/api/sales?storeId=${storeId}`);
                 if (!response.ok) {
                     throw new Error('No se pudieron obtener las facturas.');
                 }

@@ -6,7 +6,12 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    const expenses = await ExpenseModel.find({}).sort({ date: -1 });
+    const storeId = req.nextUrl.searchParams.get('storeId');
+    if (!storeId) {
+      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    }
+
+    const expenses = await ExpenseModel.find({ store: storeId }).sort({ date: -1 });
 
     return NextResponse.json(expenses, { status: 200 });
 

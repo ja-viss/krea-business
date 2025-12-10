@@ -32,7 +32,11 @@ export default function InventoryPage() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/products');
+        const storeId = localStorage.getItem('storeId');
+        if (!storeId) {
+          throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
+        }
+        const response = await fetch(`/api/products?storeId=${storeId}`);
         if (!response.ok) {
           throw new Error('No se pudieron obtener los productos.');
         }

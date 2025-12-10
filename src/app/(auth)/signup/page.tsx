@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function SignupPage() {
   const [businessName, setBusinessName] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,7 +35,7 @@ export default function SignupPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ businessName, email, password }),
+        body: JSON.stringify({ businessName, name, email, password }),
       });
 
       const data = await response.json();
@@ -45,7 +46,7 @@ export default function SignupPage() {
       
       toast({
         title: '¡Registro exitoso!',
-        description: 'Ahora puedes iniciar sesión con tu cuenta.',
+        description: 'Tu tienda ha sido creada. Ahora puedes iniciar sesión.',
       });
       router.push('/login');
 
@@ -64,17 +65,17 @@ export default function SignupPage() {
   return (
       <form onSubmit={handleSignup}>
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">Crea una Cuenta</CardTitle>
+          <CardTitle className="text-2xl font-bold">Crea tu Tienda</CardTitle>
           <CardDescription>
             Ingresa tus datos para empezar a gestionar tu negocio
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="business-name">Nombre del Negocio</Label>
+            <Label htmlFor="business-name">Nombre de la Tienda</Label>
             <Input
               id="business-name"
-              placeholder="Tu Negocio Inc."
+              placeholder="Mi Supermercado"
               required
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
@@ -82,7 +83,18 @@ export default function SignupPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="admin-name">Tu Nombre Completo</Label>
+            <Input
+              id="admin-name"
+              placeholder="Juan Pérez"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email del Administrador</Label>
             <Input
               id="email"
               type="email"
@@ -107,7 +119,7 @@ export default function SignupPage() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button className="w-full" type="submit" disabled={loading}>
-            {loading ? 'Registrando...' : 'Registrarse'}
+            {loading ? 'Creando tienda...' : 'Crear mi Tienda'}
           </Button>
           <p className="text-sm text-center text-muted-foreground">
             ¿Ya tienes una cuenta?{' '}
@@ -122,5 +134,3 @@ export default function SignupPage() {
       </form>
   );
 }
-
-    

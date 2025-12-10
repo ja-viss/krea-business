@@ -41,6 +41,11 @@ export default function LoginPage() {
       if (!response.ok) {
         throw new Error(data.message || 'Error al iniciar sesión.');
       }
+      
+      // Guardar IDs en localStorage para simular la sesión
+      localStorage.setItem('userId', data.user.id);
+      localStorage.setItem('storeId', data.user.store);
+
 
       toast({
         title: '¡Bienvenido!',

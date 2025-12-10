@@ -33,8 +33,13 @@ import { useEffect, useState } from 'react';
 
 // Simulación de un usuario que ha iniciado sesión
 interface User {
-  businessName: string;
+  _id: string;
+  name: string;
   email: string;
+  store: {
+    _id: string;
+    name: string;
+  }
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -47,19 +52,30 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // En una aplicación real, obtendrías esto de una sesión de usuario.
-    // Por ahora, vamos a buscar el primer usuario para simularlo.
     const fetchUser = async () => {
       try {
-        const response = await fetch('/api/users');
+        const userId = localStorage.getItem('userId');
+        const storeId = localStorage.getItem('storeId');
+        if (!userId || !storeId) {
+            // No user is logged in, redirect or handle accordingly
+            // For now, we'll just set a default user for display
+            setUser({ _id: 'default', name: "Usuario", email: "email@ejemplo.com", store: { _id: 'default', name: 'Mi Tienda' } });
+            return;
+        }
+
+        const response = await fetch(`/api/users?storeId=${storeId}`);
         if (response.ok) {
           const users = await response.json();
-          if (users.length > 0) {
-            setUser(users[0]);
+          const currentUser = users.find((u: User) => u._id === userId);
+          if (currentUser) {
+            setUser(currentUser);
+          } else {
+             setUser({ _id: 'default', name: "Usuario", email: "email@ejemplo.com", store: { _id: 'default', name: 'Mi Tienda' } });
           }
         }
       } catch (error) {
         console.error("Failed to fetch user", error);
-        setUser({ businessName: "Negocio", email: "email@ejemplo.com" });
+        setUser({ _id: 'default', name: "Usuario", email: "email@ejemplo.com", store: { _id: 'default', name: 'Mi Tienda' } });
       }
     };
     fetchUser();
@@ -69,7 +85,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <SidebarProvider defaultOpen={false}>
       <Sidebar collapsible="offcanvas" className="border-r border-sidebar-border">
         <SidebarHeader>
-          <Logo />
+           <div className="flex items-center gap-2">
+            <Logo />
+            <div className="flex flex-col">
+              <span className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                {user?.store?.name ?? 'Cargando...'}
+              </span>
+            </div>
+          </div>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
@@ -110,10 +133,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       />
                     )}
                     <AvatarFallback>
-                      {user?.businessName?.charAt(0) ?? 'U'}
+                      {user?.name?.charAt(0) ?? 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="truncate group-data-[collapsible=icon]:hidden">{user?.businessName ?? 'Cargando...'}</span>
+                  <span className="truncate group-data-[collapsible=icon]:hidden">{user?.name ?? 'Cargando...'}</span>
                 </div>
                 <ChevronDown className="size-4 shrink-0 opacity-50 transition-transform duration-200 group-data-[state=open]/user-menu-button:rotate-180 group-data-[collapsible=icon]:hidden" />
               </Button>
@@ -142,13 +165,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-14 items-center justify-start gap-4 border-b bg-card px-4 md:hidden">
-          <SidebarTrigger />
-          <div className="md:hidden">
-            <Logo />
-          </div>
-        </header>
-        <header className="hidden h-14 items-center justify-start gap-4 border-b bg-card px-4 md:flex">
+        <header className="flex h-14 items-center justify-start gap-4 border-b bg-card px-4">
            <SidebarTrigger />
         </header>
         {children}

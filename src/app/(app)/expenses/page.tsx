@@ -32,7 +32,11 @@ export default function ExpensesPage() {
     const fetchExpenses = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/expenses');
+        const storeId = localStorage.getItem('storeId');
+        if (!storeId) {
+            throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
+        }
+        const response = await fetch(`/api/expenses?storeId=${storeId}`);
         if (!response.ok) {
           throw new Error('No se pudieron obtener los gastos.');
         }

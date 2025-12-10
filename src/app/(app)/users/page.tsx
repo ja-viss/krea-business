@@ -24,11 +24,20 @@ import { MoreHorizontal, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+interface Role {
+  _id: string;
+  name: string;
+}
+interface Store {
+  _id: string;
+  name: string;
+}
 interface User {
   _id: string;
-  businessName: string;
+  name: string;
   email: string;
-  role: string;
+  role: Role;
+  store: Store;
 }
 
 export default function UsersPage() {
@@ -39,17 +48,16 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch('/api/users');
+        const storeId = localStorage.getItem('storeId');
+        if (!storeId) {
+            throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
+        }
+        const response = await fetch(`/api/users?storeId=${storeId}`);
         if (!response.ok) {
           throw new Error('No se pudieron obtener los usuarios.');
         }
         const data = await response.json();
-        // Asignar un rol predeterminado si no existe
-        const usersWithRoles = data.map((user: any) => ({
-          ...user,
-          role: user.role || 'Admin', // Asigna 'Admin' como rol por defecto
-        }));
-        setUsers(usersWithRoles);
+        setUsers(data);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -65,7 +73,7 @@ export default function UsersPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Usuarios"
-          description="Gestiona los usuarios y roles del sistema."
+          description="Gestiona los usuarios y roles de tu tienda."
           actions={
             <Button>
               <PlusCircle />
@@ -89,6 +97,7 @@ export default function UsersPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Rol</TableHead>
+                <TableHead>Tienda</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -108,6 +117,9 @@ export default function UsersPage() {
                     <TableCell>
                       <Skeleton className="h-6 w-[100px] rounded-full" />
                     </TableCell>
+                     <TableCell>
+                      <Skeleton className="h-4 w-[120px]" />
+                    </TableCell>
                     <TableCell>
                       <Skeleton className="h-8 w-8" />
                     </TableCell>
@@ -121,16 +133,17 @@ export default function UsersPage() {
                         <Avatar className="h-9 w-9">
                            <AvatarImage src={`https://picsum.photos/seed/${user._id}/40/40`} alt="Avatar" />
                           <AvatarFallback>
-                            {user.businessName.split(' ').map((n) => n[0]).join('')}
+                            {user.name.split(' ').map((n) => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="font-medium">{user.businessName}</div>
+                        <div className="font-medium">{user.name}</div>
                       </div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{user.role}</Badge>
+                      <Badge variant="secondary">{user.role?.name || 'N/A'}</Badge>
                     </TableCell>
+                    <TableCell>{user.store?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -152,7 +165,7 @@ export default function UsersPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     No se encontraron usuarios.
                   </TableCell>
                 </TableRow>
