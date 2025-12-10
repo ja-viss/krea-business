@@ -23,7 +23,7 @@ async function getOrCreateAdminRole(storeId: mongoose.Types.ObjectId, session: m
             { name: ROLES.CASHIER, store: storeId, permissions: ['use_pos'] },
             { name: ROLES.INVENTORY, store: storeId, permissions: ['manage_products'] },
         ];
-        const createdRoles = await RoleModel.create(rolesToCreate, { session });
+        const createdRoles = await RoleModel.insertMany(rolesToCreate, { session });
         adminRole = createdRoles.find(role => role.name === ROLES.ADMIN)!;
     }
     return adminRole;
