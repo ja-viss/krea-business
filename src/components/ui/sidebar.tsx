@@ -175,7 +175,33 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const { isMobile, state, open, setOpen, openMobile, setOpenMobile } = useSidebar()
+    const desktopSidebarRef = React.useRef<HTMLDivElement>(null)
+
+    React.useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          desktopSidebarRef.current &&
+          !desktopSidebarRef.current.contains(event.target as Node)
+        ) {
+           const trigger = document.querySelector('[data-sidebar="trigger"]');
+          if (trigger && trigger.contains(event.target as Node)) {
+            return;
+          }
+          setOpen(false)
+        }
+      }
+
+      if (open && !isMobile) {
+        document.addEventListener("mousedown", handleClickOutside)
+      } else {
+        document.removeEventListener("mousedown", handleClickOutside)
+      }
+
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside)
+      }
+    }, [open, isMobile, setOpen])
 
     if (collapsible === "none") {
       return (
@@ -214,7 +240,7 @@ const Sidebar = React.forwardRef<
 
     return (
       <div
-        ref={ref}
+        ref={desktopSidebarRef}
         className="group peer hidden md:block text-sidebar-foreground"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
