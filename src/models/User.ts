@@ -4,6 +4,7 @@ export interface IUser extends Document {
   businessName: string;
   email: string;
   password: string;
+  role: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -12,6 +13,7 @@ const UserSchema: Schema = new Schema({
   businessName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  role: { type: String, default: 'Admin' }, // Añadido campo de rol
 }, {
   timestamps: true
 });
