@@ -4,6 +4,7 @@ import UserModel from '@/models/User';
 import StoreModel from '@/models/Store';
 import RoleModel, { IRole } from '@/models/Role';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 const ROLES = {
   ADMIN: 'Administrador Principal',
@@ -56,7 +57,13 @@ export async function POST(req: NextRequest) {
     // Si todo fue bien, se confirma la transacción
     await session.commitTransaction();
 
-    return NextResponse.json({ message: 'Tienda y administrador registrados exitosamente.' }, { status: 201 });
+    return NextResponse.json({ 
+      message: 'Tienda y administrador registrados exitosamente.',
+      user: {
+        id: newUser._id,
+        store: newUser.store
+      }
+     }, { status: 201 });
   } catch (error: any) {
     // Si algo falla, se revierte la transacción
     await session.abortTransaction();

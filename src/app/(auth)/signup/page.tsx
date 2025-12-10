@@ -44,11 +44,15 @@ export default function SignupPage() {
         throw new Error(data.message || 'Error al registrar el usuario.');
       }
       
+      // Guardar IDs en localStorage para simular la sesión después del registro
+      localStorage.setItem('userId', data.user.id);
+      localStorage.setItem('storeId', data.user.store);
+
       toast({
         title: '¡Registro exitoso!',
-        description: 'Tu tienda ha sido creada. Ahora puedes iniciar sesión.',
+        description: 'Tu tienda ha sido creada. Serás redirigido al dashboard.',
       });
-      router.push('/login');
+      router.push('/dashboard');
 
     } catch (err: any) {
       console.error('Fallo en el registro:', err);
