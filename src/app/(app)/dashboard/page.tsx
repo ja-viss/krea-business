@@ -12,6 +12,7 @@ import { MobileHeader } from '../layout';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 interface DashboardData {
   totalSales: number;
