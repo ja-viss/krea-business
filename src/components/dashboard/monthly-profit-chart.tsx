@@ -14,7 +14,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-import { monthlyProfitData } from '@/lib/placeholder-data';
 
 const chartConfig = {
   profit: {
@@ -23,16 +22,20 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function MonthlyProfitChart() {
+interface MonthlyProfitChartProps {
+  data?: { month: string; profit: number }[];
+}
+
+export function MonthlyProfitChart({ data = [] }: MonthlyProfitChartProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Resumen de Ganancias Mensuales</CardTitle>
-        <CardDescription>Enero - Diciembre</CardDescription>
+        <CardDescription>Ganancias generadas en los últimos meses</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-          <BarChart accessibilityLayer data={monthlyProfitData}>
+          <BarChart accessibilityLayer data={data}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="month"

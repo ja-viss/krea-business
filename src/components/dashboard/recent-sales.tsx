@@ -14,14 +14,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { recentSalesData } from '@/lib/placeholder-data';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
-export function RecentSales() {
-  const userAvatar = PlaceHolderImages.find(
-    (img) => img.id === 'user-avatar-1'
-  );
+interface RecentSalesProps {
+  data?: {
+    _id: string;
+    customerName: string;
+    customerEmail: string;
+    amount: number;
+  }[];
+}
 
+export function RecentSales({ data = [] }: RecentSalesProps) {
   return (
     <Card>
       <CardHeader>
@@ -37,34 +40,46 @@ export function RecentSales() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {recentSalesData.map((sale, index) => (
-              <TableRow key={sale.id}>
+            {data.map((sale, index) => (
+              <TableRow key={sale._id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
                       <AvatarImage
-                        src={`https://picsum.photos/seed/avatar-${index}/40/40`}
+                        src={`https://picsum.photos/seed/avatar-${sale._id}/40/40`}
                         alt="Avatar"
                         data-ai-hint="person portrait"
                       />
                       <AvatarFallback>
-                        {sale.customer
+                        {sale.customerName
                           .split(' ')
                           .map((n) => n[0])
                           .join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div className="font-medium">
-                      {sale.customer}
+                      {sale.customerName}
                       <div className="text-sm text-muted-foreground">
-                        {sale.email}
+                        {sale.customerEmail}
                       </div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">{sale.amount}</TableCell>
+                <TableCell className="text-right">
+                  {new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                  }).format(sale.amount)}
+                </TableCell>
               </TableRow>
             ))}
+             {data.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={2} className="h-24 text-center">
+                        No hay ventas recientes.
+                    </TableCell>
+                </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
