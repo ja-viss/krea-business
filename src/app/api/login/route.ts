@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import bcrypt from 'bcryptjs';
-import StoreModel from '@/models/Store';
-import RoleModel from '@/models/Role'; // Importar RoleModel
+import StoreModel from '@/models/Store'; // Importación necesaria para populate
+import RoleModel from '@/models/Role';   // Importación necesaria para populate
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,13 +19,13 @@ export async function POST(req: NextRequest) {
     const users = await UserModel.find({ email }).populate('role store');
 
     if (!users || users.length === 0) {
-      return NextResponse.json({ message: 'Credenciales inválidas. Por favor, inténtalo de nuevo.' }, { status: 401 });
+      return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
 
     // Intenta encontrar una coincidencia de contraseña en los usuarios encontrados
     let authenticatedUser = null;
     for (const user of users) {
-        if (user.password) { // Asegurarse de que la contraseña existe
+        if (user.password) {
             const isPasswordMatch = await bcrypt.compare(password, user.password);
             if (isPasswordMatch) {
                 authenticatedUser = user;
@@ -35,26 +35,22 @@ export async function POST(req: NextRequest) {
     }
     
     if (!authenticatedUser || !authenticatedUser.store) {
-      return NextResponse.json({ message: 'Credenciales inválidas o error de configuración de la tienda. Por favor, inténtalo de nuevo.' }, { status: 401 });
+      return NextResponse.json({ message: 'Credenciales inválidas o la cuenta no está asociada a una tienda.' }, { status: 401 });
     }
 
-    // En una aplicación real, aquí se crearía una sesión o un JWT (JSON Web Token)
-    // Para este ejemplo, devolvemos los IDs necesarios para que el cliente los guarde.
     return NextResponse.json({ 
         message: 'Inicio de sesión exitoso.', 
         user: { 
-            id: authenticatedUser._id, 
+            id: authenticatedUser._id.toString(), 
             name: authenticatedUser.name, 
             email: authenticatedUser.email, 
-            store: authenticatedUser.store._id 
+            store: authenticatedUser.store._id.toString()
         } 
     }, { status: 200 });
 
   } catch (error) {
     console.error('Error en el inicio de sesión:', error);
-    if (error instanceof Error) {
-        return NextResponse.json({ message: 'Error interno del servidor.', error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ message: 'Error interno del servidor.' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error inesperado.';
+    return NextResponse.json({ message: 'Error interno del servidor.', error: errorMessage }, { status: 500 });
   }
 }
