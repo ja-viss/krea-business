@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search } from 'lucide-react';
@@ -18,6 +19,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -27,6 +29,17 @@ import { getInventoryOptimizationRecommendations, InventoryOptimizationInput } f
 import { TopStockChart } from '@/components/inventory/top-stock-chart';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useToast } from '@/hooks/use-toast';
 
 
 interface InventoryMetrics {
@@ -36,6 +49,8 @@ interface InventoryMetrics {
 }
 
 export default function InventoryPage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [products, setProducts] = useState<IProduct[]>([]);
   const [metrics, setMetrics] = useState<InventoryMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,28 +58,30 @@ export default function InventoryPage() {
   const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [productToDelete, setProductToDelete] = useState<IProduct | null>(null);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const storeId = localStorage.getItem('storeId');
+      if (!storeId) {
+        throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
+      }
+      const response = await fetch(`/api/products?storeId=${storeId}`);
+      if (!response.ok) {
+        throw new Error('No se pudieron obtener los productos.');
+      }
+      const data: IProduct[] = await response.json();
+      setProducts(data);
+      calculateMetrics(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const storeId = localStorage.getItem('storeId');
-        if (!storeId) {
-          throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
-        }
-        const response = await fetch(`/api/products?storeId=${storeId}`);
-        if (!response.ok) {
-          throw new Error('No se pudieron obtener los productos.');
-        }
-        const data: IProduct[] = await response.json();
-        setProducts(data);
-        calculateMetrics(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProducts();
   }, []);
 
@@ -96,6 +113,35 @@ export default function InventoryPage() {
       setError("Error al obtener las recomendaciones de la IA.");
     } finally {
       setLoadingRecommendations(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+    try {
+      const response = await fetch(`/api/products/${productToDelete._id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo eliminar el producto.');
+      }
+
+      toast({
+        title: 'Producto Eliminado',
+        description: `El producto "${productToDelete.name}" ha sido eliminado.`,
+      });
+      
+      await fetchProducts(); // Re-fetch products to update the list
+
+    } catch (err: any) {
+       toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message || 'Ocurrió un error al eliminar el producto.',
+      });
+    } finally {
+        setProductToDelete(null);
     }
   };
 
@@ -311,9 +357,16 @@ export default function InventoryPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                            <DropdownMenuItem>Editar</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem onSelect={() => router.push(`/inventory/${product._id}`)}>
+                              Ver detalles
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => router.push(`/inventory/${product._id}/edit`)}>
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onSelect={() => setProductToDelete(product)}>
                               Eliminar
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -332,7 +385,26 @@ export default function InventoryPage() {
             </Table>
           </CardContent>
         </Card>
+        
+        <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro de que quieres eliminar este producto?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Esta acción no se puede deshacer. Esto eliminará permanentemente el producto
+                    "{productToDelete?.name}" de tu inventario.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteProduct}>Eliminar</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </main>
     </div>
   );
 }
+
+    
