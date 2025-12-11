@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -22,28 +22,35 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const { toast } = useToast();
   const codeReader = useRef(new BrowserMultiFormatReader());
 
-  useEffect(() => {
-    let stream: MediaStream | null = null;
+  const startScanner = useCallback(async () => {
+    if (!videoRef.current) return;
 
-    const startScanner = async () => {
-      try {
+    try {
         const constraints = { video: { facingMode: 'environment' } };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        setHasPermission(true);
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
-            if (result) {
-              onScan(result.getText());
-            }
-            if (err && !(err instanceof NotFoundException)) {
-              console.error("Scan error:", err);
-              setError("Ocurrió un error al escanear. Inténtalo de nuevo.");
-            }
-          });
+            videoRef.current.srcObject = stream;
+
+            // Wait for video to be ready
+            videoRef.current.oncanplay = () => {
+                setHasPermission(true);
+                codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
+                    if (result) {
+                        onScan(result.getText());
+                    }
+                    if (err && !(err instanceof NotFoundException)) {
+                        console.error("Scan error:", err);
+                        setError("Ocurrió un error al escanear. Inténtalo de nuevo.");
+                    }
+                }).catch(scanError => {
+                    // This might catch errors if the device is already in use
+                    console.error("DecodeFromVideoDevice error:", scanError);
+                    setError("No se pudo iniciar el escáner. ¿Otra aplicación está usando la cámara?");
+                });
+            };
         }
-      } catch (err) {
+    } catch (err) {
         console.error("Camera access error:", err);
         setHasPermission(false);
         setError("El acceso a la cámara es necesario para escanear. Por favor, habilita los permisos en tu navegador.");
@@ -52,19 +59,21 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             title: "Error de Cámara",
             description: "No se pudo acceder a la cámara. Revisa los permisos."
         });
-      }
-    };
+    }
+  }, [onScan, toast]);
 
+  useEffect(() => {
     startScanner();
 
-    // Cleanup
+    // Cleanup function
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      codeReader.current.reset();
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+        codeReader.current.reset();
     };
-  }, [onScan, toast]);
+  }, [startScanner]);
 
   return (
     <Dialog open={true} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -108,4 +117,3 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
     </Dialog>
   );
 }
-
