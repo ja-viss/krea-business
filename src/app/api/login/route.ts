@@ -3,6 +3,7 @@ import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import bcrypt from 'bcryptjs';
 import StoreModel from '@/models/Store';
+import RoleModel from '@/models/Role'; // Importar RoleModel
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,15 +25,17 @@ export async function POST(req: NextRequest) {
     // Intenta encontrar una coincidencia de contraseña en los usuarios encontrados
     let authenticatedUser = null;
     for (const user of users) {
-        const isPasswordMatch = await bcrypt.compare(password, user.password);
-        if (isPasswordMatch) {
-            authenticatedUser = user;
-            break;
+        if (user.password) { // Asegurarse de que la contraseña existe
+            const isPasswordMatch = await bcrypt.compare(password, user.password);
+            if (isPasswordMatch) {
+                authenticatedUser = user;
+                break;
+            }
         }
     }
     
-    if (!authenticatedUser) {
-      return NextResponse.json({ message: 'Credenciales inválidas. Por favor, inténtalo de nuevo.' }, { status: 401 });
+    if (!authenticatedUser || !authenticatedUser.store) {
+      return NextResponse.json({ message: 'Credenciales inválidas o error de configuración de la tienda. Por favor, inténtalo de nuevo.' }, { status: 401 });
     }
 
     // En una aplicación real, aquí se crearía una sesión o un JWT (JSON Web Token)
