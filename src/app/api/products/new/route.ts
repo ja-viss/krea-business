@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     let status: 'En Stock' | 'Stock Bajo' | 'Sin Stock' = 'Sin Stock';
     if (initialStock > minStock) {
         status = 'En Stock';
-    } else if (initialStock > 0) {
+    } else if (initialStock > 0 && initialStock <= minStock) {
         status = 'Stock Bajo';
     }
 
