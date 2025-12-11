@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import bcrypt from 'bcryptjs';
+import StoreModel from '@/models/Store';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,17 +14,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'El correo electrónico y la contraseña son obligatorios.' }, { status: 400 });
     }
 
-    // Buscamos al usuario por su email. En una arquitectura multi-tenant real,
-    // se podría permitir el mismo email en diferentes tiendas, pero el modelo actual
-    // lo hace único por tienda, así que buscar por email es seguro.
-    const user = await UserModel.findOne({ email }).populate('role');
-    
-    if (!user) {
+    // Encuentra todos los usuarios con ese correo (puede estar en múltiples tiendas)
+    const users = await UserModel.find({ email }).populate('role store');
+
+    if (!users || users.length === 0) {
       return NextResponse.json({ message: 'Credenciales inválidas. Por favor, inténtalo de nuevo.' }, { status: 401 });
     }
 
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-    if (!isPasswordMatch) {
+    // Intenta encontrar una coincidencia de contraseña en los usuarios encontrados
+    let authenticatedUser = null;
+    for (const user of users) {
+        const isPasswordMatch = await bcrypt.compare(password, user.password);
+        if (isPasswordMatch) {
+            authenticatedUser = user;
+            break;
+        }
+    }
+    
+    if (!authenticatedUser) {
       return NextResponse.json({ message: 'Credenciales inválidas. Por favor, inténtalo de nuevo.' }, { status: 401 });
     }
 
@@ -32,10 +40,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ 
         message: 'Inicio de sesión exitoso.', 
         user: { 
-            id: user._id, 
-            name: user.name, 
-            email: user.email, 
-            store: user.store 
+            id: authenticatedUser._id, 
+            name: authenticatedUser.name, 
+            email: authenticatedUser.email, 
+            store: authenticatedUser.store._id 
         } 
     }, { status: 200 });
 
