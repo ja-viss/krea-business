@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import bcrypt from 'bcryptjs';
-import StoreModel from '@/models/Store'; // Importación necesaria para populate
-import RoleModel from '@/models/Role';   // Importación necesaria para populate
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,36 +13,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'El correo electrónico y la contraseña son obligatorios.' }, { status: 400 });
     }
 
-    // Encuentra todos los usuarios con ese correo (puede estar en múltiples tiendas)
-    const users = await UserModel.find({ email }).populate('role store');
+    // Busca un único usuario por el email. En una app multi-tienda real, podrías necesitar
+    // un paso previo para identificar la tienda si no se pasa en el login.
+    // Por simplicidad y para corregir el bug, buscamos el primer usuario que coincida.
+    const user = await UserModel.findOne({ email });
 
-    if (!users || users.length === 0) {
+    if (!user) {
+      return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
+    }
+    
+    // Compara la contraseña proporcionada con la hasheada en la base de datos
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordMatch) {
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
 
-    // Intenta encontrar una coincidencia de contraseña en los usuarios encontrados
-    let authenticatedUser = null;
-    for (const user of users) {
-        if (user.password) {
-            const isPasswordMatch = await bcrypt.compare(password, user.password);
-            if (isPasswordMatch) {
-                authenticatedUser = user;
-                break;
-            }
-        }
-    }
-    
-    if (!authenticatedUser || !authenticatedUser.store) {
-      return NextResponse.json({ message: 'Credenciales inválidas o la cuenta no está asociada a una tienda.' }, { status: 401 });
+    if (!user.store) {
+      return NextResponse.json({ message: 'La cuenta no está asociada a ninguna tienda.' }, { status: 401 });
     }
 
+    // Si todo es correcto, devuelve los datos necesarios para la sesión del cliente
     return NextResponse.json({ 
         message: 'Inicio de sesión exitoso.', 
         user: { 
-            id: authenticatedUser._id.toString(), 
-            name: authenticatedUser.name, 
-            email: authenticatedUser.email, 
-            store: authenticatedUser.store._id.toString()
+            id: user._id.toString(), 
+            name: user.name, 
+            email: user.email, 
+            store: user.store.toString()
         } 
     }, { status: 200 });
 
