@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
-import NewProductModel from '@/models/NewProduct';
+import ProductModel from '@/models/Product';
 import { z } from 'zod';
 
 const productSchema = z.object({
@@ -40,12 +40,12 @@ export async function POST(req: NextRequest) {
         status = 'Stock Bajo';
     }
 
-    const newProduct = new NewProductModel({
+    const newProduct = new ProductModel({
         store: storeId,
         name,
         productType,
-        barcode,
-        sku,
+        barcode: barcode || null,
+        sku: sku || null,
         category,
         stock: initialStock,
         minStock,
@@ -60,12 +60,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(newProduct, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error al crear el producto:', error);
+    if (error.code === 11000) {
+      const key = Object.keys(error.keyValue)[0];
+      return NextResponse.json({ message: `Ya existe un producto con este ${key}.` }, { status: 409 });
+    }
     if (error instanceof Error) {
         return NextResponse.json({ message: 'Error interno del servidor.', error: error.message }, { status: 500 });
     }
     return NextResponse.json({ message: 'Error interno del servidor.' }, { status: 500 });
   }
 }
-
