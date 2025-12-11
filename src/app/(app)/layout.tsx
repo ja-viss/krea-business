@@ -33,13 +33,10 @@ import { useEffect, useState } from 'react';
 
 // Simulación de un usuario que ha iniciado sesión
 interface User {
-  _id: string;
+  id: string;
   name: string;
   email: string;
-  store: {
-    _id: string;
-    name: string;
-  }
+  store: string;
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -51,34 +48,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // En una aplicación real, obtendrías esto de una sesión de usuario.
-    const fetchUser = async () => {
-      try {
-        const userId = localStorage.getItem('userId');
-        const storeId = localStorage.getItem('storeId');
-        if (!userId || !storeId) {
-            // No user is logged in, redirect or handle accordingly
-            // For now, we'll just set a default user for display
-            setUser({ _id: 'default', name: "Usuario", email: "email@ejemplo.com", store: { _id: 'default', name: 'Mi Tienda' } });
-            return;
-        }
-
-        const response = await fetch(`/api/users?storeId=${storeId}`);
-        if (response.ok) {
-          const users = await response.json();
-          const currentUser = users.find((u: User) => u._id === userId);
-          if (currentUser) {
-            setUser(currentUser);
-          } else {
-             setUser({ _id: 'default', name: "Usuario", email: "email@ejemplo.com", store: { _id: 'default', name: 'Mi Tienda' } });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch user", error);
-        setUser({ _id: 'default', name: "Usuario", email: "email@ejemplo.com", store: { _id: 'default', name: 'Mi Tienda' } });
-      }
+    // En una aplicación real, obtendrías esto de una sesión de usuario real (ej: JWT, cookie)
+    // Para esta simulación, leemos desde localStorage.
+    const storedUser = {
+        id: localStorage.getItem('userId'),
+        name: localStorage.getItem('userName'),
+        email: localStorage.getItem('userEmail'),
+        store: localStorage.getItem('storeId'),
     };
-    fetchUser();
+    
+    if (storedUser.id && storedUser.name && storedUser.email && storedUser.store) {
+        setUser(storedUser as User);
+    } else {
+        // Fallback si no hay datos de usuario
+        setUser({ id: 'default', name: "Usuario", email: "email@ejemplo.com", store: 'default' });
+    }
   }, []);
 
   return (

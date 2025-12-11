@@ -42,9 +42,11 @@ export default function LoginPage() {
         throw new Error(data.message || 'Error al iniciar sesión.');
       }
       
-      // Guardar IDs en localStorage para simular la sesión
+      // Guardar datos de la sesión en localStorage
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('storeId', data.user.store);
+      localStorage.setItem('userName', data.user.name);
+      localStorage.setItem('userEmail', data.user.email);
 
 
       toast({
