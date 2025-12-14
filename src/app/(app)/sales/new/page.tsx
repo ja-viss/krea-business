@@ -312,18 +312,12 @@ export default function NewSalePage() {
                 title="Nueva Venta"
                 description="Busca productos, añade clientes y registra una nueva transacción."
                 actions={
-                    <div className="flex gap-2">
-                        <Button variant="outline" asChild>
-                            <Link href="/sales">
-                            <ChevronLeft />
-                            Cancelar
-                            </Link>
-                        </Button>
-                        <Button type="submit" form="sale-form" disabled={isSubmitting || watchItems.length === 0}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isSubmitting ? 'Procesando...' : 'Completar Venta'}
-                        </Button>
-                    </div>
+                    <Button variant="outline" asChild>
+                        <Link href="/sales">
+                        <ChevronLeft />
+                        Cancelar
+                        </Link>
+                    </Button>
                 }
             />
         <div className="border rounded-lg p-4 flex justify-between items-center text-sm bg-muted/50 mb-6">
@@ -349,7 +343,7 @@ export default function NewSalePage() {
         </div>
 
          <Form {...form}>
-            <form id="sale-form" onSubmit={form.handleSubmit(onSubmit)}>
+            <form id="sale-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 mt-6">
                     {/* Columna Izquierda (Productos y Tabla) */}
                     <div className="lg:col-span-3 space-y-6">
@@ -564,11 +558,25 @@ export default function NewSalePage() {
                         </Card>
                     </div>
                 </div>
+
+                <div className="mt-8 flex justify-end">
+                    <Button 
+                        type="submit" 
+                        size="lg"
+                        disabled={isSubmitting || watchItems.length === 0}
+                        className="min-w-[200px]"
+                    >
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSubmitting ? 'Procesando...' : 'Completar Venta'}
+                    </Button>
+                </div>
             </form>
          </Form>
        </main>
     </div>
   );
 }
+
+    
 
     
