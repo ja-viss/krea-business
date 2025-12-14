@@ -42,11 +42,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { CustomerSearch } from '@/components/sales/customer-search';
 import { ICustomer } from '@/models/Customer';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
+import { Separator } from '@/components/ui/separator';
 
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
-  customerName: z.string().optional(),
+  customerName: z.string().min(1, 'Debe seleccionar o registrar un cliente.'),
   items: z.array(z.object({
     productId: z.string(),
     name: z.string(),
@@ -102,11 +103,42 @@ export default function NewSalePage() {
   const watchAmountReceived = form.watch('amountReceived');
   const watchPaymentCurrency = form.watch('paymentCurrency');
 
-  const { totalVES, taxAmountVES, subTotalVES } = useMemo(() => {
-    const subTotal = watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const taxAmount = watchItems.reduce((sum, item) => sum + (item.price * item.quantity * item.taxRate), 0);
-    const total = subTotal + taxAmount;
-    return { totalVES: total, taxAmountVES: taxAmount, subTotalVES: subTotal };
+  const {
+    subtotalExempt,
+    subtotalGeneral,
+    subtotalReduced,
+    taxGeneralAmount,
+    taxReducedAmount,
+    totalVES,
+  } = useMemo(() => {
+    const subtotals = { exempt: 0, general: 0, reduced: 0 };
+    
+    watchItems.forEach(item => {
+        const itemTotal = item.price * item.quantity;
+        if (item.taxRate === 0) {
+            subtotals.exempt += itemTotal;
+        } else if (item.taxRate === 0.08) {
+            subtotals.reduced += itemTotal;
+        } else { // Default to 16%
+            subtotals.general += itemTotal;
+        }
+    });
+
+    const taxes = {
+        general: subtotals.general * 0.16,
+        reduced: subtotals.reduced * 0.08,
+    };
+
+    const grandTotal = subtotals.exempt + subtotals.general + subtotals.reduced + taxes.general + taxes.reduced;
+
+    return {
+      subtotalExempt: subtotals.exempt,
+      subtotalGeneral: subtotals.general,
+      subtotalReduced: subtotals.reduced,
+      taxGeneralAmount: taxes.general,
+      taxReducedAmount: taxes.reduced,
+      totalVES: grandTotal
+    };
   }, [watchItems]);
 
   const totalUSD = useMemo(() => {
@@ -115,9 +147,9 @@ export default function NewSalePage() {
   }, [totalVES, rates.usd]);
   
   const totalCOP = useMemo(() => {
-    if (!rates.cop || !rates.cop.rate) return 0;
-    return totalUSD * rates.cop.rate;
-  }, [totalUSD, rates.cop]);
+    if (!rates.usd?.usd || !rates.cop?.rate) return 0;
+    return (totalVES / rates.usd.usd) * rates.cop.rate;
+  }, [totalVES, rates.usd, rates.cop]);
 
 
   const getAmountInSelectedCurrency = useMemo(() => {
@@ -241,7 +273,6 @@ export default function NewSalePage() {
 
         const payload = {
             ...data,
-            customerName: data.customerName || 'Cliente General',
             storeId,
         }
 
@@ -295,6 +326,28 @@ export default function NewSalePage() {
                     </div>
                 }
             />
+        <div className="border rounded-lg p-4 flex justify-between items-center text-sm bg-muted/50 mb-6">
+            <div className='flex items-center gap-4'>
+                <div className='font-semibold'>Tipo de Documento:</div>
+                 <Select defaultValue="factura">
+                    <SelectTrigger className="w-[180px] bg-background">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="factura">Factura</SelectItem>
+                        <SelectItem value="nota_credito" disabled>Nota de Crédito</SelectItem>
+                        <SelectItem value="nota_debito" disabled>Nota de Débito</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className='flex items-center gap-2'>
+                <div className='font-semibold'>Tasa BCV (USD/VES):</div>
+                 <div className='font-mono p-2 bg-background rounded-md'>
+                    {ratesLoading.usd ? 'Cargando...' : rates.usd?.usd.toFixed(2) || 'N/A'}
+                </div>
+            </div>
+        </div>
+
          <Form {...form}>
             <form id="sale-form" onSubmit={form.handleSubmit(onSubmit)}>
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 mt-6">
@@ -364,25 +417,6 @@ export default function NewSalePage() {
                                             </TableRow>
                                         )}
                                     </TableBody>
-                                    {fields.length > 0 && (
-                                        <TableFooter>
-                                            <TableRow>
-                                                <TableCell colSpan={3} className="text-right font-semibold">Sub-Total (VES)</TableCell>
-                                                <TableCell className="text-right font-semibold">{formatCurrency(subTotalVES, 'VES')}</TableCell>
-                                                <TableCell></TableCell>
-                                            </TableRow>
-                                            <TableRow>
-                                                <TableCell colSpan={3} className="text-right font-semibold">IVA (VES)</TableCell>
-                                                <TableCell className="text-right font-semibold">{formatCurrency(taxAmountVES, 'VES')}</TableCell>
-                                                <TableCell></TableCell>
-                                            </TableRow>
-                                            <TableRow>
-                                                <TableCell colSpan={3} className="text-right font-bold text-lg">Total (VES)</TableCell>
-                                                <TableCell className="text-right font-bold text-lg">{formatCurrency(totalVES, 'VES')}</TableCell>
-                                                <TableCell></TableCell>
-                                            </TableRow>
-                                        </TableFooter>
-                                    )}
                                 </Table>
                             </CardContent>
                         </Card>
@@ -403,10 +437,11 @@ export default function NewSalePage() {
                                     control={form.control}
                                     name="customerName"
                                     render={({ field }) => (
-                                        <FormItem className='hidden'>
+                                        <FormItem className='mt-2'>
                                             <FormControl>
-                                                <Input {...field} />
+                                                <Input {...field} readOnly className="bg-muted text-muted-foreground" placeholder="Seleccione un cliente..."/>
                                             </FormControl>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -501,20 +536,28 @@ export default function NewSalePage() {
                                     </>
                                 )}
                             </CardContent>
-                            <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2'>
-                                <div className='flex justify-between items-center text-xl font-bold'>
-                                    <span>TOTAL A PAGAR:</span>
-                                </div>
-                                <div className='flex justify-between items-center text-lg font-semibold'>
-                                    <span>En Bolívares (VES):</span>
+                             <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2 text-sm'>
+                                {/* Fiscal Breakdown */}
+                                <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (Exento):</span> <span className='font-medium'>{formatCurrency(subtotalExempt, 'VES')}</span></div>
+                                <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (16%):</span> <span className='font-medium'>{formatCurrency(subtotalGeneral, 'VES')}</span></div>
+                                <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (8%):</span> <span className='font-medium'>{formatCurrency(subtotalReduced, 'VES')}</span></div>
+                                <Separator className='my-1' />
+                                <div className='flex justify-between'><span className='text-muted-foreground'>IVA (16%):</span> <span className='font-medium'>{formatCurrency(taxGeneralAmount, 'VES')}</span></div>
+                                <div className='flex justify-between'><span className='text-muted-foreground'>IVA (8%):</span> <span className='font-medium'>{formatCurrency(taxReducedAmount, 'VES')}</span></div>
+                                <Separator className='my-2 bg-foreground' />
+
+                                {/* Totals */}
+                                <div className='flex justify-between items-center text-lg font-bold text-primary'>
+                                    <span>TOTAL (VES):</span>
                                     <span>{ratesLoading.usd ? '...' : formatCurrency(totalVES, 'VES')}</span>
                                 </div>
-                                 <div className='flex justify-between items-center text-sm text-muted-foreground'>
-                                    <span>En Dólares (USD):</span>
+                                <Separator className='my-1' />
+                                 <div className='flex justify-between items-center text-muted-foreground'>
+                                    <span>Total (USD):</span>
                                     <span>{ratesLoading.usd ? '...' : formatCurrency(totalUSD, 'USD')}</span>
                                  </div>
-                                 <div className='flex justify-between items-center text-sm text-muted-foreground'>
-                                    <span>En Pesos (COP):</span>
+                                 <div className='flex justify-between items-center text-muted-foreground'>
+                                    <span>Total (COP):</span>
                                     <span>{ratesLoading.cop ? '...' : formatCurrency(totalCOP, 'COP')}</span>
                                  </div>
                             </CardFooter>
@@ -527,3 +570,5 @@ export default function NewSalePage() {
     </div>
   );
 }
+
+    
