@@ -257,7 +257,7 @@ export default function ReportsPage() {
                                 <TableBody>
                                     {kardexExampleData.map((item, index) => (
                                         <TableRow key={index}>
-                                            <TableCell>{format(new Date(item.date), 'dd/MM/yyyy')}</TableCell>
+                                            <TableCell>{format(new Date(`${item.date}T00:00:00`), 'dd/MM/yyyy')}</TableCell>
                                             <TableCell className='font-mono text-xs'>{item.document}</TableCell>
                                             <TableCell>{item.concept}</TableCell>
                                             <TableCell className='text-center text-green-600 font-medium'>{item.entry > 0 ? `+${item.entry}` : ''}</TableCell>
