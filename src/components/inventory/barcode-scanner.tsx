@@ -13,7 +13,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { CameraOff } from 'lucide-react';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import { BrowserMultiFormatReader, NotFoundException, BarcodeFormat, DecodeHintType } from '@zxing/library';
 
 interface BarcodeScannerProps {
   onScan: (scannedCode: string) => void;
@@ -25,29 +25,25 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const codeReader = useRef(new BrowserMultiFormatReader());
-
-  const startScanner = useCallback(async () => {
-      if (!videoRef.current) return;
-      try {
-        await codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
-          if (result) {
-            onScan(result.getText());
-          }
-          if (err && !(err instanceof NotFoundException)) {
-            console.error('Scan error:', err);
-            setError('Ocurrió un error al escanear. Inténtalo de nuevo.');
-          }
-        });
-      } catch (scanError) {
-        console.error('DecodeFromVideoDevice error:', scanError);
-        setError(
-          'No se pudo iniciar el escáner. ¿Otra aplicación está usando la cámara?'
-        );
-      }
-    }, [onScan]);
+  
+  // Create a ref for the code reader instance
+  const codeReader = useRef<BrowserMultiFormatReader | null>(null);
 
   useEffect(() => {
+    // Initialize the code reader with hints
+    const hints = new Map();
+    const formats = [
+        BarcodeFormat.QR_CODE,
+        BarcodeFormat.CODE_128,
+        BarcodeFormat.EAN_13,
+        BarcodeFormat.EAN_8,
+        BarcodeFormat.UPC_A,
+        BarcodeFormat.UPC_E,
+    ];
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+    codeReader.current = new BrowserMultiFormatReader(hints);
+
+    // Request camera permission
     const getCameraPermission = async () => {
       try {
         const constraints = { video: { facingMode: 'environment' } };
@@ -71,10 +67,29 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
     };
     getCameraPermission();
 
+    // Cleanup on component unmount
     return () => {
-      codeReader.current.reset();
+      codeReader.current?.reset();
     };
   }, [toast]);
+
+   const startScanner = useCallback(() => {
+    if (videoRef.current && codeReader.current && hasPermission) {
+      codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
+        if (result) {
+          onScan(result.getText());
+        }
+        if (err && !(err instanceof NotFoundException)) {
+          console.error('Scan error:', err);
+          // Don't set a user-facing error for minor scan issues, only persistent ones.
+        }
+      }).catch(scanError => {
+         console.error('DecodeFromVideoDevice error:', scanError);
+         setError('No se pudo iniciar el escáner. ¿Otra aplicación está usando la cámara?');
+      })
+    }
+  }, [hasPermission, onScan]);
+
 
   return (
     <Dialog open={true} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -93,9 +108,14 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             autoPlay
             playsInline
             muted
-            onCanPlay={() => startScanner()}
+            onCanPlay={startScanner}
           />
-          <div className="scanner-overlay absolute inset-0"></div>
+          <div className="scanner-overlay absolute inset-0 flex items-center justify-center">
+            <div className="h-1/2 w-4/5 rounded-lg border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-red-500 animate-scan"></div>
+            </div>
+          </div>
+
 
           {hasPermission === false && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 p-4 text-white">
@@ -121,15 +141,16 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             Cerrar
           </Button>
         </DialogFooter>
+         <style jsx>{`
+            @keyframes scan {
+                0%, 100% { transform: translateY(-50px); }
+                50% { transform: translateY(50px); }
+            }
+            .animate-scan {
+                animation: scan 2s ease-in-out infinite;
+            }
+        `}</style>
       </DialogContent>
-      <style jsx>{`
-        .scanner-overlay {
-          box-shadow: inset 0 0 0 500px rgba(0, 0, 0, 0.5);
-          border: 2px solid white;
-          border-radius: 8px;
-          margin: 20px;
-        }
-      `}</style>
     </Dialog>
   );
 }
