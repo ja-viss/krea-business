@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!query || query.length < 2) {
+      // Devuelve un arreglo vacío si la consulta es muy corta, en lugar de un error.
       return NextResponse.json([], { status: 200 });
     }
     
@@ -34,5 +35,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: 'Error al buscar clientes.', error: errorMessage }, { status: 500 });
   }
 }
-
-    

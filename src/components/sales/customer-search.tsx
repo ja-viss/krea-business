@@ -54,10 +54,10 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
   });
 
   useEffect(() => {
-    // Sync local query state if parent form state changes (e.g. customer selected or sale completed)
     if (selectedCustomerName !== query) {
         setQuery(selectedCustomerName);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCustomerName]);
 
   useEffect(() => {
@@ -70,6 +70,7 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
       try {
         const storeId = localStorage.getItem('storeId');
         const response = await fetch(`/api/customers/search?storeId=${storeId}&query=${query}`);
+        
         if (response.ok) {
           const data = await response.json();
           setResults(data);
@@ -149,7 +150,7 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar cliente por nombre o cédula..."
+          placeholder={selectedCustomerName || "Buscar cliente por nombre o cédula..."}
           className="pl-9"
           value={query}
           onChange={(e) => {
@@ -255,5 +256,3 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
     </div>
   );
 }
-
-    
