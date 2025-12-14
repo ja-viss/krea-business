@@ -60,9 +60,9 @@ const saleSchema = z.object({
   }),
   paymentReference: z.string().optional(),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).optional(),
-  amountReceived: z.coerce.number().optional(),
+  amountReceived: z.coerce.number().default(0),
 }).refine(data => {
-    if ((data.paymentMethod === 'Transferencia' || data.paymentMethod === 'Pago Móvil') && !data.paymentReference) {
+    if ((data.paymentMethod === 'Transferencia' || data.paymentMethod === 'Pago Móvil') && (!data.paymentReference || data.paymentReference.trim() === '')) {
         return false;
     }
     return true;
@@ -265,22 +265,18 @@ export default function NewSalePage() {
   };
 
   const onInvalid = (errors: FieldErrors<SaleFormValues>) => {
+    // Find the first error message to display
     let firstErrorMessage = "Error de validación. Por favor, revisa todos los campos.";
     const errorKeys = Object.keys(errors) as (keyof SaleFormValues)[];
-  
+
     if (errorKeys.length > 0) {
       const firstErrorKey = errorKeys[0];
       const error = errors[firstErrorKey];
-      
-      if (typeof error === 'object' && error !== null && 'message' in error) {
+
+      if (error && typeof error === 'object' && 'message' in error) {
         firstErrorMessage = error.message as string;
-      } else if (firstErrorKey === 'items' && Array.isArray(errors.items)) {
-        const itemError = errors.items.find(i => i && Object.keys(i).length > 0);
-        if(itemError && itemError.quantity) {
-          firstErrorMessage = itemError.quantity.message as string;
-        }
-      } else if (firstErrorKey === 'items' && error) {
-        firstErrorMessage = (error as any).root?.message || error.message || "Debes añadir al menos un producto a la venta.";
+      } else if (firstErrorKey === 'items' && typeof errors.items === 'object' && errors.items !== null && 'message' in errors.items) {
+         firstErrorMessage = errors.items.message as string;
       }
     }
   
@@ -471,7 +467,7 @@ export default function NewSalePage() {
                                                 <p className='font-semibold'>{selectedCustomer.name}</p>
                                                 <p className='text-sm text-muted-foreground'>{selectedCustomer.idNumber}</p>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', ''); }}>Cambiar</Button>
+                                            <Button variant="outline" size="sm" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', '', { shouldValidate: true }); }}>Cambiar</Button>
                                         </div>
                                         {selectedCustomer.phone && <p className='text-sm'><span className='font-medium'>Teléfono:</span> {selectedCustomer.phone}</p>}
                                     </div>
