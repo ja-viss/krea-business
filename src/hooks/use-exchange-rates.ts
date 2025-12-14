@@ -21,13 +21,10 @@ interface DolarVzlaResponse {
     };
 }
 
+// Updated interface for local COP rate management
 interface CopRate {
-    base: string;
-    result: {
-        VES: number;
-    };
+    rate: number;
     updated: string;
-    ms: number;
 }
 
 interface HistoricalRate {
@@ -44,9 +41,9 @@ interface ProcessedHistoricalRate extends HistoricalRate {
     variation: number;
 }
 
-const COP_API_URL = 'https://api.fastforex.io/fetch-one?from=COP&to=VES&api_key=9bbfa8b358-9f8ec4fd83-t79nmh';
 const DOLAR_API_URL = 'https://api.dolarvzla.com/public/exchange-rate';
 const HISTORICAL_API_URL = 'https://api.dolarvzla.com/public/exchange-rate/list';
+const DEFAULT_COP_RATE = 3600;
 
 export function useExchangeRates() {
   const { toast } = useToast();
@@ -64,23 +61,23 @@ export function useExchangeRates() {
       setLoading(prev => ({ ...prev, usd: true, cop: true }));
       setError(null);
       
-      const [dolarRes, copRes] = await Promise.all([
-        fetch(DOLAR_API_URL).catch(e => { console.error("DolarVzla fetch failed:", e); return null; }),
-        fetch(COP_API_URL).catch(e => { console.error("FastForex fetch failed:", e); return null; })
-      ]);
+      const dolarRes = await fetch(DOLAR_API_URL).catch(e => { console.error("DolarVzla fetch failed:", e); return null; });
 
       let finalCopRate: CopRate | null = null;
       // Check for locally saved COP rate
       const savedCopRate = localStorage.getItem('copRate');
       if (savedCopRate) {
           finalCopRate = JSON.parse(savedCopRate);
-      } else if (copRes && copRes.ok) {
-          const copData: CopRate = await copRes.json();
-          finalCopRate = copData;
+      } else {
+        // Set default COP rate if not saved
+        finalCopRate = {
+            rate: DEFAULT_COP_RATE,
+            updated: new Date().toISOString()
+        };
       }
 
-      if ((!dolarRes || !dolarRes.ok) && !finalCopRate) {
-        throw new Error('No se pudo obtener ninguna tasa de cambio. Revisa tu conexión.');
+      if (!dolarRes || !dolarRes.ok) {
+        console.warn('Could not fetch USD/EUR rates. Proceeding with COP rate if available.');
       }
 
       const dolarData: DolarVzlaResponse | null = dolarRes && dolarRes.ok ? await dolarRes.json() : null;
@@ -133,7 +130,7 @@ export function useExchangeRates() {
   }, [fetchRates]);
 
   const handleEditCop = () => {
-    setEditedCopRate(rates.cop?.result.VES.toString() || '');
+    setEditedCopRate(rates.cop?.rate.toString() || '');
     setIsEditingCop(true);
   };
 
@@ -141,16 +138,14 @@ export function useExchangeRates() {
     const newRateValue = parseFloat(editedCopRate);
     if (!isNaN(newRateValue)) {
         const newCopRate: CopRate = {
-            base: 'COP',
-            result: { VES: newRateValue },
+            rate: newRateValue,
             updated: new Date().toISOString(),
-            ms: 0,
         };
         localStorage.setItem('copRate', JSON.stringify(newCopRate));
         setRates(prev => ({...prev, cop: newCopRate}));
         toast({
             title: 'Tasa Guardada',
-            description: 'La nueva tasa de COP a VES ha sido guardada localmente.',
+            description: 'La nueva tasa de USD a COP ha sido guardada localmente.',
         });
     }
     setIsEditingCop(false);

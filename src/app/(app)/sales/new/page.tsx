@@ -109,13 +109,9 @@ export default function NewSalePage() {
   }, [totalAmountUSD, rates.usd]);
 
   const totalAmountCOP = useMemo(() => {
-    if (!rates.usd || !rates.cop) return 0;
-    const usdToVes = rates.usd.usd;
-    const copToVes = rates.cop.result.VES;
-    if (copToVes === 0) return 0; // Evita división por cero
-    const totalInVes = totalAmountUSD * usdToVes;
-    return totalInVes / copToVes;
-  }, [totalAmountUSD, rates.usd, rates.cop]);
+    if (!rates.cop) return 0;
+    return totalAmountUSD * rates.cop.rate;
+  }, [totalAmountUSD, rates.cop]);
 
 
   const getAmountInSelectedCurrency = useMemo(() => {
@@ -304,7 +300,8 @@ export default function NewSalePage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Producto</TableHead>
-                                            <TableHead className="text-right">Precio</TableHead>
+                                            <TableHead className="text-right">Precio (USD)</TableHead>
+                                            <TableHead className="text-right">Precio (COP)</TableHead>
                                             <TableHead className="text-center w-[100px]">Cantidad</TableHead>
                                             <TableHead className="text-right">Subtotal</TableHead>
                                             <TableHead className="w-[50px]"></TableHead>
@@ -316,6 +313,7 @@ export default function NewSalePage() {
                                                 <TableRow key={item.id}>
                                                     <TableCell>{item.name}</TableCell>
                                                     <TableCell className="text-right">{formatCurrency(item.price, 'USD')}</TableCell>
+                                                    <TableCell className="text-right text-muted-foreground text-xs">{rates.cop ? formatCurrency(item.price * rates.cop.rate, 'COP') : '...'}</TableCell>
                                                     <TableCell>
                                                         <Input
                                                             type="number"
@@ -337,7 +335,7 @@ export default function NewSalePage() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="h-24 text-center">
+                                                <TableCell colSpan={6} className="h-24 text-center">
                                                     Añade productos para comenzar la venta.
                                                 </TableCell>
                                             </TableRow>
@@ -346,7 +344,7 @@ export default function NewSalePage() {
                                     {fields.length > 0 && (
                                         <TableFooter>
                                             <TableRow>
-                                                <TableCell colSpan={3} className="text-right font-bold text-lg">Total</TableCell>
+                                                <TableCell colSpan={4} className="text-right font-bold text-lg">Total</TableCell>
                                                 <TableCell className="text-right font-bold text-lg">{formatCurrency(totalAmountUSD, 'USD')}</TableCell>
                                                 <TableCell></TableCell>
                                             </TableRow>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -48,8 +49,11 @@ export default function ExchangeRatesPage() {
   }, []);
 
   const formatCurrency = (value: number, currency = 'VES') => {
+      if (currency === 'COP') {
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+      }
       const prefix = currency === 'VES' ? 'Bs. ' : '';
-      return `${prefix}${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(value)}`;
+      return `${prefix}${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -115,7 +119,7 @@ export default function ExchangeRatesPage() {
              <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                        Tasa Peso (COP) a Bs.
+                        Tasa Dólar (USD) a Pesos (COP)
                         {!isEditingCop ? (
                             <Button variant="ghost" size="icon" onClick={handleEditCop}>
                                 <Edit className="h-4 w-4" />
@@ -142,7 +146,7 @@ export default function ExchangeRatesPage() {
                         />
                      ) : (
                          <p className="text-4xl font-bold tracking-tight">
-                            {rates.cop ? formatCurrency(rates.cop.result.VES, 'VES') : 'Cargando...'}
+                            {rates.cop ? formatCurrency(rates.cop.rate, 'COP') : 'Cargando...'}
                         </p>
                     )}
                 </CardContent>
