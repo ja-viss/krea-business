@@ -3,7 +3,7 @@
 
 import { useState, useEffect, KeyboardEvent, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { PageHeader } from '@/components/page-header';
@@ -264,17 +264,16 @@ export default function NewSalePage() {
       setSelectedCustomer(customer);
   };
 
-  const onInvalid = (errors: any) => {
+  const onInvalid = (errors: FieldErrors<SaleFormValues>) => {
     // Find the first error message and display it
-    const firstErrorKey = Object.keys(errors)[0] as 'items' | 'customerName' | 'paymentMethod' | 'paymentReference';
+    const firstErrorKey = Object.keys(errors)[0] as keyof SaleFormValues;
      if (firstErrorKey && errors[firstErrorKey]) {
-        let message = errors[firstErrorKey].message;
-        if (firstErrorKey === 'items' && typeof errors.items !== 'string') {
-            message = "Debes añadir al menos un producto a la venta.";
+        let message = errors[firstErrorKey]?.message;
+        if (firstErrorKey === 'items' && typeof errors.items === 'object' && !Array.isArray(errors.items)) {
+             // Handle root error on items array
+             message = errors.items.root?.message || errors.items.message || "Error en los artículos de la venta.";
         }
-        if (firstErrorKey === 'paymentReference') {
-            message = "La referencia es obligatoria para este método de pago.";
-        }
+        
         toast({
             variant: 'destructive',
             title: 'Error de Validación',
@@ -605,3 +604,5 @@ export default function NewSalePage() {
     </div>
   );
 }
+
+    
