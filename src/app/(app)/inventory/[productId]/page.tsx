@@ -45,9 +45,9 @@ export default function ProductDetailsPage() {
     }, [productId]);
 
     const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat('es-VE', {
             style: 'currency',
-            currency: 'USD',
+            currency: 'VES',
         }).format(value);
     };
 
@@ -196,3 +196,5 @@ export default function ProductDetailsPage() {
         </div>
     )
 }
+
+    

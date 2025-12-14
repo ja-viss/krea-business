@@ -52,3 +52,5 @@ ProductSchema.index({ store: 1, barcode: 1 }, { unique: true, partialFilterExpre
 const ProductModel = (mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema)) as mongoose.Model<IProduct>;
 
 export default ProductModel;
+
+    
