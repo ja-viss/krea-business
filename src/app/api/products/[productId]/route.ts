@@ -1,24 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
-import ProductModel from '@/models/Product';
-import { z } from 'zod';
+import ProductModel, { IProduct } from '@/models/Product';
 import mongoose from 'mongoose';
-
-// Validation schema for updates
-const productUpdateSchema = z.object({
-  name: z.string().min(3).optional(),
-  productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio']).optional(),
-  barcode: z.string().optional(),
-  sku: z.string().optional(),
-  category: z.string().optional(),
-  stock: z.number().min(0).optional(),
-  minStock: z.number().min(0).optional(),
-  cost: z.number().min(0).optional(),
-  price: z.number().min(0).optional(),
-  location: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal('')),
-});
 
 
 // GET a single product by ID
@@ -56,13 +40,8 @@ export async function PUT(req: NextRequest, { params }: { params: { productId: s
     if (!mongoose.Types.ObjectId.isValid(productId)) {
         return NextResponse.json({ message: 'ID de producto inválido.' }, { status: 400 });
     }
-
-    const validation = productUpdateSchema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json({ message: 'Datos inválidos.', errors: validation.error.errors }, { status: 400 });
-    }
     
-    const updateData = validation.data;
+    const updateData: Partial<IProduct> = { ...body };
 
     // Recalculate status if stock or minStock are being updated
     if (updateData.stock !== undefined || updateData.minStock !== undefined) {
@@ -76,7 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: { productId: s
             } else if (stock > 0 && stock <= minStock) {
                 status = 'Stock Bajo';
             }
-            (updateData as any).status = status;
+            updateData.status = status;
         }
     }
 
@@ -123,5 +102,4 @@ export async function DELETE(req: NextRequest, { params }: { params: { productId
         return NextResponse.json({ message: 'Error al eliminar el producto.', error: errorMessage }, { status: 500 });
     }
 }
-
     

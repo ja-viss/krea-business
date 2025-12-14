@@ -150,6 +150,8 @@ export default function ProductDetailsPage() {
                             </CardHeader>
                             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 <DetailItem label="Nombre del Producto" value={product.name} className="col-span-full" />
+                                <DetailItem label="Marca" value={product.brand} />
+                                <DetailItem label="Proveedor" value={product.vendor} />
                                 <DetailItem label="Tipo de Producto" value={product.productType} />
                                 <DetailItem label="Categoría" value={product.category} />
                                 <DetailItem label="Ubicación" value={product.location} />
@@ -194,5 +196,3 @@ export default function ProductDetailsPage() {
         </div>
     )
 }
-
-    
