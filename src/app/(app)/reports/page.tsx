@@ -229,7 +229,16 @@ export default function ReportsPage() {
                                 </Popover>
                             </div>
                              <div className='self-end'>
-                                <Button>Generar Reporte</Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button>Generar Reporte</Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem><Download className="mr-2 h-4 w-4" />Generar en PDF</DropdownMenuItem>
+                                        <DropdownMenuItem><Download className="mr-2 h-4 w-4" />Generar en Excel (XLS)</DropdownMenuItem>
+                                        <DropdownMenuItem><Download className="mr-2 h-4 w-4" />Generar en CSV</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
 
