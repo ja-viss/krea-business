@@ -58,7 +58,7 @@ const SaleItemSchema: Schema = new Schema({
 
 const SaleSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
-  invoiceNumber: { type: Number },
+  invoiceNumber: { type: Number, required: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
   subtotals: {
@@ -81,28 +81,6 @@ const SaleSchema: Schema = new Schema({
 
 // Ensure that the combination of store and invoiceNumber is unique.
 SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
-
-
-// Middleware to auto-increment invoiceNumber before saving a new sale
-SaleSchema.pre('save', async function() {
-    if (this.isNew) {
-        const doc = this as ISale;
-        // The session is important for transactions
-        const session = doc.db.session; 
-        
-        const counter = await SaleCounterModel.findOneAndUpdate(
-            { store: doc.store },
-            { $inc: { seq: 1 } },
-            { new: true, upsert: true, session: session }
-        );
-        
-        if (!counter) {
-            throw new Error('No se pudo recuperar la secuencia del número de factura.');
-        }
-        
-        doc.invoiceNumber = counter.seq;
-    }
-});
 
 
 const SaleModel = (mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)) as mongoose.Model<ISale>;
