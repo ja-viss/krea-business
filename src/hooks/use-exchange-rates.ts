@@ -44,7 +44,7 @@ interface ProcessedHistoricalRate extends HistoricalRate {
     variation: number;
 }
 
-const COP_API_URL = 'https://api.fastforex.io/fetch-one?from=COP&to=VES&api_key=e69a35e4e8-8d8906a256-sgr35i';
+const COP_API_URL = 'https://api.fastforex.io/fetch-one?from=COP&to=VES&api_key=9bbfa8b358-9f8ec4fd83-t79nmh';
 const DOLAR_API_URL = 'https://api.dolarvzla.com/public/exchange-rate';
 const HISTORICAL_API_URL = 'https://api.dolarvzla.com/public/exchange-rate/list';
 
