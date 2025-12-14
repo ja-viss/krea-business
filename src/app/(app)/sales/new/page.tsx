@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -38,6 +39,8 @@ import { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
 import Link from 'next/link';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { CustomerSearch } from '@/components/sales/customer-search';
+import { ICustomer } from '@/models/Customer';
 
 
 const saleSchema = z.object({
@@ -54,6 +57,7 @@ const saleSchema = z.object({
     required_error: 'Debes seleccionar un método de pago.',
   }),
   paymentReference: z.string().optional(),
+  amountReceived: z.coerce.number().optional(),
 }).refine(data => {
     if ((data.paymentMethod === 'Transferencia' || data.paymentMethod === 'Pago Móvil') && !data.paymentReference) {
         return false;
@@ -79,6 +83,7 @@ export default function NewSalePage() {
       items: [],
       paymentMethod: 'Efectivo',
       paymentReference: '',
+      amountReceived: 0,
     },
   });
 
@@ -89,8 +94,10 @@ export default function NewSalePage() {
 
   const watchItems = form.watch('items');
   const watchPaymentMethod = form.watch('paymentMethod');
+  const watchAmountReceived = form.watch('amountReceived');
 
   const totalAmount = watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const changeAmount = (watchAmountReceived || 0) - totalAmount;
 
   const handleProductSelect = (product: IProduct) => {
     const existingItemIndex = fields.findIndex(item => item.productId === String(product._id));
@@ -138,6 +145,11 @@ export default function NewSalePage() {
         // Reset to max stock if user tries to exceed
         update(index, { ...item, quantity: item.stock });
     }
+  };
+
+  const handleCustomerSelect = (customer: ICustomer) => {
+      form.setValue('customerId', customer._id);
+      form.setValue('customerName', customer.name);
   };
 
 
@@ -287,16 +299,18 @@ export default function NewSalePage() {
                                 <CardTitle>Cliente</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                 <FormField
+                                 <CustomerSearch
+                                    onCustomerSelect={handleCustomerSelect}
+                                    selectedCustomerName={form.watch('customerName')}
+                                />
+                                <FormField
                                     control={form.control}
                                     name="customerName"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Nombre del Cliente</FormLabel>
+                                        <FormItem className='hidden'>
                                             <FormControl>
-                                                <Input placeholder="Ej: Cliente General" {...field} />
+                                                <Input {...field} />
                                             </FormControl>
-                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -346,6 +360,31 @@ export default function NewSalePage() {
                                         )}
                                     />
                                 )}
+                                 {watchPaymentMethod === 'Efectivo' && (
+                                    <div className='grid grid-cols-2 gap-4'>
+                                        <FormField
+                                            control={form.control}
+                                            name="amountReceived"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Monto Recibido</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormItem>
+                                            <FormLabel>Vuelto</FormLabel>
+                                            <Input
+                                                type="text"
+                                                readOnly
+                                                value={`$${changeAmount > 0 ? changeAmount.toFixed(2) : '0.00'}`}
+                                                className="font-bold text-lg bg-muted border-none"
+                                            />
+                                        </FormItem>
+                                    </div>
+                                )}
                             </CardContent>
                             <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t'>
                                 <div className='flex justify-between items-center text-xl font-bold'>
@@ -362,3 +401,5 @@ export default function NewSalePage() {
     </div>
   );
 }
+
+    
