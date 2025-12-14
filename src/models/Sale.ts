@@ -48,7 +48,7 @@ const SaleItemSchema: Schema = new Schema({
 });
 
 const SaleSchema: Schema = new Schema({
-  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
+  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
   invoiceNumber: { type: Number, required: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
@@ -69,6 +69,10 @@ const SaleSchema: Schema = new Schema({
 }, {
   timestamps: true
 });
+
+// Ensure that the combination of store and invoiceNumber is unique.
+SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
+
 
 // Counter for invoice numbers
 const SaleCounterSchema = new Schema({
