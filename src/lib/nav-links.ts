@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookUser,
   Boxes,
+  DollarSign,
   FileText,
   LayoutDashboard,
   LucideIcon,
@@ -62,6 +63,12 @@ export const navLinks: NavLink[] = [
     label: 'Reportes',
     icon: BarChart3,
     roles: ['admin', 'sales_manager', 'inventory_manager'],
+  },
+  {
+    href: '/exchange-rates',
+    label: 'Tasas de Cambio',
+    icon: DollarSign,
+    roles: ['admin', 'sales_manager', 'inventory_manager', 'salesperson', 'warehouse_manager'],
   },
   {
     href: '/users',
