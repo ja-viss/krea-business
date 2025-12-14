@@ -8,16 +8,25 @@ interface ISaleItem {
   product: Types.ObjectId | IProduct;
   name: string;
   quantity: number;
-  price: number; // Price at the time of sale
+  price: number; // Price in VES at the time of sale
+  taxRate: number; // Tax rate at the time of sale
 }
 
 export interface ISale extends Document {
   store: Types.ObjectId | IStore;
+  invoiceNumber: number;
   customer?: Types.ObjectId | ICustomer;
   customerName: string;
-  customerEmail: string; // Kept for simplicity in recent-sales lists
-  amount: number; // Subtotal (Base Imponible) en VES
-  taxAmount: number; // Monto del IVA en VES
+  customerEmail: string; 
+  subtotals: {
+    exempt: number;
+    general: number;
+    reduced: number;
+  };
+  taxDetails: {
+    general: number;
+    reduced: number;
+  };
   totalAmount: number; // Monto total (subtotal + iva) en VES
   items: ISaleItem[];
   paymentMethod: 'Efectivo' | 'Tarjeta' | 'Transferencia' | 'Pago Móvil';
@@ -26,20 +35,33 @@ export interface ISale extends Document {
   updatedAt: Date;
 }
 
+export interface ISalePopulated extends Omit<ISale, 'customer'> {
+    customer?: ICustomer;
+}
+
 const SaleItemSchema: Schema = new Schema({
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     name: { type: String, required: true },
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
+    taxRate: { type: Number, required: true },
 });
 
 const SaleSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
+  invoiceNumber: { type: Number, required: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
   customerEmail: { type: String, required: true, default: 'n/a' },
-  amount: { type: Number, required: true },
-  taxAmount: { type: Number, required: true },
+  subtotals: {
+    exempt: { type: Number, default: 0 },
+    general: { type: Number, default: 0 },
+    reduced: { type: Number, default: 0 },
+  },
+  taxDetails: {
+    general: { type: Number, default: 0 },
+    reduced: { type: Number, default: 0 },
+  },
   totalAmount: { type: Number, required: true },
   items: [SaleItemSchema],
   paymentMethod: { type: String, enum: ['Efectivo', 'Tarjeta', 'Transferencia', 'Pago Móvil'], required: true },
@@ -48,8 +70,15 @@ const SaleSchema: Schema = new Schema({
   timestamps: true
 });
 
+// Counter for invoice numbers
+const SaleCounterSchema = new Schema({
+    storeId: { type: String, required: true, unique: true },
+    seq: { type: Number, default: 0 }
+});
+SaleCounterSchema.index({ storeId: 1 });
+export const SaleCounterModel = (mongoose.models.SaleCounter || mongoose.model('SaleCounter', SaleCounterSchema));
+
+
 const SaleModel = (mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)) as mongoose.Model<ISale>;
 
 export default SaleModel;
-
-    

@@ -15,6 +15,7 @@ export interface IProduct extends Document {
   minStock: number;
   cost: number; // Costo en VES
   price: number; // Precio de Venta en VES
+  taxRate: number; // Tasa de IVA (e.g., 0.16, 0.08, 0)
   location?: string;
   imageUrl?: string;
   status: 'En Stock' | 'Stock Bajo' | 'Sin Stock';
@@ -35,6 +36,7 @@ const ProductSchema: Schema = new Schema({
   minStock: { type: Number, required: true, default: 0, min: 0 },
   cost: { type: Number, required: true, default: 0, min: 0 },
   price: { type: Number, required: true, min: 0 },
+  taxRate: { type: Number, required: true, default: 0.16 }, // e.g. 0.16 for 16%
   location: { type: String },
   imageUrl: { type: String },
   status: { type: String, enum: ['En Stock', 'Stock Bajo', 'Sin Stock'], required: true },

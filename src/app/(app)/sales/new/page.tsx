@@ -53,6 +53,7 @@ const saleSchema = z.object({
     price: z.number(), // Precio en VES
     quantity: z.coerce.number().min(1, 'La cantidad debe ser al menos 1'),
     stock: z.number(),
+    taxRate: z.number(),
   })).min(1, 'Debes añadir al menos un producto a la venta.'),
   paymentMethod: z.enum(['Efectivo', 'Tarjeta', 'Transferencia', 'Pago Móvil'], {
     required_error: 'Debes seleccionar un método de pago.',
@@ -101,29 +102,32 @@ export default function NewSalePage() {
   const watchAmountReceived = form.watch('amountReceived');
   const watchPaymentCurrency = form.watch('paymentCurrency');
 
-  const totalAmountVES = useMemo(() => {
-      return watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const { totalVES, taxAmountVES, subTotalVES } = useMemo(() => {
+    const subTotal = watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const taxAmount = watchItems.reduce((sum, item) => sum + (item.price * item.quantity * item.taxRate), 0);
+    const total = subTotal + taxAmount;
+    return { totalVES: total, taxAmountVES: taxAmount, subTotalVES: subTotal };
   }, [watchItems]);
 
-  const totalAmountUSD = useMemo(() => {
+  const totalUSD = useMemo(() => {
     if (!rates.usd || !rates.usd.usd) return 0;
-    return totalAmountVES / rates.usd.usd;
-  }, [totalAmountVES, rates.usd]);
-
-  const totalAmountCOP = useMemo(() => {
+    return totalVES / rates.usd.usd;
+  }, [totalVES, rates.usd]);
+  
+  const totalCOP = useMemo(() => {
     if (!rates.cop || !rates.cop.rate) return 0;
-    return totalAmountUSD * rates.cop.rate;
-  }, [totalAmountUSD, rates.cop]);
+    return totalUSD * rates.cop.rate;
+  }, [totalUSD, rates.cop]);
 
 
   const getAmountInSelectedCurrency = useMemo(() => {
     switch(watchPaymentCurrency) {
-        case 'VES': return totalAmountVES;
-        case 'COP': return totalAmountCOP;
+        case 'VES': return totalVES;
+        case 'COP': return totalCOP;
         case 'USD':
-        default: return totalAmountUSD;
+        default: return totalUSD;
     }
-  }, [watchPaymentCurrency, totalAmountUSD, totalAmountVES, totalAmountCOP]);
+  }, [watchPaymentCurrency, totalUSD, totalVES, totalCOP]);
 
   const changeAmount = useMemo(() => {
     const totalInCurrency = getAmountInSelectedCurrency;
@@ -139,7 +143,7 @@ export default function NewSalePage() {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     };
-    if (currency === 'VES') return `Bs.S ${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+    if (currency === 'VES') return new Intl.NumberFormat('es-VE', options).format(value);
     if (currency === 'COP') return new Intl.NumberFormat('es-CO', options).format(value);
     return new Intl.NumberFormat('en-US', options).format(value);
   }
@@ -166,6 +170,7 @@ export default function NewSalePage() {
                 price: product.price, // Precio en VES
                 quantity: 1,
                 stock: product.stock,
+                taxRate: product.taxRate,
             });
        } else {
             toast({
@@ -238,7 +243,6 @@ export default function NewSalePage() {
             ...data,
             customerName: data.customerName || 'Cliente General',
             storeId,
-            amount: totalAmountVES, // La BD almacena el total en VES para consistencia
         }
 
         const response = await fetch('/api/sales/new', {
@@ -363,8 +367,18 @@ export default function NewSalePage() {
                                     {fields.length > 0 && (
                                         <TableFooter>
                                             <TableRow>
+                                                <TableCell colSpan={3} className="text-right font-semibold">Sub-Total (VES)</TableCell>
+                                                <TableCell className="text-right font-semibold">{formatCurrency(subTotalVES, 'VES')}</TableCell>
+                                                <TableCell></TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-right font-semibold">IVA (VES)</TableCell>
+                                                <TableCell className="text-right font-semibold">{formatCurrency(taxAmountVES, 'VES')}</TableCell>
+                                                <TableCell></TableCell>
+                                            </TableRow>
+                                            <TableRow>
                                                 <TableCell colSpan={3} className="text-right font-bold text-lg">Total (VES)</TableCell>
-                                                <TableCell className="text-right font-bold text-lg">{formatCurrency(totalAmountVES, 'VES')}</TableCell>
+                                                <TableCell className="text-right font-bold text-lg">{formatCurrency(totalVES, 'VES')}</TableCell>
                                                 <TableCell></TableCell>
                                             </TableRow>
                                         </TableFooter>
@@ -493,15 +507,15 @@ export default function NewSalePage() {
                                 </div>
                                 <div className='flex justify-between items-center text-lg font-semibold'>
                                     <span>En Bolívares (VES):</span>
-                                    <span>{ratesLoading.usd ? '...' : formatCurrency(totalAmountVES, 'VES')}</span>
+                                    <span>{ratesLoading.usd ? '...' : formatCurrency(totalVES, 'VES')}</span>
                                 </div>
                                  <div className='flex justify-between items-center text-sm text-muted-foreground'>
                                     <span>En Dólares (USD):</span>
-                                    <span>{ratesLoading.usd ? '...' : formatCurrency(totalAmountUSD, 'USD')}</span>
+                                    <span>{ratesLoading.usd ? '...' : formatCurrency(totalUSD, 'USD')}</span>
                                  </div>
                                  <div className='flex justify-between items-center text-sm text-muted-foreground'>
                                     <span>En Pesos (COP):</span>
-                                    <span>{ratesLoading.cop ? '...' : formatCurrency(totalAmountCOP, 'COP')}</span>
+                                    <span>{ratesLoading.cop ? '...' : formatCurrency(totalCOP, 'COP')}</span>
                                  </div>
                             </CardFooter>
                         </Card>
@@ -513,5 +527,3 @@ export default function NewSalePage() {
     </div>
   );
 }
-
-    

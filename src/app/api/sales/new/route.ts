@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
-import SaleModel from '@/models/Sale';
+import SaleModel, { SaleCounterModel } from '@/models/Sale';
 import ProductModel from '@/models/Product';
 import AccountReceivableModel from '@/models/AccountReceivable';
 import mongoose from 'mongoose';
@@ -12,13 +12,13 @@ const saleSchema = z.object({
   storeId: z.string(),
   customerId: z.string().optional(),
   customerName: z.string(),
-  amount: z.number(), // Monto base en VES
   items: z.array(z.object({
     productId: z.string(),
     quantity: z.number().min(1),
-    price: z.number(),
+    price: z.number(), // Price in VES
     name: z.string(),
     stock: z.number(),
+    taxRate: z.number(),
   })).min(1),
   paymentMethod: z.string(),
   paymentCurrency: z.string().optional(),
@@ -41,12 +41,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Datos de venta inválidos', errors: validation.error.flatten().fieldErrors }, { status: 400 });
     }
 
-    const { storeId, customerId, customerName, amount, items, paymentMethod, status: saleStatus } = validation.data;
+    const { storeId, customerId, customerName, items, paymentMethod, status: saleStatus } = validation.data;
     
-    // Calcula el IVA y el total
-    const subTotal = amount; // El monto que llega es el subtotal (base imponible)
-    const taxAmount = subTotal * 0.16; // 16% IVA
-    const totalAmount = subTotal + taxAmount;
+    // Calculate subtotals and taxes
+    const subtotals = {
+        exempt: 0,   // taxRate === 0
+        general: 0,  // taxRate === 0.16
+        reduced: 0   // taxRate === 0.08
+    };
+
+    for (const item of items) {
+        const itemTotal = item.price * item.quantity;
+        if (item.taxRate === 0) {
+            subtotals.exempt += itemTotal;
+        } else if (item.taxRate === 0.08) {
+            subtotals.reduced += itemTotal;
+        } else { // Default to 16% if not 0 or 8
+            subtotals.general += itemTotal;
+        }
+    }
+
+    const taxDetails = {
+        general: subtotals.general * 0.16,
+        reduced: subtotals.reduced * 0.08
+    };
+
+    const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
+
+    // Get next invoice number
+    const counter = await SaleCounterModel.findOneAndUpdate(
+      { storeId: storeId },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true, session }
+    );
+    const invoiceNumber = counter.seq;
 
 
     // 1. Update product stock
@@ -56,7 +84,6 @@ export async function POST(req: NextRequest) {
         throw new Error(`Stock insuficiente para el producto: ${item.name}`);
       }
 
-      // Determine the new status
       const newStock = product.stock - item.quantity;
       let newStatus: 'En Stock' | 'Stock Bajo' | 'Sin Stock' = 'En Stock';
       if (newStock <= 0) {
@@ -78,13 +105,20 @@ export async function POST(req: NextRequest) {
     // 2. Create the sale
     const newSale = new SaleModel({
       store: storeId,
+      invoiceNumber: invoiceNumber,
       customer: customerId,
       customerName: customerName,
-      customerEmail: 'placeholder@email.com', // Placeholder, adjust as needed
-      amount: subTotal,
-      taxAmount: taxAmount,
+      customerEmail: 'placeholder@email.com', // Placeholder
+      subtotals: subtotals,
+      taxDetails: taxDetails,
       totalAmount: totalAmount,
-      items: items.map(i => ({ product: i.productId, quantity: i.quantity, price: i.price, name: i.name })),
+      items: items.map(i => ({ 
+          product: i.productId, 
+          quantity: i.quantity, 
+          price: i.price, 
+          name: i.name,
+          taxRate: i.taxRate,
+        })),
       paymentMethod,
       status: saleStatus || (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta' ? 'Pagado' : 'Pendiente'),
     });
@@ -118,5 +152,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Error al crear la venta.', error: errorMessage }, { status: 500 });
   }
 }
-
-    

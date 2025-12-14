@@ -49,6 +49,7 @@ const productSchema = z.object({
   minStock: z.coerce.number().min(0, 'El stock mínimo no puede ser negativo.'),
   cost: z.coerce.number().min(0, 'El costo debe ser positivo.'),
   price: z.coerce.number().min(0, 'El precio debe ser positivo.'),
+  taxRate: z.coerce.number().min(0, "La tasa de impuesto no puede ser negativa."),
   location: z.string().optional(),
   imageUrl: z.string().url('Debe ser una URL válida.').optional().or(z.literal('')),
 });
@@ -75,6 +76,7 @@ export default function NewProductPage() {
       minStock: 0,
       cost: 0,
       price: 0,
+      taxRate: 0.16,
       location: '',
       imageUrl: '',
     },
@@ -360,6 +362,28 @@ export default function NewProductPage() {
                             <Input type="number" step="0.01" {...field} />
                           </FormControl>
                            <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="taxRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Impuesto (IVA)</FormLabel>
+                           <Select onValueChange={(value) => field.onChange(parseFloat(value))} defaultValue={String(field.value)}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un impuesto" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="0.16">Gravado (16%)</SelectItem>
+                              <SelectItem value="0.08">Reducido (8%)</SelectItem>
+                              <SelectItem value="0">Exento (0%)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
