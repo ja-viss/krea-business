@@ -113,7 +113,8 @@ export default function NewSalePage() {
     const usdToVes = rates.usd.usd;
     const copToVes = rates.cop.result.VES;
     if (copToVes === 0) return 0; // Evita división por cero
-    return (totalAmountUSD * usdToVes) / copToVes;
+    const totalInVes = totalAmountUSD * usdToVes;
+    return totalInVes / copToVes;
   }, [totalAmountUSD, rates.usd, rates.cop]);
 
 
