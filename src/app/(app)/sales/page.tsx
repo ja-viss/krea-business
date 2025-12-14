@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -22,6 +23,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ISale } from '@/models/Sale';
+import Link from 'next/link';
 
 export default function SalesPage() {
   const [sales, setSales] = useState<ISale[]>([]);
@@ -78,9 +80,11 @@ export default function SalesPage() {
                 <FileDown />
                 Exportar
               </Button>
-              <Button>
-                <PlusCircle />
-                Nueva Venta
+              <Button asChild>
+                <Link href="/sales/new">
+                  <PlusCircle />
+                  Nueva Venta
+                </Link>
               </Button>
             </>
           }
