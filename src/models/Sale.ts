@@ -39,6 +39,15 @@ export interface ISalePopulated extends Omit<ISale, 'customer'> {
     customer?: ICustomer;
 }
 
+// Counter for invoice numbers
+const SaleCounterSchema = new Schema({
+    store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
+    seq: { type: Number, default: 0 }
+});
+SaleCounterSchema.index({ store: 1 }, { unique: true });
+export const SaleCounterModel = (mongoose.models.SaleCounter || mongoose.model('SaleCounter', SaleCounterSchema));
+
+
 const SaleItemSchema: Schema = new Schema({
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     name: { type: String, required: true },
@@ -49,7 +58,7 @@ const SaleItemSchema: Schema = new Schema({
 
 const SaleSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
-  invoiceNumber: { type: Number, required: true },
+  invoiceNumber: { type: Number },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
   subtotals: {
@@ -74,13 +83,28 @@ const SaleSchema: Schema = new Schema({
 SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
 
 
-// Counter for invoice numbers
-const SaleCounterSchema = new Schema({
-    store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, unique: true },
-    seq: { type: Number, default: 0 }
+// Middleware to auto-increment invoiceNumber before saving a new sale
+SaleSchema.pre('save', async function(next) {
+    if (this.isNew) {
+        const doc = this as ISale;
+        try {
+            const counter = await SaleCounterModel.findOneAndUpdate(
+                { store: doc.store },
+                { $inc: { seq: 1 } },
+                { new: true, upsert: true, session: doc.db.session }
+            );
+            if (!counter) {
+                throw new Error('Could not retrieve invoice number sequence.');
+            }
+            doc.invoiceNumber = counter.seq;
+            next();
+        } catch (error: any) {
+            next(error);
+        }
+    } else {
+        next();
+    }
 });
-SaleCounterSchema.index({ store: 1 });
-export const SaleCounterModel = (mongoose.models.SaleCounter || mongoose.model('SaleCounter', SaleCounterSchema));
 
 
 const SaleModel = (mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)) as mongoose.Model<ISale>;
