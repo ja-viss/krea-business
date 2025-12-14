@@ -264,6 +264,16 @@ export default function NewSalePage() {
       setSelectedCustomer(customer);
   };
 
+  const onInvalid = (errors: any) => {
+    const firstError = Object.values(errors)[0] as { message?: string };
+    if (firstError?.message) {
+      toast({
+        variant: 'destructive',
+        title: 'Error de Validación',
+        description: firstError.message,
+      });
+    }
+  };
 
   const onSubmit = async (data: SaleFormValues) => {
     setIsSubmitting(true);
@@ -345,7 +355,7 @@ export default function NewSalePage() {
         </div>
 
          <Form {...form}>
-            <form id="sale-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form id="sale-form" onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 mt-6">
                     {/* Columna Izquierda (Productos y Tabla) */}
                     <div className="lg:col-span-3 space-y-6">
@@ -572,22 +582,23 @@ export default function NewSalePage() {
                         </Card>
                     </div>
                 </div>
-
-                <div className="mt-8 flex justify-end">
-                    <Button 
-                        type="submit" 
-                        form="sale-form"
-                        size="lg"
-                        disabled={isSubmitting || watchItems.length === 0}
-                        className="min-w-[200px]"
-                    >
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Procesando...' : 'Completar Venta'}
-                    </Button>
-                </div>
             </form>
          </Form>
+        <div className="mt-8 flex justify-end">
+            <Button 
+                type="submit" 
+                form="sale-form"
+                size="lg"
+                disabled={isSubmitting || watchItems.length === 0}
+                className="min-w-[200px]"
+            >
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting ? 'Procesando...' : 'Completar Venta'}
+            </Button>
+        </div>
        </main>
     </div>
   );
 }
+
+    
