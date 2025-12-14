@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -19,7 +19,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,8 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Barcode, Camera, ChevronLeft, Loader2 } from 'lucide-react';
+import { Camera, ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
@@ -44,12 +42,14 @@ const productSchema = z.object({
   productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio']),
   barcode: z.string().optional(),
   sku: z.string().optional(),
+  brand: z.string().optional(),
+  vendor: z.string().optional(),
   category: z.string().optional(),
-  initialStock: z.coerce.number().min(0, 'El stock no puede ser negativo.'),
+  stock: z.coerce.number().min(0, 'El stock no puede ser negativo.'),
   minStock: z.coerce.number().min(0, 'El stock mínimo no puede ser negativo.'),
-  unitCost: z.coerce.number().min(0, 'El costo debe ser positivo.'),
-  sellingPrice: z.coerce.number().min(0, 'El precio debe ser positivo.'),
-  warehouseLocation: z.string().optional(),
+  cost: z.coerce.number().min(0, 'El costo debe ser positivo.'),
+  price: z.coerce.number().min(0, 'El precio debe ser positivo.'),
+  location: z.string().optional(),
   imageUrl: z.string().url('Debe ser una URL válida.').optional().or(z.literal('')),
 });
 
@@ -68,12 +68,14 @@ export default function NewProductPage() {
       productType: 'Inventariable',
       barcode: '',
       sku: '',
+      brand: '',
+      vendor: '',
       category: '',
-      initialStock: 0,
+      stock: 0,
       minStock: 0,
-      unitCost: 0,
-      sellingPrice: 0,
-      warehouseLocation: '',
+      cost: 0,
+      price: 0,
+      location: '',
       imageUrl: '',
     },
   });
@@ -177,6 +179,32 @@ export default function NewProductPage() {
                     />
                     <FormField
                       control={form.control}
+                      name="brand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Marca</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ej: La Pradera" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="vendor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Proveedor</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ej: Lácteos Los Andes" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
                       name="productType"
                       render={({ field }) => (
                         <FormItem>
@@ -202,9 +230,6 @@ export default function NewProductPage() {
                               </SelectItem>
                             </SelectContent>
                           </Select>
-                          <FormDescription>
-                            Define cómo se gestionará el stock.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -264,7 +289,7 @@ export default function NewProductPage() {
                     />
                      <FormField
                       control={form.control}
-                      name="warehouseLocation"
+                      name="location"
                       render={({ field }) => (
                         <FormItem className="sm:col-span-2">
                           <FormLabel>Ubicación en Almacén</FormLabel>
@@ -288,10 +313,10 @@ export default function NewProductPage() {
                   <CardContent className="grid gap-6">
                      <FormField
                       control={form.control}
-                      name="initialStock"
+                      name="stock"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Stock Actual / Cantidad Inicial</FormLabel>
+                          <FormLabel>Stock Inicial</FormLabel>
                           <FormControl>
                             <Input type="number" {...field} />
                           </FormControl>
@@ -314,10 +339,10 @@ export default function NewProductPage() {
                     />
                      <FormField
                       control={form.control}
-                      name="unitCost"
+                      name="cost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Costo Unitario Promedio</FormLabel>
+                          <FormLabel>Costo Unitario</FormLabel>
                           <FormControl>
                             <Input type="number" step="0.01" {...field} />
                           </FormControl>
@@ -327,7 +352,7 @@ export default function NewProductPage() {
                     />
                      <FormField
                       control={form.control}
-                      name="sellingPrice"
+                      name="price"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Precio de Venta</FormLabel>

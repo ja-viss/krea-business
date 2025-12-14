@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -19,7 +19,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,8 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Barcode, Camera, ChevronLeft, Loader2, AlertTriangle } from 'lucide-react';
+import { Camera, ChevronLeft, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
@@ -47,6 +45,8 @@ const productSchema = z.object({
   productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio']),
   barcode: z.string().optional(),
   sku: z.string().optional(),
+  brand: z.string().optional(),
+  vendor: z.string().optional(),
   category: z.string().optional(),
   stock: z.coerce.number().min(0, 'El stock no puede ser negativo.'),
   minStock: z.coerce.number().min(0, 'El stock mínimo no puede ser negativo.'),
@@ -64,7 +64,6 @@ export default function EditProductPage() {
   const productId = params.productId as string;
   const { toast } = useToast();
 
-  const [product, setProduct] = useState<IProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +76,8 @@ export default function EditProductPage() {
       productType: 'Inventariable',
       barcode: '',
       sku: '',
+      brand: '',
+      vendor: '',
       category: '',
       stock: 0,
       minStock: 0,
@@ -97,13 +98,14 @@ export default function EditProductPage() {
             throw new Error('No se pudo encontrar el producto.');
           }
           const data: IProduct = await response.json();
-          setProduct(data);
           // Populate form with fetched data
           form.reset({
             name: data.name,
             productType: data.productType,
             barcode: data.barcode || '',
             sku: data.sku || '',
+            brand: data.brand || '',
+            vendor: data.vendor || '',
             category: data.category || '',
             stock: data.stock,
             minStock: data.minStock,
@@ -256,6 +258,32 @@ export default function EditProductPage() {
                         </FormItem>
                       )}
                     />
+                     <FormField
+                      control={form.control}
+                      name="brand"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Marca</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ej: La Pradera" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="vendor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Proveedor</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ej: Lácteos Los Andes" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="productType"
@@ -283,9 +311,6 @@ export default function EditProductPage() {
                               </SelectItem>
                             </SelectContent>
                           </Select>
-                          <FormDescription>
-                            Define cómo se gestionará el stock.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -398,7 +423,7 @@ export default function EditProductPage() {
                       name="cost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Costo Unitario Promedio</FormLabel>
+                          <FormLabel>Costo Unitario</FormLabel>
                           <FormControl>
                             <Input type="number" step="0.01" {...field} />
                           </FormControl>
@@ -457,5 +482,3 @@ export default function EditProductPage() {
     </div>
   );
 }
-
-    

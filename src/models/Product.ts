@@ -1,3 +1,4 @@
+
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { IStore } from './Store';
 
@@ -7,6 +8,8 @@ export interface IProduct extends Document {
   productType: 'Inventariable' | 'No Inventariable' | 'Servicio';
   barcode?: string;
   sku?: string;
+  brand?: string;
+  vendor?: string;
   category?: string;
   stock: number;
   minStock: number;
@@ -23,13 +26,15 @@ const ProductSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   name: { type: String, required: true },
   productType: { type: String, enum: ['Inventariable', 'No Inventariable', 'Servicio'], required: true },
-  barcode: { type: String, sparse: true },
-  sku: { type: String, sparse: true },
+  barcode: { type: String },
+  sku: { type: String },
+  brand: { type: String },
+  vendor: { type: String },
   category: { type: String },
-  stock: { type: Number, required: true, default: 0 },
-  minStock: { type: Number, required: true, default: 0 },
-  cost: { type: Number, required: true, default: 0 },
-  price: { type: Number, required: true },
+  stock: { type: Number, required: true, default: 0, min: 0 },
+  minStock: { type: Number, required: true, default: 0, min: 0 },
+  cost: { type: Number, required: true, default: 0, min: 0 },
+  price: { type: Number, required: true, min: 0 },
   location: { type: String },
   imageUrl: { type: String },
   status: { type: String, enum: ['En Stock', 'Stock Bajo', 'Sin Stock'], required: true },
@@ -37,9 +42,9 @@ const ProductSchema: Schema = new Schema({
   timestamps: true
 });
 
-// Índice compuesto para asegurar que barcode y sku sean únicos por tienda
-ProductSchema.index({ store: 1, barcode: 1 }, { unique: true, sparse: true, partialFilterExpression: { barcode: { $type: "string" } } });
-ProductSchema.index({ store: 1, sku: 1 }, { unique: true, sparse: true, partialFilterExpression: { sku: { $type: "string" } } });
+// Índice compuesto para asegurar que barcode y sku sean únicos por tienda, si existen.
+ProductSchema.index({ store: 1, sku: 1 }, { unique: true, partialFilterExpression: { sku: { $exists: true, $ne: "" } } });
+ProductSchema.index({ store: 1, barcode: 1 }, { unique: true, partialFilterExpression: { barcode: { $exists: true, $ne: "" } } });
 
 
 const ProductModel = (mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema)) as mongoose.Model<IProduct>;
