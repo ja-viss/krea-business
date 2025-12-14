@@ -265,21 +265,30 @@ export default function NewSalePage() {
   };
 
   const onInvalid = (errors: FieldErrors<SaleFormValues>) => {
-    // Find the first error message and display it
-    const firstErrorKey = Object.keys(errors)[0] as keyof SaleFormValues;
-     if (firstErrorKey && errors[firstErrorKey]) {
-        let message = errors[firstErrorKey]?.message;
-        if (firstErrorKey === 'items' && typeof errors.items === 'object' && !Array.isArray(errors.items)) {
-             // Handle root error on items array
-             message = errors.items.root?.message || errors.items.message || "Error en los artículos de la venta.";
+    let firstErrorMessage = "Error de validación. Por favor, revisa todos los campos.";
+    const errorKeys = Object.keys(errors) as (keyof SaleFormValues)[];
+  
+    if (errorKeys.length > 0) {
+      const firstErrorKey = errorKeys[0];
+      const error = errors[firstErrorKey];
+      
+      if (typeof error === 'object' && error !== null && 'message' in error) {
+        firstErrorMessage = error.message as string;
+      } else if (firstErrorKey === 'items' && Array.isArray(errors.items)) {
+        const itemError = errors.items.find(i => i && Object.keys(i).length > 0);
+        if(itemError && itemError.quantity) {
+          firstErrorMessage = itemError.quantity.message as string;
         }
-        
-        toast({
-            variant: 'destructive',
-            title: 'Error de Validación',
-            description: message,
-        });
+      } else if (firstErrorKey === 'items' && error) {
+        firstErrorMessage = (error as any).root?.message || error.message || "Debes añadir al menos un producto a la venta.";
+      }
     }
+  
+    toast({
+      variant: 'destructive',
+      title: 'Error de Validación',
+      description: firstErrorMessage,
+    });
   };
 
   const onSubmit = async (data: SaleFormValues) => {
@@ -351,7 +360,7 @@ export default function NewSalePage() {
                 </Select>
             </div>
             <div className='flex items-center gap-2'>
-                <div className='font-semibold'>Tasa BCV (USD/VES):</div>
+                <div className='font-semibold'>Tasa BCV (VES/USD):</div>
                  <div className='font-mono p-2 bg-background rounded-md'>
                     {ratesLoading.usd ? 'Cargando...' : rates.usd?.usd.toFixed(2) || 'N/A'}
                 </div>
@@ -586,23 +595,21 @@ export default function NewSalePage() {
                         </Card>
                     </div>
                 </div>
+                 <div className="mt-8 flex justify-end">
+                    <Button 
+                        type="submit" 
+                        form="sale-form"
+                        size="lg"
+                        disabled={isSubmitting || watchItems.length === 0}
+                        className="min-w-[200px]"
+                    >
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSubmitting ? 'Procesando...' : 'Completar Venta'}
+                    </Button>
+                </div>
             </form>
          </Form>
-        <div className="mt-8 flex justify-end">
-            <Button 
-                type="submit" 
-                form="sale-form"
-                size="lg"
-                disabled={isSubmitting || watchItems.length === 0}
-                className="min-w-[200px]"
-            >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? 'Procesando...' : 'Completar Venta'}
-            </Button>
-        </div>
        </main>
     </div>
   );
 }
-
-    
