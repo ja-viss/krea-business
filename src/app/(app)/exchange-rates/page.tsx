@@ -11,10 +11,19 @@ import { AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-interface ExchangeRate {
+interface Rate {
   usd: number;
   eur: number;
   date: string;
+}
+
+interface ApiResponse {
+    current: Rate;
+    previous: Rate;
+    changePercentage: {
+        usd: number;
+        eur: number;
+    };
 }
 
 interface HistoricalRate {
@@ -29,7 +38,7 @@ interface ProcessedHistoricalRate extends HistoricalRate {
 
 
 export default function ExchangeRatesPage() {
-  const [currentRate, setCurrentRate] = useState<ExchangeRate | null>(null);
+  const [currentRate, setCurrentRate] = useState<Rate | null>(null);
   const [historicalRates, setHistoricalRates] = useState<ProcessedHistoricalRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,10 +58,10 @@ export default function ExchangeRatesPage() {
           throw new Error('No se pudo obtener la información de las tasas de cambio. Inténtalo de nuevo más tarde.');
         }
 
-        const currentData: ExchangeRate = await currentRes.json();
+        const currentData: ApiResponse = await currentRes.json();
         const historicalData: HistoricalRate[] = await historicalRes.json();
 
-        setCurrentRate(currentData);
+        setCurrentRate(currentData.current);
         
         // Procesar datos históricos para calcular la variación
         const processedData = historicalData
@@ -82,7 +91,9 @@ export default function ExchangeRatesPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "eeee, dd 'de' MMMM, yyyy", { locale: es });
+    if (!dateString) return '';
+    // La fecha viene en formato YYYY-MM-DD, pero Date prefiere MM-DD-YYYY o con T00:00:00 para evitar problemas de zona horaria
+    return format(new Date(`${dateString}T00:00:00`), "eeee, dd 'de' MMMM, yyyy", { locale: es });
   }
 
   return (
@@ -164,7 +175,7 @@ export default function ExchangeRatesPage() {
                         ) : historicalRates.length > 0 ? (
                             historicalRates.map((rate) => (
                                 <TableRow key={rate.date}>
-                                    <TableCell>{format(new Date(rate.date), "dd/MM/yyyy")}</TableCell>
+                                    <TableCell>{format(new Date(`${rate.date}T00:00:00`), "dd/MM/yyyy")}</TableCell>
                                     <TableCell className="text-right font-medium">{formatCurrency(rate.usd)}</TableCell>
                                     <TableCell className="text-right">
                                         <span className={`flex items-center justify-end gap-1 ${rate.variation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
