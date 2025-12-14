@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -173,9 +173,11 @@ export default function InventoryPage() {
           description="Gestiona tus productos, analiza el stock y obtén recomendaciones."
           actions={
             <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-              <Button variant="outline" className='w-full sm:w-auto'>
-                <FileDown />
-                Exportar
+              <Button variant="outline" className='w-full sm:w-auto' asChild>
+                <Link href="/reports">
+                  <BarChart3 />
+                  Reportes
+                </Link>
               </Button>
               <Button asChild className='w-full sm:w-auto'>
                 <Link href="/inventory/new-product">
