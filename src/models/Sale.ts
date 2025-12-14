@@ -76,10 +76,10 @@ SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
 
 // Counter for invoice numbers
 const SaleCounterSchema = new Schema({
-    storeId: { type: String, required: true, unique: true },
+    store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, unique: true },
     seq: { type: Number, default: 0 }
 });
-SaleCounterSchema.index({ storeId: 1 });
+SaleCounterSchema.index({ store: 1 });
 export const SaleCounterModel = (mongoose.models.SaleCounter || mongoose.model('SaleCounter', SaleCounterSchema));
 
 

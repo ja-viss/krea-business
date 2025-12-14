@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     // Get next invoice number
     const counter = await SaleCounterModel.findOneAndUpdate(
-      { storeId: storeId },
+      { store: storeId },
       { $inc: { seq: 1 } },
       { new: true, upsert: true, session }
     );
