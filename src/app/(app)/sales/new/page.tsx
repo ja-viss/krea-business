@@ -23,7 +23,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TableFooter,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import {
@@ -79,6 +78,7 @@ export default function NewSalePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
   const { rates, loading: ratesLoading } = useExchangeRates();
 
   const form = useForm<SaleFormValues>({
@@ -148,7 +148,8 @@ export default function NewSalePage() {
   
   const totalCOP = useMemo(() => {
     if (!rates.usd?.usd || !rates.cop?.rate) return 0;
-    return (totalVES / rates.usd.usd) * rates.cop.rate;
+    const totalInUSD = totalVES / rates.usd.usd;
+    return totalInUSD * rates.cop.rate;
   }, [totalVES, rates.usd, rates.cop]);
 
 
@@ -260,6 +261,7 @@ export default function NewSalePage() {
   const handleCustomerSelect = (customer: ICustomer) => {
       form.setValue('customerId', customer._id);
       form.setValue('customerName', customer.name);
+      setSelectedCustomer(customer);
   };
 
 
@@ -423,22 +425,34 @@ export default function NewSalePage() {
                                 <CardTitle>Cliente</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                 <CustomerSearch
-                                    onCustomerSelect={handleCustomerSelect}
-                                    selectedCustomerName={form.watch('customerName') || ''}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="customerName"
-                                    render={({ field }) => (
-                                        <FormItem className='mt-2'>
-                                            <FormControl>
-                                                <Input {...field} readOnly className="bg-muted text-muted-foreground" placeholder="Seleccione un cliente..."/>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                { !selectedCustomer ? (
+                                    <>
+                                        <CustomerSearch onCustomerSelect={handleCustomerSelect} />
+                                        <FormField
+                                            control={form.control}
+                                            name="customerName"
+                                            render={({ field }) => (
+                                                <FormItem className='mt-2'>
+                                                    <FormControl>
+                                                        <Input {...field} readOnly className="hidden"/>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </>
+                                ) : (
+                                    <div className='border rounded-lg p-4 space-y-2 bg-muted/50'>
+                                        <div className='flex justify-between items-start'>
+                                            <div>
+                                                <p className='font-semibold'>{selectedCustomer.name}</p>
+                                                <p className='text-sm text-muted-foreground'>{selectedCustomer.idNumber}</p>
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={() => setSelectedCustomer(null)}>Cambiar</Button>
+                                        </div>
+                                        {selectedCustomer.phone && <p className='text-sm'><span className='font-medium'>Teléfono:</span> {selectedCustomer.phone}</p>}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                         <Card>
@@ -562,6 +576,7 @@ export default function NewSalePage() {
                 <div className="mt-8 flex justify-end">
                     <Button 
                         type="submit" 
+                        form="sale-form"
                         size="lg"
                         disabled={isSubmitting || watchItems.length === 0}
                         className="min-w-[200px]"
@@ -576,7 +591,3 @@ export default function NewSalePage() {
     </div>
   );
 }
-
-    
-
-    

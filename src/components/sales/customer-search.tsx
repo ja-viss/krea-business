@@ -22,7 +22,6 @@ import { useToast } from '@/hooks/use-toast';
 
 interface CustomerSearchProps {
   onCustomerSelect: (customer: ICustomer) => void;
-  selectedCustomerName: string;
 }
 
 const newCustomerSchema = z.object({
@@ -34,8 +33,8 @@ const newCustomerSchema = z.object({
 
 type NewCustomerFormValues = z.infer<typeof newCustomerSchema>;
 
-export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: CustomerSearchProps) {
-  const [query, setQuery] = useState(selectedCustomerName || '');
+export function CustomerSearch({ onCustomerSelect }: CustomerSearchProps) {
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState<ICustomer[]>([]);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -52,13 +51,6 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
       address: '',
     },
   });
-
-  useEffect(() => {
-    if (selectedCustomerName !== query) {
-        setQuery(selectedCustomerName);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCustomerName]);
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -103,7 +95,7 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
 
   const handleSelect = (customer: ICustomer) => {
     onCustomerSelect(customer);
-    setQuery(customer.name); // Update input to show selected customer
+    setQuery('');
     setShowResults(false);
   };
   
@@ -150,7 +142,7 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder={selectedCustomerName || "Buscar cliente por nombre o cédula..."}
+          placeholder="Buscar cliente por nombre o cédula..."
           className="pl-9"
           value={query}
           onChange={(e) => {
