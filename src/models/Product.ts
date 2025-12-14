@@ -13,8 +13,8 @@ export interface IProduct extends Document {
   category?: string;
   stock: number;
   minStock: number;
-  cost: number;
-  price: number;
+  cost: number; // Costo en VES
+  price: number; // Precio de Venta en VES
   location?: string;
   imageUrl?: string;
   status: 'En Stock' | 'Stock Bajo' | 'Sin Stock';

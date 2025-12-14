@@ -342,7 +342,7 @@ export default function NewProductPage() {
                       name="cost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Costo Unitario</FormLabel>
+                          <FormLabel>Costo Unitario (VES)</FormLabel>
                           <FormControl>
                             <Input type="number" step="0.01" {...field} />
                           </FormControl>
@@ -355,7 +355,7 @@ export default function NewProductPage() {
                       name="price"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Precio de Venta</FormLabel>
+                          <FormLabel>Precio de Venta (VES)</FormLabel>
                           <FormControl>
                             <Input type="number" step="0.01" {...field} />
                           </FormControl>
