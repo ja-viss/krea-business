@@ -5,26 +5,6 @@ import SaleModel, { SaleCounterModel } from '@/models/Sale';
 import ProductModel from '@/models/Product';
 import AccountReceivableModel from '@/models/AccountReceivable';
 import mongoose from 'mongoose';
-import { z } from 'zod';
-
-
-const saleSchema = z.object({
-  storeId: z.string(),
-  customerId: z.string().optional(),
-  customerName: z.string(),
-  items: z.array(z.object({
-    productId: z.string(),
-    quantity: z.number().min(1),
-    price: z.number(), // Price in VES
-    name: z.string(),
-    stock: z.number(),
-    taxRate: z.number(),
-  })).min(1),
-  paymentMethod: z.string(),
-  paymentReference: z.string().optional(),
-  status: z.string().optional(),
-});
-
 
 export async function POST(req: NextRequest) {
   await dbConnect();
@@ -33,17 +13,25 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const validation = saleSchema.safeParse(body);
 
-    if (!validation.success) {
-      await session.abortTransaction();
-      session.endSession();
-      return NextResponse.json({ message: 'Datos de venta inválidos', errors: validation.error.flatten().fieldErrors }, { status: 400 });
+    // --- Classic Manual Validation ---
+    const { storeId, customerId, customerName, items, paymentMethod, paymentReference } = body;
+
+    if (!storeId) {
+      throw new Error("El ID de la tienda es obligatorio.");
     }
+    if (!customerName) {
+      throw new Error("El nombre del cliente es obligatorio.");
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new Error("La lista de artículos es obligatoria y no puede estar vacía.");
+    }
+     if (!paymentMethod) {
+      throw new Error("El método de pago es obligatorio.");
+    }
+    // --- End Classic Validation ---
 
-    const { storeId, customerId, customerName, items, paymentMethod, status: saleStatus, paymentReference } = validation.data;
-    
-    // Calculate subtotals and taxes
+    // Calculate subtotals and taxes on the backend to ensure data integrity
     const subtotals = {
         exempt: 0,   // taxRate === 0
         general: 0,  // taxRate === 0.16
@@ -51,6 +39,9 @@ export async function POST(req: NextRequest) {
     };
 
     for (const item of items) {
+        if (typeof item.price !== 'number' || typeof item.quantity !== 'number' || typeof item.taxRate !== 'number') {
+            throw new Error(`El artículo '${item.name}' contiene datos inválidos.`);
+        }
         const itemTotal = item.price * item.quantity;
         if (item.taxRate === 0) {
             subtotals.exempt += itemTotal;
@@ -102,8 +93,7 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    const finalStatus = saleStatus ? saleStatus : 
-        (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta') ? 'Pagado' : 'Pendiente';
+    const finalStatus = (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta') ? 'Pagado' : 'Pendiente';
 
     // 2. Create the sale
     const newSale = new SaleModel({
@@ -114,7 +104,7 @@ export async function POST(req: NextRequest) {
       subtotals: subtotals,
       taxDetails: taxDetails,
       totalAmount: totalAmount,
-      items: items.map(i => ({ 
+      items: items.map((i: any) => ({ 
           product: i.productId, 
           quantity: i.quantity, 
           price: i.price, 
@@ -122,7 +112,7 @@ export async function POST(req: NextRequest) {
           taxRate: i.taxRate,
         })),
       paymentMethod,
-      paymentReference,
+      paymentReference: paymentReference || '',
       status: finalStatus,
     });
     await newSale.save({ session });
@@ -151,7 +141,8 @@ export async function POST(req: NextRequest) {
     await session.abortTransaction();
     session.endSession();
     console.error('Error al crear la venta:', error);
+    // Return the specific error message
     const errorMessage = error.message || 'Error interno del servidor.';
-    return NextResponse.json({ message: 'Error al crear la venta.', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
