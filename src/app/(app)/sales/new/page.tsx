@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, ChevronLeft } from 'lucide-react';
+import { Loader2, Trash2, ChevronLeft, Minus, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
@@ -101,16 +101,17 @@ export default function NewSalePage() {
   const watchAmountReceived = form.watch('amountReceived');
   const watchPaymentCurrency = form.watch('paymentCurrency');
 
-  const totalAmountVES = watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalAmountVES = useMemo(() => {
+      return watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [watchItems]);
 
   const totalAmountUSD = useMemo(() => {
-    if (!rates.usd) return 0;
+    if (!rates.usd || !rates.usd.usd) return 0;
     return totalAmountVES / rates.usd.usd;
   }, [totalAmountVES, rates.usd]);
 
   const totalAmountCOP = useMemo(() => {
-    if (!rates.usd || !rates.cop) return 0;
-    // Primero a USD y luego a COP, o directo desde VES si hay tasa
+    if (!rates.cop || !rates.cop.rate) return 0;
     return totalAmountUSD * rates.cop.rate;
   }, [totalAmountUSD, rates.cop]);
 
@@ -187,8 +188,20 @@ export default function NewSalePage() {
             description: `Solo hay ${item.stock} unidades disponibles de ${item.name}.`,
         });
         update(index, { ...item, quantity: item.stock });
+    } else if (newQuantity < 1) {
+      update(index, { ...item, quantity: 1 });
     }
   };
+
+  const handleIncreaseQuantity = (index: number) => {
+    const item = fields[index];
+    handleQuantityChange(index, item.quantity + 1);
+  }
+
+  const handleDecreaseQuantity = (index: number) => {
+    const item = fields[index];
+    handleQuantityChange(index, item.quantity - 1);
+  }
 
   const handleQuantityKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
     const item = fields[index];
@@ -225,7 +238,7 @@ export default function NewSalePage() {
             ...data,
             customerName: data.customerName || 'Cliente General',
             storeId,
-            amount: totalAmountUSD, // La BD almacena el total en USD para consistencia
+            amount: totalAmountVES, // La BD almacena el total en VES para consistencia
         }
 
         const response = await fetch('/api/sales/new', {
@@ -244,7 +257,7 @@ export default function NewSalePage() {
             title: '¡Venta Creada!',
             description: `La venta se ha registrado correctamente.`,
         });
-        router.push(`/sales`);
+        router.push(`/sales/${result._id}/invoice`);
 
     } catch (error: any) {
         toast({
@@ -301,9 +314,8 @@ export default function NewSalePage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Producto</TableHead>
-                                            <TableHead className="text-right">Precio (VES)</TableHead>
-                                            <TableHead className="text-right">Precio (USD)</TableHead>
-                                            <TableHead className="text-center w-[100px]">Cantidad</TableHead>
+                                            <TableHead className="text-right">P. Unit (VES)</TableHead>
+                                            <TableHead className="text-center w-[150px]">Cantidad</TableHead>
                                             <TableHead className="text-right">Subtotal (VES)</TableHead>
                                             <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
@@ -314,19 +326,26 @@ export default function NewSalePage() {
                                                 <TableRow key={item.id}>
                                                     <TableCell>{item.name}</TableCell>
                                                     <TableCell className="text-right">{formatCurrency(item.price, 'VES')}</TableCell>
-                                                     <TableCell className="text-right text-muted-foreground text-xs">{rates.usd ? formatCurrency(item.price / rates.usd.usd, 'USD') : '...'}</TableCell>
                                                     <TableCell>
+                                                      <div className='flex items-center justify-center gap-1'>
+                                                        <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleDecreaseQuantity(index)} disabled={item.quantity <= 1}>
+                                                          <Minus className='h-4 w-4'/>
+                                                        </Button>
                                                         <Input
                                                             type="number"
-                                                            className="text-center"
+                                                            className="text-center h-8 w-14"
                                                             value={item.quantity}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
                                                             onKeyDown={(e) => handleQuantityKeyDown(e, index)}
                                                             max={item.stock}
                                                             min={1}
                                                         />
+                                                         <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleIncreaseQuantity(index)} disabled={item.quantity >= item.stock}>
+                                                          <Plus className='h-4 w-4'/>
+                                                        </Button>
+                                                      </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right">{formatCurrency(item.price * item.quantity, 'VES')}</TableCell>
+                                                    <TableCell className="text-right font-medium">{formatCurrency(item.price * item.quantity, 'VES')}</TableCell>
                                                     <TableCell>
                                                         <Button variant="ghost" size="icon" onClick={() => remove(index)}>
                                                             <Trash2 className="h-4 w-4 text-red-500" />
@@ -336,7 +355,7 @@ export default function NewSalePage() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="h-24 text-center">
+                                                <TableCell colSpan={5} className="h-24 text-center">
                                                     Añade productos para comenzar la venta.
                                                 </TableCell>
                                             </TableRow>
@@ -345,7 +364,7 @@ export default function NewSalePage() {
                                     {fields.length > 0 && (
                                         <TableFooter>
                                             <TableRow>
-                                                <TableCell colSpan={4} className="text-right font-bold text-lg">Total (VES)</TableCell>
+                                                <TableCell colSpan={3} className="text-right font-bold text-lg">Total (VES)</TableCell>
                                                 <TableCell className="text-right font-bold text-lg">{formatCurrency(totalAmountVES, 'VES')}</TableCell>
                                                 <TableCell></TableCell>
                                             </TableRow>
@@ -480,7 +499,7 @@ export default function NewSalePage() {
                                  <div className='flex justify-between items-center text-sm text-muted-foreground'>
                                     <span>En Dólares (USD):</span>
                                     <span>{ratesLoading.usd ? '...' : formatCurrency(totalAmountUSD, 'USD')}</span>
-                                </div>
+                                 </div>
                                  <div className='flex justify-between items-center text-sm text-muted-foreground'>
                                     <span>En Pesos (COP):</span>
                                     <span>{ratesLoading.cop ? '...' : formatCurrency(totalAmountCOP, 'COP')}</span>
@@ -495,3 +514,5 @@ export default function NewSalePage() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SaleModel from '@/models/Sale';
@@ -11,7 +12,7 @@ const saleSchema = z.object({
   storeId: z.string(),
   customerId: z.string().optional(),
   customerName: z.string(),
-  amount: z.number(),
+  amount: z.number(), // Monto base en VES
   items: z.array(z.object({
     productId: z.string(),
     quantity: z.number().min(1),
@@ -41,6 +42,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { storeId, customerId, customerName, amount, items, paymentMethod, status: saleStatus } = validation.data;
+    
+    // Calcula el IVA y el total
+    const subTotal = amount; // El monto que llega es el subtotal (base imponible)
+    const taxAmount = subTotal * 0.16; // 16% IVA
+    const totalAmount = subTotal + taxAmount;
+
 
     // 1. Update product stock
     for (const item of items) {
@@ -74,8 +81,10 @@ export async function POST(req: NextRequest) {
       customer: customerId,
       customerName: customerName,
       customerEmail: 'placeholder@email.com', // Placeholder, adjust as needed
-      amount,
-      items: items.map(i => ({ product: i.productId, quantity: i.quantity, price: i.price })),
+      amount: subTotal,
+      taxAmount: taxAmount,
+      totalAmount: totalAmount,
+      items: items.map(i => ({ product: i.productId, quantity: i.quantity, price: i.price, name: i.name })),
       paymentMethod,
       status: saleStatus || (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta' ? 'Pagado' : 'Pendiente'),
     });
@@ -89,7 +98,7 @@ export async function POST(req: NextRequest) {
             store: storeId,
             customer: customerName,
             sale: newSale._id,
-            amount,
+            amount: totalAmount,
             dueDate,
             status: 'Pendiente',
         });
@@ -109,3 +118,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Error al crear la venta.', error: errorMessage }, { status: 500 });
   }
 }
+
+    
