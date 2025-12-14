@@ -17,8 +17,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ChevronDown, LogOut, PanelLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { SideNav } from '@/components/side-nav';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface User {
   id: string;
@@ -47,6 +48,9 @@ const MobileSidebar = () => (
             </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
+             <VisuallyHidden>
+                <SheetTitle>Menú Principal</SheetTitle>
+            </VisuallyHidden>
             <div className="flex items-center h-16 px-6 border-b">
                 <Logo />
             </div>
