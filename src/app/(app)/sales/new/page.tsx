@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, KeyboardEvent } from 'react';
+import { useState, useEffect, KeyboardEvent, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +41,7 @@ import Link from 'next/link';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { CustomerSearch } from '@/components/sales/customer-search';
 import { ICustomer } from '@/models/Customer';
+import { useExchangeRates } from '@/hooks/use-exchange-rates';
 
 
 const saleSchema = z.object({
@@ -57,6 +58,7 @@ const saleSchema = z.object({
     required_error: 'Debes seleccionar un método de pago.',
   }),
   paymentReference: z.string().optional(),
+  paymentCurrency: z.enum(['USD', 'VES', 'COP']).optional(),
   amountReceived: z.coerce.number().optional(),
 }).refine(data => {
     if ((data.paymentMethod === 'Transferencia' || data.paymentMethod === 'Pago Móvil') && !data.paymentReference) {
@@ -75,6 +77,7 @@ export default function NewSalePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { rates, loading: ratesLoading } = useExchangeRates();
 
   const form = useForm<SaleFormValues>({
     resolver: zodResolver(saleSchema),
@@ -83,6 +86,7 @@ export default function NewSalePage() {
       items: [],
       paymentMethod: 'Efectivo',
       paymentReference: '',
+      paymentCurrency: 'USD',
       amountReceived: 0,
     },
   });
@@ -95,9 +99,50 @@ export default function NewSalePage() {
   const watchItems = form.watch('items');
   const watchPaymentMethod = form.watch('paymentMethod');
   const watchAmountReceived = form.watch('amountReceived');
+  const watchPaymentCurrency = form.watch('paymentCurrency');
 
-  const totalAmount = watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const changeAmount = (watchAmountReceived || 0) - totalAmount;
+  const totalAmountUSD = watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const totalAmountVES = useMemo(() => {
+      if (!rates.usd) return 0;
+      return totalAmountUSD * rates.usd.usd;
+  }, [totalAmountUSD, rates.usd]);
+
+  const totalAmountCOP = useMemo(() => {
+      if (!rates.usd || !rates.cop) return 0;
+      const usdToVes = rates.usd.usd;
+      const copToVes = rates.cop.result.VES;
+      if (copToVes === 0) return 0;
+      return (totalAmountUSD * usdToVes) / copToVes;
+  }, [totalAmountUSD, rates.usd, rates.cop]);
+
+
+  const getAmountInSelectedCurrency = () => {
+    switch(watchPaymentCurrency) {
+        case 'VES': return totalAmountVES;
+        case 'COP': return totalAmountCOP;
+        case 'USD':
+        default: return totalAmountUSD;
+    }
+  }
+
+  const changeAmount = useMemo(() => {
+    const totalInCurrency = getAmountInSelectedCurrency();
+    const received = watchAmountReceived || 0;
+    return received - totalInCurrency;
+  }, [watchAmountReceived, watchPaymentCurrency, totalAmountUSD, totalAmountVES, totalAmountCOP]);
+
+  const formatCurrency = (value: number, currency: 'USD' | 'VES' | 'COP') => {
+    const options: Intl.NumberFormatOptions = {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    };
+    if (currency === 'VES') return new Intl.NumberFormat('es-VE', options).format(value);
+    if (currency === 'COP') return new Intl.NumberFormat('es-CO', options).format(value);
+    return new Intl.NumberFormat('en-US', options).format(value);
+  }
 
   const handleProductSelect = (product: IProduct) => {
     const existingItemIndex = fields.findIndex(item => item.productId === String(product._id));
@@ -142,7 +187,6 @@ export default function NewSalePage() {
             title: 'Stock Insuficiente',
             description: `Solo hay ${item.stock} unidades disponibles de ${item.name}.`,
         });
-        // Reset to max stock if user tries to exceed
         update(index, { ...item, quantity: item.stock });
     }
   };
@@ -180,9 +224,9 @@ export default function NewSalePage() {
 
         const payload = {
             ...data,
-            customerName: data.customerName || 'Cliente General', // Default to 'Cliente General' if empty
+            customerName: data.customerName || 'Cliente General',
             storeId,
-            amount: totalAmount,
+            amount: totalAmountUSD, // Always store the base amount in USD
         }
 
         const response = await fetch('/api/sales/new', {
@@ -269,7 +313,7 @@ export default function NewSalePage() {
                                             fields.map((item, index) => (
                                                 <TableRow key={item.id}>
                                                     <TableCell>{item.name}</TableCell>
-                                                    <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(item.price, 'USD')}</TableCell>
                                                     <TableCell>
                                                         <Input
                                                             type="number"
@@ -281,7 +325,7 @@ export default function NewSalePage() {
                                                             min={1}
                                                         />
                                                     </TableCell>
-                                                    <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(item.price * item.quantity, 'USD')}</TableCell>
                                                     <TableCell>
                                                         <Button variant="ghost" size="icon" onClick={() => remove(index)}>
                                                             <Trash2 className="h-4 w-4 text-red-500" />
@@ -301,7 +345,7 @@ export default function NewSalePage() {
                                         <TableFooter>
                                             <TableRow>
                                                 <TableCell colSpan={3} className="text-right font-bold text-lg">Total</TableCell>
-                                                <TableCell className="text-right font-bold text-lg">${totalAmount.toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-bold text-lg">{formatCurrency(totalAmountUSD, 'USD')}</TableCell>
                                                 <TableCell></TableCell>
                                             </TableRow>
                                         </TableFooter>
@@ -380,35 +424,62 @@ export default function NewSalePage() {
                                     />
                                 )}
                                  {watchPaymentMethod === 'Efectivo' && (
-                                    <div className='grid grid-cols-2 gap-4'>
+                                    <>
                                         <FormField
                                             control={form.control}
-                                            name="amountReceived"
+                                            name="paymentCurrency"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Monto Recibido</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                                                    </FormControl>
+                                                    <FormLabel>Moneda de Pago</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="USD">Dólares (USD)</SelectItem>
+                                                            <SelectItem value="VES">Bolívares (VES)</SelectItem>
+                                                            <SelectItem value="COP">Pesos (COP)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </FormItem>
                                             )}
                                         />
-                                        <FormItem>
-                                            <FormLabel>Vuelto</FormLabel>
-                                            <Input
-                                                type="text"
-                                                readOnly
-                                                value={`$${changeAmount > 0 ? changeAmount.toFixed(2) : '0.00'}`}
-                                                className="font-bold text-lg bg-muted border-none"
+                                        <div className='grid grid-cols-2 gap-4'>
+                                            <FormField
+                                                control={form.control}
+                                                name="amountReceived"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Monto Recibido</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
                                             />
-                                        </FormItem>
-                                    </div>
+                                            <FormItem>
+                                                <FormLabel>Vuelto</FormLabel>
+                                                <Input
+                                                    type="text"
+                                                    readOnly
+                                                    value={formatCurrency(Math.max(0, changeAmount), watchPaymentCurrency || 'USD')}
+                                                    className="font-bold text-lg bg-muted border-none"
+                                                />
+                                            </FormItem>
+                                        </div>
+                                    </>
                                 )}
                             </CardContent>
-                            <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t'>
+                            <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2'>
                                 <div className='flex justify-between items-center text-xl font-bold'>
                                     <span>TOTAL A PAGAR:</span>
-                                    <span>${totalAmount.toFixed(2)}</span>
+                                    <span>{formatCurrency(totalAmountUSD, 'USD')}</span>
+                                </div>
+                                <div className='flex justify-between items-center text-sm text-muted-foreground'>
+                                    <span>En Bolívares (VES):</span>
+                                    <span>{ratesLoading.usd ? '...' : formatCurrency(totalAmountVES, 'VES')}</span>
+                                </div>
+                                 <div className='flex justify-between items-center text-sm text-muted-foreground'>
+                                    <span>En Pesos (COP):</span>
+                                    <span>{ratesLoading.cop ? '...' : formatCurrency(totalAmountCOP, 'COP')}</span>
                                 </div>
                             </CardFooter>
                         </Card>
@@ -420,5 +491,3 @@ export default function NewSalePage() {
     </div>
   );
 }
-
-    
