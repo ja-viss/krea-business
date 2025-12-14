@@ -10,15 +10,24 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, AlertTriangle } from 'lucide-react';
+import { Download, MoreVertical, AlertTriangle } from 'lucide-react';
 import { MonthlyProfitChart } from '@/components/dashboard/monthly-profit-chart';
 import { ExpenseDistributionChart } from '@/components/dashboard/expense-distribution-chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { IProduct } from '@/models/Product';
+import { TopStockChart } from '@/components/inventory/top-stock-chart';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface ReportData {
   monthlyProfit: { month: string; profit: number }[];
   expenseDistribution: { name: string; value: number; fill: string }[];
+  inventoryProducts: IProduct[];
 }
 
 export default function ReportsPage() {
@@ -34,13 +43,25 @@ export default function ReportsPage() {
         if (!storeId) {
             throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
         }
-        // We can reuse the dashboard API endpoint for these charts
-        const response = await fetch(`/api/dashboard?storeId=${storeId}`);
-        if (!response.ok) {
+        
+        const [dashboardRes, productsRes] = await Promise.all([
+             fetch(`/api/dashboard?storeId=${storeId}`),
+             fetch(`/api/products?storeId=${storeId}`)
+        ]);
+
+        if (!dashboardRes.ok || !productsRes.ok) {
           throw new Error('No se pudieron cargar los datos para los reportes.');
         }
-        const result = await response.json();
-        setData(result);
+
+        const dashboardData = await dashboardRes.json();
+        const productsData = await productsRes.json();
+
+        setData({
+          monthlyProfit: dashboardData.monthlyProfit,
+          expenseDistribution: dashboardData.expenseDistribution,
+          inventoryProducts: productsData,
+        });
+
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -65,11 +86,7 @@ export default function ReportsPage() {
     {
       title: 'Reporte de Inventario',
       description: 'Estado actual del stock y productos más vendidos.',
-      component: (
-        <div className="flex h-full items-center justify-center text-muted-foreground">
-          Próximamente...
-        </div>
-      ),
+      component: loading ? <Skeleton className="h-[300px] w-full" /> : <TopStockChart data={data?.inventoryProducts || []} />,
     },
     {
       title: 'Análisis de Clientes',
@@ -104,9 +121,27 @@ export default function ReportsPage() {
                   <CardTitle>{report.title}</CardTitle>
                   <CardDescription>{report.description}</CardDescription>
                 </div>
-                 <Button variant="outline" size="icon">
-                  <Download className="h-4 w-4" />
-                </Button>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Download className="mr-2 h-4 w-4" />
+                        Exportar a PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                         <Download className="mr-2 h-4 w-4" />
+                        Exportar a Excel (XLS)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                         <Download className="mr-2 h-4 w-4" />
+                        Exportar a CSV
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
               </CardHeader>
               <CardContent className="flex-1">
                 {report.component}
