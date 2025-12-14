@@ -84,25 +84,23 @@ SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
 
 
 // Middleware to auto-increment invoiceNumber before saving a new sale
-SaleSchema.pre('save', async function(next) {
+SaleSchema.pre('save', async function() {
     if (this.isNew) {
         const doc = this as ISale;
-        try {
-            const counter = await SaleCounterModel.findOneAndUpdate(
-                { store: doc.store },
-                { $inc: { seq: 1 } },
-                { new: true, upsert: true, session: doc.db.session }
-            );
-            if (!counter) {
-                throw new Error('Could not retrieve invoice number sequence.');
-            }
-            doc.invoiceNumber = counter.seq;
-            next();
-        } catch (error: any) {
-            next(error);
+        // The session is important for transactions
+        const session = doc.db.session; 
+        
+        const counter = await SaleCounterModel.findOneAndUpdate(
+            { store: doc.store },
+            { $inc: { seq: 1 } },
+            { new: true, upsert: true, session: session }
+        );
+        
+        if (!counter) {
+            throw new Error('No se pudo recuperar la secuencia del número de factura.');
         }
-    } else {
-        next();
+        
+        doc.invoiceNumber = counter.seq;
     }
 });
 
