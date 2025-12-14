@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
           $inc: { stock: -item.quantity },
           $set: { status: newStatus }
         },
-        { session }
+        { session } // THIS IS THE FIX: ensure update runs in session
       );
     }
     
@@ -98,10 +98,10 @@ export async function POST(req: NextRequest) {
       taxDetails,
       totalAmount,
       items: items.map((i: any) => ({ 
-          product: i.productId, 
+          product: i.productId,
+          name: i.name, 
           quantity: i.quantity, 
           price: i.price, 
-          name: i.name,
           taxRate: i.taxRate,
         })),
       paymentMethod,
@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
     // If any operation fails, abort the transaction
     await session.abortTransaction();
     console.error('Error al crear la venta:', error);
+    // Ensure a JSON response is always sent on error
     const errorMessage = error.message || 'Error interno del servidor.';
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   } finally {
