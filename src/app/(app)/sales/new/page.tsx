@@ -104,33 +104,34 @@ export default function NewSalePage() {
   const totalAmountUSD = watchItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const totalAmountVES = useMemo(() => {
-      if (!rates.usd) return 0;
-      return totalAmountUSD * rates.usd.usd;
+    if (!rates.usd) return 0;
+    return totalAmountUSD * rates.usd.usd;
   }, [totalAmountUSD, rates.usd]);
 
   const totalAmountCOP = useMemo(() => {
-      if (!rates.usd || !rates.cop) return 0;
-      const usdToVes = rates.usd.usd;
-      const copToVes = rates.cop.result.VES;
-      if (copToVes === 0) return 0;
-      return (totalAmountUSD * usdToVes) / copToVes;
+    if (!rates.usd || !rates.cop) return 0;
+    const usdToVes = rates.usd.usd;
+    const copToVes = rates.cop.result.VES;
+    if (copToVes === 0) return 0; // Evita división por cero
+    return (totalAmountUSD * usdToVes) / copToVes;
   }, [totalAmountUSD, rates.usd, rates.cop]);
 
 
-  const getAmountInSelectedCurrency = () => {
+  const getAmountInSelectedCurrency = useMemo(() => {
     switch(watchPaymentCurrency) {
         case 'VES': return totalAmountVES;
         case 'COP': return totalAmountCOP;
         case 'USD':
         default: return totalAmountUSD;
     }
-  }
+  }, [watchPaymentCurrency, totalAmountUSD, totalAmountVES, totalAmountCOP]);
 
   const changeAmount = useMemo(() => {
-    const totalInCurrency = getAmountInSelectedCurrency();
+    const totalInCurrency = getAmountInSelectedCurrency;
     const received = watchAmountReceived || 0;
-    return received - totalInCurrency;
-  }, [watchAmountReceived, watchPaymentCurrency, totalAmountUSD, totalAmountVES, totalAmountCOP]);
+    return received > totalInCurrency ? received - totalInCurrency : 0;
+  }, [watchAmountReceived, getAmountInSelectedCurrency]);
+
 
   const formatCurrency = (value: number, currency: 'USD' | 'VES' | 'COP') => {
     const options: Intl.NumberFormatOptions = {
@@ -460,7 +461,7 @@ export default function NewSalePage() {
                                                 <Input
                                                     type="text"
                                                     readOnly
-                                                    value={formatCurrency(Math.max(0, changeAmount), watchPaymentCurrency || 'USD')}
+                                                    value={formatCurrency(changeAmount, watchPaymentCurrency || 'USD')}
                                                     className="font-bold text-lg bg-muted border-none"
                                                 />
                                             </FormItem>
