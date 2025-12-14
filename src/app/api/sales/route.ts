@@ -1,6 +1,8 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SaleModel from '@/models/Sale';
+import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,8 +12,26 @@ export async function GET(req: NextRequest) {
     if (!storeId) {
       return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
     }
+    
+    let query: any = { store: storeId };
 
-    const sales = await SaleModel.find({ store: storeId }).sort({ createdAt: -1 });
+    // Filtering for Kardex Report
+    const productId = req.nextUrl.searchParams.get('productId');
+    const fromDate = req.nextUrl.searchParams.get('from');
+    const toDate = req.nextUrl.searchParams.get('to');
+
+    if (productId && fromDate) {
+        query['items.product'] = new mongoose.Types.ObjectId(productId);
+        
+        const start = new Date(fromDate);
+        // Adjust to include the whole day
+        const end = toDate ? new Date(toDate) : new Date(fromDate);
+        end.setHours(23, 59, 59, 999);
+
+        query.createdAt = { $gte: start, $lte: end };
+    }
+
+    const sales = await SaleModel.find(query).sort({ createdAt: -1 }).populate('items.product');
 
     return NextResponse.json(sales, { status: 200 });
 

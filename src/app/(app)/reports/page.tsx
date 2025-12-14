@@ -5,13 +5,13 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, MoreVertical, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
+import { Download, MoreVertical, AlertTriangle, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { MonthlyProfitChart } from '@/components/dashboard/monthly-profit-chart';
 import { ExpenseDistributionChart } from '@/components/dashboard/expense-distribution-chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { IProduct } from '@/models/Product';
-import { TopStockChart } from '@/components/inventory/top-stock-chart';
+import { ISale } from '@/models/Sale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -29,26 +29,14 @@ interface ReportData {
   inventoryProducts: IProduct[];
 }
 
-const financialReports = [
-    {
-      title: 'Reporte de Ventas Mensuales',
-      description: 'Análisis detallado de las ventas del último mes.',
-      component: 'MonthlyProfitChart',
-    },
-    {
-      title: 'Distribución de Gastos',
-      description: 'Desglose de los gastos por categoría.',
-      component: 'ExpenseDistributionChart',
-    },
-];
-
-const kardexExampleData = [
-  { date: '2024-05-01', document: 'FC-2024-123', concept: 'Compra a Proveedor', entry: 50, exit: 0, balance: 50 },
-  { date: '2024-05-05', document: 'FV-2024-501', concept: 'Venta a Cliente', entry: 0, exit: 10, balance: 40 },
-  { date: '2024-05-10', document: 'AJ-NEG-001', concept: 'Ajuste por Pérdida', entry: 0, exit: 1, balance: 39 },
-  { date: '2024-05-15', document: 'FC-2024-180', concept: 'Compra a Proveedor', entry: 25, exit: 0, balance: 64 },
-  { date: '2024-05-20', document: 'FV-2024-550', concept: 'Venta a Cliente', entry: 0, exit: 20, balance: 44 },
-];
+interface KardexEntry {
+    date: string;
+    document: string;
+    concept: string;
+    entry: number;
+    exit: number;
+    balance: number;
+}
 
 
 export default function ReportsPage() {
@@ -56,9 +44,13 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(new Date().setDate(1)),
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date(),
   });
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [kardexData, setKardexData] = useState<KardexEntry[]>([]);
+  const [loadingKardex, setLoadingKardex] = useState(false);
+
 
   useEffect(() => {
     async function fetchData() {
@@ -96,12 +88,72 @@ export default function ReportsPage() {
     fetchData();
   }, []);
 
+  const handleGenerateKardex = async () => {
+    if (!selectedProductId || !dateRange?.from) {
+        setError("Por favor, selecciona un producto y un rango de fechas.");
+        return;
+    }
+    setLoadingKardex(true);
+    setError(null);
+    setKardexData([]);
+
+    try {
+        const storeId = localStorage.getItem('storeId');
+        const fromDate = format(dateRange.from, 'yyyy-MM-dd');
+        const toDate = dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : fromDate;
+        
+        const response = await fetch(`/api/sales?storeId=${storeId}&productId=${selectedProductId}&from=${fromDate}&to=${toDate}`);
+        if (!response.ok) {
+            throw new Error('No se pudieron obtener los movimientos de venta.');
+        }
+
+        const sales: ISale[] = await response.json();
+        const selectedProduct = data?.inventoryProducts.find(p => p._id === selectedProductId);
+        if (!selectedProduct) {
+             throw new Error('Producto seleccionado no encontrado.');
+        }
+
+        // We can't calculate initial stock without full history, so we'll work backwards from current stock.
+        // This is an approximation. A true Kardex would need opening balances.
+        let currentBalance = selectedProduct.stock;
+        
+        const saleMovements = sales
+            .flatMap(sale => 
+                sale.items
+                    .filter(item => String(item.product) === selectedProductId)
+                    .map(item => ({
+                        date: String(sale.createdAt),
+                        document: `FV-${String(sale.invoiceNumber).padStart(8, '0')}`,
+                        concept: 'Venta a Cliente',
+                        entry: 0,
+                        exit: item.quantity,
+                        balance: 0 // Will be calculated later
+                    }))
+            )
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        // Calculate balance backwards
+        const finalMovements = saleMovements.map(mov => {
+            const movementWithBalance = { ...mov, balance: currentBalance };
+            currentBalance += mov.exit; // Add back the sold quantity
+            return movementWithBalance;
+        }).reverse(); // Put back in chronological order
+
+        setKardexData(finalMovements);
+
+    } catch (err: any) {
+        setError(err.message);
+    } finally {
+        setLoadingKardex(false);
+    }
+  };
+
+
   const getReportComponent = (componentName: string) => {
     if (loading) return <Skeleton className="h-[250px] w-full" />;
     switch(componentName) {
         case 'MonthlyProfitChart': return <MonthlyProfitChart data={data?.monthlyProfit} />;
         case 'ExpenseDistributionChart': return <ExpenseDistributionChart data={data?.expenseDistribution} />;
-        case 'TopStockChart': return <TopStockChart data={data?.inventoryProducts || []} />;
         default: return <div className="flex h-full items-center justify-center text-muted-foreground">Componente no encontrado</div>;
     }
   }
@@ -131,7 +183,16 @@ export default function ReportsPage() {
 
             <TabsContent value="financial">
                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-2 mt-6">
-                    {financialReports.map((report) => (
+                    {[{
+                        title: 'Reporte de Ventas Mensuales',
+                        description: 'Análisis detallado de las ventas del último mes.',
+                        component: 'MonthlyProfitChart',
+                        },
+                        {
+                        title: 'Distribución de Gastos',
+                        description: 'Desglose de los gastos por categoría.',
+                        component: 'ExpenseDistributionChart',
+                    }].map((report) => (
                         <Card key={report.title} className="flex flex-col">
                         <CardHeader className='flex-row items-start justify-between'>
                             <div>
@@ -173,13 +234,13 @@ export default function ReportsPage() {
                 <Card className="mt-6">
                     <CardHeader>
                          <CardTitle>Reporte Kardex por Producto</CardTitle>
-                        <CardDescription>Consulta la trazabilidad completa de un producto, incluyendo entradas, salidas y ajustes para un rango de fechas específico.</CardDescription>
+                        <CardDescription>Consulta la trazabilidad de un producto, incluyendo entradas y salidas para un rango de fechas.</CardDescription>
                     </CardHeader>
                     <CardContent className='space-y-4'>
                         <div className='flex flex-col sm:flex-row gap-4 items-center p-4 border rounded-lg bg-muted/50'>
                             <div className='w-full sm:w-auto flex-1'>
                                <p className='text-sm font-medium mb-2'>Producto</p>
-                                <Select>
+                                <Select onValueChange={setSelectedProductId} value={selectedProductId || ""}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona un producto..." />
                                     </SelectTrigger>
@@ -231,7 +292,10 @@ export default function ReportsPage() {
                              <div className='self-end'>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button>Generar Reporte</Button>
+                                        <Button onClick={handleGenerateKardex} disabled={loadingKardex}>
+                                            {loadingKardex && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Generar Reporte
+                                        </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem><Download className="mr-2 h-4 w-4" />Generar en PDF</DropdownMenuItem>
@@ -255,16 +319,31 @@ export default function ReportsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {kardexExampleData.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{format(new Date(`${item.date}T00:00:00`), 'dd/MM/yyyy')}</TableCell>
-                                            <TableCell className='font-mono text-xs'>{item.document}</TableCell>
-                                            <TableCell>{item.concept}</TableCell>
-                                            <TableCell className='text-center text-green-600 font-medium'>{item.entry > 0 ? `+${item.entry}` : ''}</TableCell>
-                                            <TableCell className='text-center text-red-600 font-medium'>{item.exit > 0 ? `-${item.exit}` : ''}</TableCell>
-                                            <TableCell className='text-right font-bold'>{item.balance}</TableCell>
+                                    {loadingKardex ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-24 text-center">
+                                                <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                                                <p>Generando reporte...</p>
+                                            </TableCell>
                                         </TableRow>
-                                    ))}
+                                    ) : kardexData.length > 0 ? (
+                                        kardexData.map((item, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>{format(new Date(`${item.date.split('T')[0]}T00:00:00`), 'dd/MM/yyyy')}</TableCell>
+                                                <TableCell className='font-mono text-xs'>{item.document}</TableCell>
+                                                <TableCell>{item.concept}</TableCell>
+                                                <TableCell className='text-center text-green-600 font-medium'>{item.entry > 0 ? `+${item.entry}` : ''}</TableCell>
+                                                <TableCell className='text-center text-red-600 font-medium'>{item.exit > 0 ? `-${item.exit}` : ''}</TableCell>
+                                                <TableCell className='text-right font-bold'>{item.balance}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                                                Selecciona un producto y genera el reporte para ver los movimientos.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                          </div>
