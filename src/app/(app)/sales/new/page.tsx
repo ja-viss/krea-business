@@ -139,7 +139,7 @@ export default function NewSalePage() {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     };
-    if (currency === 'VES') return new Intl.NumberFormat('es-VE', options).format(value);
+    if (currency === 'VES') return `Bs.S ${new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
     if (currency === 'COP') return new Intl.NumberFormat('es-CO', options).format(value);
     return new Intl.NumberFormat('en-US', options).format(value);
   }
@@ -273,27 +273,26 @@ export default function NewSalePage() {
   return (
     <div className="flex flex-1 flex-col">
        <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
+            <PageHeader
+                title="Nueva Venta"
+                description="Busca productos, añade clientes y registra una nueva transacción."
+                actions={
+                    <div className="flex gap-2">
+                        <Button variant="outline" asChild>
+                            <Link href="/sales">
+                            <ChevronLeft />
+                            Cancelar
+                            </Link>
+                        </Button>
+                        <Button type="submit" form="sale-form" disabled={isSubmitting || watchItems.length === 0}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSubmitting ? 'Procesando...' : 'Completar Venta'}
+                        </Button>
+                    </div>
+                }
+            />
          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-                <PageHeader
-                    title="Nueva Venta"
-                    description="Busca productos, añade clientes y registra una nueva transacción."
-                    actions={
-                        <div className="flex gap-2">
-                           <Button variant="outline" asChild>
-                             <Link href="/sales">
-                                <ChevronLeft />
-                                Cancelar
-                             </Link>
-                           </Button>
-                            <Button type="submit" disabled={isSubmitting || watchItems.length === 0}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isSubmitting ? 'Procesando...' : 'Completar Venta'}
-                            </Button>
-                        </div>
-                    }
-                />
-
+            <form id="sale-form" onSubmit={form.handleSubmit(onSubmit)}>
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 mt-6">
                     {/* Columna Izquierda (Productos y Tabla) */}
                     <div className="lg:col-span-3 space-y-6">
