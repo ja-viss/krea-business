@@ -27,10 +27,10 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const { toast } = useToast();
   const codeReader = useRef(new BrowserMultiFormatReader());
 
-  const startScanner = useCallback(
-    async (reader: BrowserMultiFormatReader, videoEl: HTMLVideoElement) => {
+  const startScanner = useCallback(async () => {
+      if (!videoRef.current) return;
       try {
-        await reader.decodeFromVideoDevice(undefined, videoEl, (result, err) => {
+        await codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
           if (result) {
             onScan(result.getText());
           }
@@ -45,47 +45,36 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           'No se pudo iniciar el escáner. ¿Otra aplicación está usando la cámara?'
         );
       }
-    },
-    [onScan]
-  );
-
-  const getCameraPermission = useCallback(async () => {
-    try {
-      const constraints = { video: { facingMode: 'environment' } };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setHasPermission(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // Start scanner only after stream is set
-        startScanner(codeReader.current, videoRef.current);
-      }
-    } catch (err) {
-      console.error('Camera access error:', err);
-      setHasPermission(false);
-      setError(
-        'El acceso a la cámara es necesario para escanear. Por favor, habilita los permisos en tu navegador.'
-      );
-      toast({
-        variant: 'destructive',
-        title: 'Error de Cámara',
-        description: 'No se pudo acceder a la cámara. Revisa los permisos.',
-      });
-    }
-  }, [toast, startScanner]);
+    }, [onScan]);
 
   useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const constraints = { video: { facingMode: 'environment' } };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        setHasPermission(true);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error('Camera access error:', err);
+        setHasPermission(false);
+        setError(
+          'El acceso a la cámara es necesario para escanear. Por favor, habilita los permisos en tu navegador.'
+        );
+        toast({
+          variant: 'destructive',
+          title: 'Error de Cámara',
+          description: 'No se pudo acceder a la cámara. Revisa los permisos.',
+        });
+      }
+    };
     getCameraPermission();
 
-    // Cleanup function
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-      }
       codeReader.current.reset();
     };
-  }, [getCameraPermission]);
+  }, [toast]);
 
   return (
     <Dialog open={true} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -104,6 +93,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             autoPlay
             playsInline
             muted
+            onCanPlay={() => startScanner()}
           />
           <div className="scanner-overlay absolute inset-0"></div>
 
