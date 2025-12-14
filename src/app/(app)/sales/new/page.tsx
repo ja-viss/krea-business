@@ -45,7 +45,7 @@ import { ICustomer } from '@/models/Customer';
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
-  customerName: z.string().min(1, 'El nombre del cliente es requerido'),
+  customerName: z.string().optional(),
   items: z.array(z.object({
     productId: z.string(),
     name: z.string(),
@@ -79,7 +79,7 @@ export default function NewSalePage() {
   const form = useForm<SaleFormValues>({
     resolver: zodResolver(saleSchema),
     defaultValues: {
-      customerName: 'Cliente General',
+      customerName: '',
       items: [],
       paymentMethod: 'Efectivo',
       paymentReference: '',
@@ -163,6 +163,7 @@ export default function NewSalePage() {
 
         const payload = {
             ...data,
+            customerName: data.customerName || 'Cliente General', // Default to 'Cliente General' if empty
             storeId,
             amount: totalAmount,
         }
@@ -301,7 +302,7 @@ export default function NewSalePage() {
                             <CardContent>
                                  <CustomerSearch
                                     onCustomerSelect={handleCustomerSelect}
-                                    selectedCustomerName={form.watch('customerName')}
+                                    selectedCustomerName={form.watch('customerName') || ''}
                                 />
                                 <FormField
                                     control={form.control}

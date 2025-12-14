@@ -54,11 +54,11 @@ export function CustomerSearch({ onCustomerSelect, selectedCustomerName }: Custo
   });
 
   useEffect(() => {
-    // Sync local query state if parent form state changes (e.g. customer selected)
+    // Sync local query state if parent form state changes (e.g. customer selected or sale completed)
     if (selectedCustomerName !== query) {
         setQuery(selectedCustomerName);
     }
-  }, [selectedCustomerName, query]);
+  }, [selectedCustomerName]);
 
   useEffect(() => {
     const fetchCustomers = async () => {
