@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -147,6 +147,23 @@ export default function NewSalePage() {
     }
   };
 
+  const handleQuantityKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
+    const item = fields[index];
+    let newQuantity = item.quantity;
+
+    if (e.key === '+' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        newQuantity = Math.min(item.stock, item.quantity + 1);
+    } else if (e.key === '-' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        newQuantity = Math.max(1, item.quantity - 1);
+    }
+
+    if (newQuantity !== item.quantity) {
+        handleQuantityChange(index, newQuantity);
+    }
+  };
+
   const handleCustomerSelect = (customer: ICustomer) => {
       form.setValue('customerId', customer._id);
       form.setValue('customerName', customer.name);
@@ -259,6 +276,7 @@ export default function NewSalePage() {
                                                             className="text-center"
                                                             value={item.quantity}
                                                             onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                                                            onKeyDown={(e) => handleQuantityKeyDown(e, index)}
                                                             max={item.stock}
                                                             min={1}
                                                         />
