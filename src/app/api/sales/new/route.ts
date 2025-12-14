@@ -21,7 +21,7 @@ const saleSchema = z.object({
     taxRate: z.number(),
   })).min(1),
   paymentMethod: z.string(),
-  paymentCurrency: z.string().optional(),
+  paymentReference: z.string().optional(),
   status: z.string().optional(),
 });
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Datos de venta inválidos', errors: validation.error.flatten().fieldErrors }, { status: 400 });
     }
 
-    const { storeId, customerId, customerName, items, paymentMethod, status: saleStatus } = validation.data;
+    const { storeId, customerId, customerName, items, paymentMethod, status: saleStatus, paymentReference } = validation.data;
     
     // Calculate subtotals and taxes
     const subtotals = {
@@ -102,13 +102,15 @@ export async function POST(req: NextRequest) {
       );
     }
     
+    const finalStatus = saleStatus ? saleStatus : 
+        (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta') ? 'Pagado' : 'Pendiente';
+
     // 2. Create the sale
     const newSale = new SaleModel({
       store: storeId,
       invoiceNumber: invoiceNumber,
       customer: customerId,
       customerName: customerName,
-      customerEmail: 'placeholder@email.com', // Placeholder
       subtotals: subtotals,
       taxDetails: taxDetails,
       totalAmount: totalAmount,
@@ -120,7 +122,8 @@ export async function POST(req: NextRequest) {
           taxRate: i.taxRate,
         })),
       paymentMethod,
-      status: saleStatus || (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta' ? 'Pagado' : 'Pendiente'),
+      paymentReference,
+      status: finalStatus,
     });
     await newSale.save({ session });
 

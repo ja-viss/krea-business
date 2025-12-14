@@ -260,18 +260,26 @@ export default function NewSalePage() {
 
   const handleCustomerSelect = (customer: ICustomer) => {
       form.setValue('customerId', customer._id);
-      form.setValue('customerName', customer.name);
+      form.setValue('customerName', customer.name, { shouldValidate: true });
       setSelectedCustomer(customer);
   };
 
   const onInvalid = (errors: any) => {
-    const firstError = Object.values(errors)[0] as { message?: string };
-    if (firstError?.message) {
-      toast({
-        variant: 'destructive',
-        title: 'Error de Validación',
-        description: firstError.message,
-      });
+    // Find the first error message and display it
+    const firstErrorKey = Object.keys(errors)[0] as 'items' | 'customerName' | 'paymentMethod' | 'paymentReference';
+     if (firstErrorKey && errors[firstErrorKey]) {
+        let message = errors[firstErrorKey].message;
+        if (firstErrorKey === 'items' && typeof errors.items !== 'string') {
+            message = "Debes añadir al menos un producto a la venta.";
+        }
+        if (firstErrorKey === 'paymentReference') {
+            message = "La referencia es obligatoria para este método de pago.";
+        }
+        toast({
+            variant: 'destructive',
+            title: 'Error de Validación',
+            description: message,
+        });
     }
   };
 
@@ -283,10 +291,7 @@ export default function NewSalePage() {
             throw new Error('No se encontró la tienda. Por favor, inicia sesión de nuevo.');
         }
 
-        const payload = {
-            ...data,
-            storeId,
-        }
+        const payload = { ...data, storeId, };
 
         const response = await fetch('/api/sales/new', {
             method: 'POST',
@@ -309,7 +314,7 @@ export default function NewSalePage() {
     } catch (error: any) {
         toast({
             variant: 'destructive',
-            title: 'Error',
+            title: 'Error al Procesar la Venta',
             description: error.message,
         });
     } finally {
@@ -458,7 +463,7 @@ export default function NewSalePage() {
                                                 <p className='font-semibold'>{selectedCustomer.name}</p>
                                                 <p className='text-sm text-muted-foreground'>{selectedCustomer.idNumber}</p>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={() => setSelectedCustomer(null)}>Cambiar</Button>
+                                            <Button variant="outline" size="sm" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', ''); }}>Cambiar</Button>
                                         </div>
                                         {selectedCustomer.phone && <p className='text-sm'><span className='font-medium'>Teléfono:</span> {selectedCustomer.phone}</p>}
                                     </div>
@@ -600,5 +605,3 @@ export default function NewSalePage() {
     </div>
   );
 }
-
-    

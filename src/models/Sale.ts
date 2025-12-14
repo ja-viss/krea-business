@@ -17,7 +17,6 @@ export interface ISale extends Document {
   invoiceNumber: number;
   customer?: Types.ObjectId | ICustomer;
   customerName: string;
-  customerEmail: string; 
   subtotals: {
     exempt: number;
     general: number;
@@ -30,6 +29,7 @@ export interface ISale extends Document {
   totalAmount: number; // Monto total (subtotal + iva) en VES
   items: ISaleItem[];
   paymentMethod: 'Efectivo' | 'Tarjeta' | 'Transferencia' | 'Pago Móvil';
+  paymentReference?: string;
   status: 'Pagado' | 'Pendiente' | 'Atrasado' | 'Anulado';
   createdAt: Date;
   updatedAt: Date;
@@ -52,7 +52,6 @@ const SaleSchema: Schema = new Schema({
   invoiceNumber: { type: Number, required: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
-  customerEmail: { type: String, required: true, default: 'n/a' },
   subtotals: {
     exempt: { type: Number, default: 0 },
     general: { type: Number, default: 0 },
@@ -65,6 +64,7 @@ const SaleSchema: Schema = new Schema({
   totalAmount: { type: Number, required: true },
   items: [SaleItemSchema],
   paymentMethod: { type: String, enum: ['Efectivo', 'Tarjeta', 'Transferencia', 'Pago Móvil'], required: true },
+  paymentReference: { type: String },
   status: { type: String, enum: ['Pagado', 'Pendiente', 'Atrasado', 'Anulado'], required: true, default: 'Pagado' },
 }, {
   timestamps: true
