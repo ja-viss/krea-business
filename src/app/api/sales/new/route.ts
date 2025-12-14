@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
 
     const { storeId, customerId, customerName, items, paymentMethod, paymentReference } = body;
 
+    // Manual validations
     if (!storeId) {
       throw new Error("El ID de la tienda es obligatorio.");
     }
@@ -28,30 +29,7 @@ export async function POST(req: NextRequest) {
      if (!paymentMethod) {
       throw new Error("El método de pago es obligatorio.");
     }
-
-    const subtotals = { exempt: 0, general: 0, reduced: 0 };
-
-    for (const item of items) {
-        if (typeof item.price !== 'number' || typeof item.quantity !== 'number' || typeof item.taxRate !== 'number') {
-            throw new Error(`El artículo '${item.name}' contiene datos inválidos.`);
-        }
-        const itemTotal = item.price * item.quantity;
-        if (item.taxRate === 0) {
-            subtotals.exempt += itemTotal;
-        } else if (item.taxRate === 0.08) {
-            subtotals.reduced += itemTotal;
-        } else {
-            subtotals.general += itemTotal;
-        }
-    }
-
-    const taxDetails = {
-        general: subtotals.general * 0.16,
-        reduced: subtotals.reduced * 0.08
-    };
-
-    const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
-
+    
     // 1. Get the next invoice number atomically within the transaction
     const counter = await SaleCounterModel.findOneAndUpdate(
         { store: storeId },
@@ -72,10 +50,11 @@ export async function POST(req: NextRequest) {
       }
 
       const newStock = product.stock - item.quantity;
-      let newStatus: 'En Stock' | 'Stock Bajo' | 'Sin Stock' = 'En Stock';
+      let newStatus: 'En Stock' | 'Stock Bajo' | 'Sin Stock' = product.status;
+      
       if (newStock <= 0) {
         newStatus = 'Sin Stock';
-      } else if (newStock <= product.minStock) {
+      } else if (newStock > 0 && newStock <= product.minStock) {
         newStatus = 'Stock Bajo';
       }
 
@@ -91,15 +70,33 @@ export async function POST(req: NextRequest) {
     
     const finalStatus = (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta') ? 'Pagado' : 'Pendiente';
 
+    // SERVER-SIDE CALCULATION
+    const subtotals = { exempt: 0, general: 0, reduced: 0 };
+    for (const item of items) {
+        const itemTotal = item.price * item.quantity;
+        if (item.taxRate === 0) {
+            subtotals.exempt += itemTotal;
+        } else if (item.taxRate === 0.08) {
+            subtotals.reduced += itemTotal;
+        } else {
+            subtotals.general += itemTotal;
+        }
+    }
+    const taxDetails = {
+        general: subtotals.general * 0.16,
+        reduced: subtotals.reduced * 0.08
+    };
+    const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
+
     // 3. Create the sale with the new invoice number
     const newSale = new SaleModel({
       store: storeId,
       invoiceNumber: newInvoiceNumber,
       customer: customerId,
       customerName: customerName,
-      subtotals: subtotals,
-      taxDetails: taxDetails,
-      totalAmount: totalAmount,
+      subtotals,
+      taxDetails,
+      totalAmount,
       items: items.map((i: any) => ({ 
           product: i.productId, 
           quantity: i.quantity, 
