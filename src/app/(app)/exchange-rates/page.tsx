@@ -32,6 +32,10 @@ interface HistoricalRate {
     eur: number;
 }
 
+interface HistoricalResponse {
+    rates: HistoricalRate[];
+}
+
 interface ProcessedHistoricalRate extends HistoricalRate {
     variation: number;
 }
@@ -59,12 +63,12 @@ export default function ExchangeRatesPage() {
         }
 
         const currentData: ApiResponse = await currentRes.json();
-        const historicalData: HistoricalRate[] = await historicalRes.json();
+        const historicalData: HistoricalResponse = await historicalRes.json();
 
         setCurrentRate(currentData.current);
         
         // Procesar datos históricos para calcular la variación
-        const processedData = historicalData
+        const processedData = historicalData.rates
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Ordenar de más reciente a más antiguo
           .map((rate, index, array) => {
             const previousDayRate = array[index + 1];
