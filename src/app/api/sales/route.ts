@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     }
     
     let query: any = { store: storeId };
+    let queryBuilder;
 
     // Filtering for Kardex Report
     const productId = req.nextUrl.searchParams.get('productId');
@@ -29,9 +30,13 @@ export async function GET(req: NextRequest) {
         end.setHours(23, 59, 59, 999);
 
         query.createdAt = { $gte: start, $lte: end };
+
+        queryBuilder = SaleModel.find(query).sort({ createdAt: -1 }).populate('items.product');
+    } else {
+        queryBuilder = SaleModel.find(query).sort({ createdAt: -1 });
     }
 
-    const sales = await SaleModel.find(query).sort({ createdAt: -1 }).populate('items.product');
+    const sales = await queryBuilder.exec();
 
     return NextResponse.json(sales, { status: 200 });
 
