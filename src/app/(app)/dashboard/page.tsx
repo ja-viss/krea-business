@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -59,9 +60,9 @@ export default function DashboardPage() {
   }, []);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('es-VE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'VES',
     }).format(value);
   };
   

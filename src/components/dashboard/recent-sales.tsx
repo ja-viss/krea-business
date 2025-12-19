@@ -1,3 +1,4 @@
+
 import {
   Card,
   CardContent,
@@ -66,9 +67,9 @@ export function RecentSales({ data = [] }: RecentSalesProps) {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  {new Intl.NumberFormat('en-US', {
+                  {new Intl.NumberFormat('es-VE', {
                     style: 'currency',
-                    currency: 'USD',
+                    currency: 'VES',
                   }).format(sale.totalAmount)}
                 </TableCell>
               </TableRow>
