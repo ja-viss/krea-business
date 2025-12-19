@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle } from 'lucide-react';
@@ -23,9 +24,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ISale } from '@/models/Sale';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function BillingPage() {
+    const router = useRouter();
+    const { toast } = useToast();
     const [invoices, setInvoices] = useState<ISale[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -52,6 +56,20 @@ export default function BillingPage() {
         };
         fetchInvoices();
     }, []);
+
+    const handleAction = (action: 'view' | 'pdf' | 'email', invoiceId: string) => {
+        switch (action) {
+            case 'view':
+                router.push(`/sales/${invoiceId}/invoice`);
+                break;
+            case 'pdf':
+                toast({ title: "Próximamente", description: "La descarga de PDF estará disponible pronto." });
+                break;
+            case 'email':
+                toast({ title: "Próximamente", description: "El envío por correo estará disponible pronto." });
+                break;
+        }
+    };
 
     const formatDate = (dateString: string) => {
         if (!dateString) return 'N/A';
@@ -123,7 +141,7 @@ export default function BillingPage() {
                 invoices.map((invoice) => (
                   <TableRow key={invoice._id}>
                     <TableCell className="font-medium">
-                      INV{String(invoice._id).slice(-4)}
+                      INV{String(invoice.invoiceNumber).padStart(6, '0')}
                     </TableCell>
                     <TableCell>{invoice.customerName}</TableCell>
                     <TableCell>{formatDate(String(invoice.createdAt))}</TableCell>
@@ -151,9 +169,9 @@ export default function BillingPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver</DropdownMenuItem>
-                          <DropdownMenuItem>Descargar PDF</DropdownMenuItem>
-                          <DropdownMenuItem>Enviar por correo</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleAction('view', invoice._id)}>Ver</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleAction('pdf', invoice._id)}>Descargar PDF</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleAction('email', invoice._id)}>Enviar por correo</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
