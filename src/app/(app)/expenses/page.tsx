@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle } from 'lucide-react';
@@ -79,9 +80,11 @@ export default function ExpensesPage() {
                 <FileDown />
                 Exportar
               </Button>
-              <Button>
-                <PlusCircle />
-                Añadir Gasto
+              <Button asChild>
+                <Link href="/expenses/new">
+                  <PlusCircle />
+                  Añadir Gasto
+                </Link>
               </Button>
             </>
           }
