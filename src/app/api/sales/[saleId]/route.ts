@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { saleId: stri
         return NextResponse.json({ message: 'ID de venta inválido.' }, { status: 400 });
     }
 
-    const sale = await SaleModel.findById(saleId).populate('customer').populate('items.product');
+    const sale = await SaleModel.findById(saleId).populate('customer');
 
     if (!sale) {
       return NextResponse.json({ message: 'Venta no encontrada.' }, { status: 404 });

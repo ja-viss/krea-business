@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ISale } from '@/models/Sale';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 
 export default function BillingPage() {
@@ -99,9 +100,11 @@ export default function BillingPage() {
                 <FileDown />
                 Exportar Todo
               </Button>
-              <Button>
-                <PlusCircle />
-                Crear Factura
+              <Button asChild>
+                <Link href="/sales/new">
+                    <PlusCircle />
+                    Crear Factura
+                </Link>
               </Button>
             </>
           }

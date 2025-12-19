@@ -56,12 +56,20 @@ export default function InvoicePage() {
 
     const formatShortDate = (dateString: string) => {
         if (!dateString) return 'N/A';
-        return format(parseISO(dateString), "dd / MM / yyyy");
+        try {
+            return format(parseISO(dateString), "dd / MM / yyyy");
+        } catch (e) {
+            return "Fecha inválida";
+        }
     };
 
     const formatTime = (dateString: string) => {
         if (!dateString) return 'N/A';
-        return format(parseISO(dateString), "hh:mm:ss a");
+        try {
+            return format(parseISO(dateString), "hh:mm:ss a");
+        } catch(e) {
+            return "Hora inválida";
+        }
     };
 
     const getTaxCondition = (rate: number): string => {
@@ -86,9 +94,9 @@ export default function InvoicePage() {
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
                 <Button variant="outline" asChild>
-                    <Link href="/sales">
+                    <Link href="/billing">
                         <ArrowLeft />
-                        Volver a Ventas
+                        Volver a Facturación
                     </Link>
                 </Button>
             </main>
@@ -107,9 +115,9 @@ export default function InvoicePage() {
             <div className="w-full max-w-4xl space-y-4 print:space-y-2">
                  <div className="flex justify-between items-center gap-4 print:hidden">
                     <Button variant="outline" asChild>
-                        <Link href="/sales">
+                        <Link href="/billing">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver a Ventas
+                            Volver a Facturación
                         </Link>
                     </Button>
                     <Button onClick={() => window.print()}>
