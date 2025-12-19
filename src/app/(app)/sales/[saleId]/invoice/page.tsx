@@ -8,14 +8,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Printer, ArrowLeft } from 'lucide-react';
-import { ISale, ISalePopulated } from '@/models/Sale';
+import { ISalePopulated } from '@/models/Sale';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { InvoiceCodes } from '@/components/sales/invoice-codes';
 
 export default function InvoicePage() {
     const params = useParams();
@@ -233,8 +232,6 @@ export default function InvoicePage() {
 
                     <Separator className="my-4" />
                      
-                    <InvoiceCodes sale={sale} />
-                    
                     <footer className="mt-4 text-center text-xs text-muted-foreground print:mt-2">
                         <p className='font-bold'>TOTAL A PAGAR: {formatCurrency(totalInUSD, 'USD')} ó {formatCurrency(sale.totalAmount, 'VES')} (según el método de pago).</p>
                         <p className='italic mt-2'>ESTA FACTURA NO ES VÁLIDA SIN LA INSCRIPCIÓN DE LAS CIFRAS EN EL DISPOSITIVO DE SEGURIDAD. VA SIN TACHADURAS NI ENMIENDAS.</p>
