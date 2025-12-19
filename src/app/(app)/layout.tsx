@@ -20,6 +20,8 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { SideNav } from '@/components/side-nav';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 interface User {
   id: string;
@@ -104,8 +106,12 @@ const UserMenu = ({ user }: { user: User | null }) => {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    // This effect runs only on the client, after the initial render.
+    setIsClient(true);
+
     const storedUser = {
         id: localStorage.getItem('userId'),
         name: localStorage.getItem('userName'),
@@ -125,8 +131,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <DesktopSidebar />
         <div className="flex-1 flex flex-col">
             <header className="flex h-16 items-center justify-between gap-4 border-b bg-card px-4 lg:justify-end">
-                <MobileSidebar />
-                <UserMenu user={user} />
+                {isClient ? <MobileSidebar /> : <Skeleton className="h-8 w-8 lg:hidden" />}
+                {isClient ? <UserMenu user={user} /> : <Skeleton className="h-8 w-8 rounded-full" />}
             </header>
             <main className="flex-1">{children}</main>
         </div>
