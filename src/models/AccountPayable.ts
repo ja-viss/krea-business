@@ -1,3 +1,4 @@
+
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { IStore } from './Store';
 
@@ -20,6 +21,8 @@ const AccountPayableSchema: Schema = new Schema({
 }, {
   timestamps: true
 });
+
+AccountPayableSchema.index({ store: 1, status: 1 });
 
 const AccountPayableModel = (mongoose.models.AccountPayable || mongoose.model<IAccountPayable>('AccountPayable', AccountPayableSchema)) as mongoose.Model<IAccountPayable>;
 

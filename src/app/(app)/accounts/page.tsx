@@ -19,18 +19,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { IAccountPayable } from '@/models/AccountPayable';
 import { IAccountReceivable } from '@/models/AccountReceivable';
+import { NewTransactionDialog } from '@/components/accounts/new-transaction-dialog';
 
 export default function AccountsPage() {
   const [receivable, setReceivable] = useState<IAccountReceivable[]>([]);
   const [payable, setPayable] = useState<IAccountPayable[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
+  const fetchData = async () => {
       try {
         setLoading(true);
-        // En una app real, el storeId vendría de la sesión del usuario
         const storeId = localStorage.getItem('storeId');
         if (!storeId) {
             throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
@@ -57,8 +57,14 @@ export default function AccountsPage() {
         setLoading(false);
       }
     }
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  const handleTransactionAdded = () => {
+    fetchData(); // Re-fetch data after a new transaction is added
+  }
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -83,12 +89,19 @@ export default function AccountsPage() {
           title="Cuentas"
           description="Gestiona tus cuentas por cobrar y pagar."
           actions={
-            <Button>
+            <Button onClick={() => setIsModalOpen(true)}>
               <PlusCircle />
               Nueva Transacción
             </Button>
           }
         />
+        
+        <NewTransactionDialog 
+            isOpen={isModalOpen}
+            onOpenChange={setIsModalOpen}
+            onTransactionAdded={handleTransactionAdded}
+        />
+
         {error && (
             <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
