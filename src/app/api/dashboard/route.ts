@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     // KPI: Total Sales
     const totalSalesData = await SaleModel.aggregate([
       { $match: { store: storeId, status: 'Pagado' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
     const totalSales = totalSalesData[0]?.total || 0;
     
@@ -29,13 +29,13 @@ export async function GET(req: NextRequest) {
 
     const lastMonthSalesData = await SaleModel.aggregate([
         { $match: { store: storeId, status: 'Pagado', createdAt: { $gte: oneMonthAgo } } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
     const lastMonthSales = lastMonthSalesData[0]?.total || 0;
 
     const previousMonthSalesData = await SaleModel.aggregate([
         { $match: { store: storeId, status: 'Pagado', createdAt: { $gte: twoMonthsAgo, $lt: oneMonthAgo } } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
     const previousMonthSales = previousMonthSalesData[0]?.total || 0;
 
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     const recentSales = await SaleModel.find({ store: storeId })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('customerName customerEmail amount');
+      .select('customerName customerEmail totalAmount');
 
     // Monthly Profit Chart
     const monthlyProfit: { month: string, profit: number }[] = [];
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
         const salesInMonth = await SaleModel.aggregate([
             { $match: { store: storeId, status: 'Pagado', createdAt: { $gte: start, $lte: end }}},
-            { $group: { _id: null, total: { $sum: '$amount' } } }
+            { $group: { _id: null, total: { $sum: '$totalAmount' } } }
         ]);
 
         const expensesInMonth = await ExpenseModel.aggregate([

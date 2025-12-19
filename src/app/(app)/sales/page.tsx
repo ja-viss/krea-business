@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -142,7 +141,7 @@ export default function SalesPage() {
                         {sale.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{formatCurrency(sale.amount)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(sale.totalAmount)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

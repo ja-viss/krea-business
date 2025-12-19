@@ -23,7 +23,7 @@ interface DashboardData {
     _id: string;
     customerName: string;
     customerEmail: string;
-    amount: number;
+    totalAmount: number;
   }[];
   monthlyProfit: { month: string; profit: number }[];
   expenseDistribution: { name: string; value: number; fill: string }[];

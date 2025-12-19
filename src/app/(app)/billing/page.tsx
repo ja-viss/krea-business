@@ -140,7 +140,7 @@ export default function BillingPage() {
                         {invoice.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{formatCurrency(invoice.amount)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(invoice.totalAmount)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

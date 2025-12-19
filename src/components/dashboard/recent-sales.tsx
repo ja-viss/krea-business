@@ -20,7 +20,7 @@ interface RecentSalesProps {
     _id: string;
     customerName: string;
     customerEmail: string;
-    amount: number;
+    totalAmount: number;
   }[];
 }
 
@@ -69,7 +69,7 @@ export function RecentSales({ data = [] }: RecentSalesProps) {
                   {new Intl.NumberFormat('en-US', {
                     style: 'currency',
                     currency: 'USD',
-                  }).format(sale.amount)}
+                  }).format(sale.totalAmount)}
                 </TableCell>
               </TableRow>
             ))}
