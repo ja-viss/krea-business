@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle } from 'lucide-react';
@@ -19,39 +20,93 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ISale } from '@/models/Sale';
 import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 export default function SalesPage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [sales, setSales] = useState<ISale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saleToDelete, setSaleToDelete] = useState<ISale | null>(null);
 
-  useEffect(() => {
-    const fetchSales = async () => {
-      try {
-        setLoading(true);
-        const storeId = localStorage.getItem('storeId');
-        if (!storeId) {
-            throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
-        }
-        const response = await fetch(`/api/sales?storeId=${storeId}`);
-        if (!response.ok) {
-          throw new Error('No se pudieron obtener las ventas.');
-        }
-        const data = await response.json();
-        setSales(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  const fetchSales = async () => {
+    try {
+      setLoading(true);
+      const storeId = localStorage.getItem('storeId');
+      if (!storeId) {
+          throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
       }
-    };
+      const response = await fetch(`/api/sales?storeId=${storeId}`);
+      if (!response.ok) {
+        throw new Error('No se pudieron obtener las ventas.');
+      }
+      const data = await response.json();
+      setSales(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchSales();
   }, []);
+
+  const handleDeleteSale = async () => {
+    if (!saleToDelete) return;
+    try {
+      const response = await fetch(`/api/sales/${saleToDelete._id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar la venta.');
+      }
+
+      toast({
+        title: 'Venta Eliminada',
+        description: `La venta con factura Nº ${saleToDelete.invoiceNumber} ha sido eliminada y el stock ha sido restaurado.`,
+      });
+      
+      fetchSales(); // Re-fetch sales to update the list
+
+    } catch (err: any) {
+       toast({
+        variant: 'destructive',
+        title: 'Error al Eliminar',
+        description: err.message,
+      });
+    } finally {
+        setSaleToDelete(null);
+    }
+  };
+
+  const handleEdit = (saleId: string) => {
+    // router.push(`/sales/${saleId}/edit`);
+    toast({
+      title: "Función no implementada",
+      description: "La edición de ventas estará disponible próximamente."
+    })
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-ES', {
@@ -125,7 +180,7 @@ export default function SalesPage() {
               ) : sales.length > 0 ? (
                 sales.map((sale) => (
                   <TableRow key={sale._id}>
-                    <TableCell className="font-medium">INV{String(sale._id).slice(-4)}</TableCell>
+                    <TableCell className="font-medium">Nº {String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
                     <TableCell>{formatDate(String(sale.createdAt))}</TableCell>
                     <TableCell>
@@ -152,9 +207,16 @@ export default function SalesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem onSelect={() => router.push(`/sales/${sale._id}/invoice`)}>
+                            Ver detalles
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleEdit(sale._id)}>
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onSelect={() => setSaleToDelete(sale)}>
                             Eliminar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -172,6 +234,22 @@ export default function SalesPage() {
             </TableBody>
           </Table>
         </div>
+        
+        <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro de que quieres eliminar esta venta?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Esta acción no se puede deshacer. Se eliminará la factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} y el stock de los productos asociados será restaurado.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setSaleToDelete(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteSale}>Eliminar Venta</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </main>
     </div>
   );
