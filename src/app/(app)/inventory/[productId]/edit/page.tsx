@@ -82,8 +82,8 @@ export default function EditProductPage() {
       category: '',
       stock: 0,
       minStock: 0,
-      cost: 0,
-      price: 0,
+      cost: undefined,
+      price: undefined,
       taxRate: 0.16,
       location: '',
       imageUrl: '',
@@ -428,7 +428,7 @@ export default function EditProductPage() {
                         <FormItem>
                           <FormLabel>Costo Unitario (VES)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" {...field} />
+                            <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
                           </FormControl>
                            <FormMessage />
                         </FormItem>
@@ -441,7 +441,7 @@ export default function EditProductPage() {
                         <FormItem>
                           <FormLabel>Precio de Venta (VES)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" {...field} />
+                            <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
                           </FormControl>
                            <FormMessage />
                         </FormItem>
