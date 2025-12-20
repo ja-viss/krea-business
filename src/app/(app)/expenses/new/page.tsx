@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, ChevronLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const expenseSchema = z.object({
   description: z.string().min(3, 'La descripción debe tener al menos 3 caracteres.'),
@@ -53,10 +54,40 @@ const expenseSchema = z.object({
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
+function FormSkeleton() {
+    return (
+        <div className="space-y-8">
+            <div className='space-y-2'>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-20 w-full" />
+            </div>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-8'>
+                 <div className='space-y-2'>
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+                 <div className='space-y-2'>
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            </div>
+             <div className='space-y-2'>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-[240px]" />
+            </div>
+        </div>
+    )
+}
+
 export default function NewExpensePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -64,6 +95,7 @@ export default function NewExpensePage() {
       description: '',
       category: 'Servicios',
       date: new Date(),
+      amount: undefined,
     },
   });
 
@@ -127,115 +159,117 @@ export default function NewExpensePage() {
                     </CardDescription>
                   </CardHeader>
                 <CardContent>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                             <FormField
-                                control={form.control}
-                                name="description"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Descripción</FormLabel>
-                                    <FormControl>
-                                        <Textarea
-                                        placeholder="Ej: Pago de servicio de internet de Enero"
-                                        {...field}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <div className='grid grid-cols-1 sm:grid-cols-2 gap-8'>
+                    {!isClient ? <FormSkeleton /> : (
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                                 <FormField
                                     control={form.control}
-                                    name="amount"
+                                    name="description"
                                     render={({ field }) => (
                                         <FormItem>
-                                        <FormLabel>Monto (VES)</FormLabel>
+                                        <FormLabel>Descripción</FormLabel>
                                         <FormControl>
-                                            <Input type="number" step="0.01" {...field} />
+                                            <Textarea
+                                            placeholder="Ej: Pago de servicio de internet de Enero"
+                                            {...field}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                <div className='grid grid-cols-1 sm:grid-cols-2 gap-8'>
+                                    <FormField
+                                        control={form.control}
+                                        name="amount"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Monto (VES)</FormLabel>
+                                            <FormControl>
+                                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="category"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Categoría</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Selecciona una categoría" />
+                                                        </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="Servicios">Servicios (Agua, Luz, etc.)</SelectItem>
+                                                            <SelectItem value="Nómina">Nómina</SelectItem>
+                                                            <SelectItem value="Alquiler">Alquiler</SelectItem>
+                                                            <SelectItem value="Impuestos">Impuestos</SelectItem>
+                                                            <SelectItem value="Marketing">Marketing</SelectItem>
+                                                            <SelectItem value="Otro">Otro</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                                 <FormField
                                     control={form.control}
-                                    name="category"
+                                    name="date"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Categoría</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Selecciona una categoría" />
-                                                    </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="Servicios">Servicios (Agua, Luz, etc.)</SelectItem>
-                                                        <SelectItem value="Nómina">Nómina</SelectItem>
-                                                        <SelectItem value="Alquiler">Alquiler</SelectItem>
-                                                        <SelectItem value="Impuestos">Impuestos</SelectItem>
-                                                        <SelectItem value="Marketing">Marketing</SelectItem>
-                                                        <SelectItem value="Otro">Otro</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            <FormMessage />
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Fecha del Gasto</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-[240px] pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                )}
+                                                >
+                                                {field.value ? (
+                                                    format(field.value, "PPP", { locale: es })
+                                                ) : (
+                                                    <span>Selecciona una fecha</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                disabled={(date) =>
+                                                date > new Date() || date < new Date("1900-01-01")
+                                                }
+                                                initialFocus
+                                            />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-                            <FormField
-                                control={form.control}
-                                name="date"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                    <FormLabel>Fecha del Gasto</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-[240px] pl-3 text-left font-normal",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                            >
-                                            {field.value ? (
-                                                format(field.value, "PPP", { locale: es })
-                                            ) : (
-                                                <span>Selecciona una fecha</span>
-                                            )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            disabled={(date) =>
-                                            date > new Date() || date < new Date("1900-01-01")
-                                            }
-                                            initialFocus
-                                        />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
 
-                             <div className="flex justify-end gap-2 pt-4">
-                                <Button type="button" variant="outline" onClick={() => router.push('/expenses')}>Cancelar</Button>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {isSubmitting ? 'Guardando...' : 'Guardar Gasto'}
-                                </Button>
-                            </div>
-                        </form>
-                    </Form>
+                                <div className="flex justify-end gap-2 pt-4">
+                                    <Button type="button" variant="outline" onClick={() => router.push('/expenses')}>Cancelar</Button>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {isSubmitting ? 'Guardando...' : 'Guardar Gasto'}
+                                    </Button>
+                                </div>
+                            </form>
+                        </Form>
+                    )}
                 </CardContent>
             </Card>
         </div>

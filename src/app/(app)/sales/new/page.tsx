@@ -42,6 +42,7 @@ import { CustomerSearch } from '@/components/sales/customer-search';
 import { ICustomer } from '@/models/Customer';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const saleSchema = z.object({
@@ -80,6 +81,12 @@ export default function NewSalePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
   const { rates, loading: ratesLoading } = useExchangeRates();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   const form = useForm<SaleFormValues>({
     resolver: zodResolver(saleSchema),
@@ -363,248 +370,250 @@ export default function NewSalePage() {
             </div>
         </div>
 
-         <Form {...form}>
-            <form id="sale-form" onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 mt-6">
-                    {/* Columna Izquierda (Productos y Tabla) */}
-                    <div className="lg:col-span-3 space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Buscar Productos</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <ProductSearch onProductSelect={handleProductSelect} />
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Artículos de la Venta</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Producto</TableHead>
-                                            <TableHead className="text-right">P. Unit (VES)</TableHead>
-                                            <TableHead className="text-center w-[150px]">Cantidad</TableHead>
-                                            <TableHead className="text-right">Subtotal (VES)</TableHead>
-                                            <TableHead className="w-[50px]"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {fields.length > 0 ? (
-                                            fields.map((item, index) => (
-                                                <TableRow key={item.id}>
-                                                    <TableCell>{item.name}</TableCell>
-                                                    <TableCell className="text-right">{formatCurrency(item.price, 'VES')}</TableCell>
-                                                    <TableCell>
-                                                      <div className='flex items-center justify-center gap-1'>
-                                                        <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleDecreaseQuantity(index)} disabled={item.quantity <= 1}>
-                                                          <Minus className='h-4 w-4'/>
-                                                        </Button>
-                                                        <Input
-                                                            type="number"
-                                                            className="text-center h-8 w-14"
-                                                            value={item.quantity}
-                                                            onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
-                                                            onKeyDown={(e) => handleQuantityKeyDown(e, index)}
-                                                            max={item.stock}
-                                                            min={1}
-                                                        />
-                                                         <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleIncreaseQuantity(index)} disabled={item.quantity >= item.stock}>
-                                                          <Plus className='h-4 w-4'/>
-                                                        </Button>
-                                                      </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-medium">{formatCurrency(item.price * item.quantity, 'VES')}</TableCell>
-                                                    <TableCell>
-                                                        <Button variant="ghost" size="icon" onClick={() => remove(index)}>
-                                                            <Trash2 className="h-4 w-4 text-red-500" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={5} className="h-24 text-center">
-                                                    Añade productos para comenzar la venta.
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
+        {!isClient ? <Skeleton className="h-96 w-full" /> : (
+            <Form {...form}>
+              <form id="sale-form" onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+                  <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 mt-6">
+                      {/* Columna Izquierda (Productos y Tabla) */}
+                      <div className="lg:col-span-3 space-y-6">
+                          <Card>
+                              <CardHeader>
+                                  <CardTitle>Buscar Productos</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                  <ProductSearch onProductSelect={handleProductSelect} />
+                              </CardContent>
+                          </Card>
+                          <Card>
+                              <CardHeader>
+                                  <CardTitle>Artículos de la Venta</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                  <Table>
+                                      <TableHeader>
+                                          <TableRow>
+                                              <TableHead>Producto</TableHead>
+                                              <TableHead className="text-right">P. Unit (VES)</TableHead>
+                                              <TableHead className="text-center w-[150px]">Cantidad</TableHead>
+                                              <TableHead className="text-right">Subtotal (VES)</TableHead>
+                                              <TableHead className="w-[50px]"></TableHead>
+                                          </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                          {fields.length > 0 ? (
+                                              fields.map((item, index) => (
+                                                  <TableRow key={item.id}>
+                                                      <TableCell>{item.name}</TableCell>
+                                                      <TableCell className="text-right">{formatCurrency(item.price, 'VES')}</TableCell>
+                                                      <TableCell>
+                                                        <div className='flex items-center justify-center gap-1'>
+                                                          <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleDecreaseQuantity(index)} disabled={item.quantity <= 1}>
+                                                            <Minus className='h-4 w-4'/>
+                                                          </Button>
+                                                          <Input
+                                                              type="number"
+                                                              className="text-center h-8 w-14"
+                                                              value={item.quantity}
+                                                              onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
+                                                              onKeyDown={(e) => handleQuantityKeyDown(e, index)}
+                                                              max={item.stock}
+                                                              min={1}
+                                                          />
+                                                          <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleIncreaseQuantity(index)} disabled={item.quantity >= item.stock}>
+                                                            <Plus className='h-4 w-4'/>
+                                                          </Button>
+                                                        </div>
+                                                      </TableCell>
+                                                      <TableCell className="text-right font-medium">{formatCurrency(item.price * item.quantity, 'VES')}</TableCell>
+                                                      <TableCell>
+                                                          <Button variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                              <Trash2 className="h-4 w-4 text-red-500" />
+                                                          </Button>
+                                                      </TableCell>
+                                                  </TableRow>
+                                              ))
+                                          ) : (
+                                              <TableRow>
+                                                  <TableCell colSpan={5} className="h-24 text-center">
+                                                      Añade productos para comenzar la venta.
+                                                  </TableCell>
+                                              </TableRow>
+                                          )}
+                                      </TableBody>
+                                  </Table>
+                              </CardContent>
+                          </Card>
+                      </div>
 
-                    {/* Columna Derecha (Cliente y Pago) */}
-                    <div className="lg:col-span-2 space-y-6">
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Cliente</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                { !selectedCustomer ? (
-                                    <>
-                                        <CustomerSearch onCustomerSelect={handleCustomerSelect} />
-                                        <FormField
-                                            control={form.control}
-                                            name="customerName"
-                                            render={({ field }) => (
-                                                <FormItem className='mt-2'>
-                                                    <FormControl>
-                                                        <Input {...field} readOnly className="hidden"/>
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </>
-                                ) : (
-                                    <div className='border rounded-lg p-4 space-y-2 bg-muted/50'>
-                                        <div className='flex justify-between items-start'>
-                                            <div>
-                                                <p className='font-semibold'>{selectedCustomer.name}</p>
-                                                <p className='text-sm text-muted-foreground'>{selectedCustomer.idNumber}</p>
-                                            </div>
-                                            <Button variant="outline" size="sm" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', '', { shouldValidate: true }); }}>Cambiar</Button>
-                                        </div>
-                                        {selectedCustomer.phone && <p className='text-sm'><span className='font-medium'>Teléfono:</span> {selectedCustomer.phone}</p>}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                        <Card>
-                             <CardHeader>
-                                <CardTitle>Información de Pago</CardTitle>
-                                <CardDescription>Selecciona el método y registra los detalles del pago.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="paymentMethod"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Método de Pago</FormLabel>
-                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Seleccione un método" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="Efectivo">Efectivo</SelectItem>
-                                                    <SelectItem value="Tarjeta">Tarjeta</SelectItem>
-                                                    <SelectItem value="Transferencia">Transferencia</SelectItem>
-                                                    <SelectItem value="Pago Móvil">Pago Móvil</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                {(watchPaymentMethod === 'Transferencia' || watchPaymentMethod === 'Pago Móvil') && (
-                                     <FormField
-                                        control={form.control}
-                                        name="paymentReference"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Nº de Referencia</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Introduce el número de referencia" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
-                                 {watchPaymentMethod === 'Efectivo' && (
-                                    <>
-                                        <FormField
-                                            control={form.control}
-                                            name="paymentCurrency"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Moneda de Pago</FormLabel>
-                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                        <SelectContent>
-                                                            <SelectItem value="USD">Dólares (USD)</SelectItem>
-                                                            <SelectItem value="VES">Bolívares (VES)</SelectItem>
-                                                            <SelectItem value="COP">Pesos (COP)</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <div className='grid grid-cols-2 gap-4'>
-                                            <FormField
-                                                control={form.control}
-                                                name="amountReceived"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Monto Recibido</FormLabel>
-                                                        <FormControl>
-                                                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormItem>
-                                                <FormLabel>Vuelto</FormLabel>
-                                                <Input
-                                                    type="text"
-                                                    readOnly
-                                                    value={formatCurrency(changeAmount, watchPaymentCurrency || 'USD')}
-                                                    className="font-bold text-lg bg-muted border-none"
-                                                />
-                                            </FormItem>
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                             <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2 text-sm'>
-                                {/* Fiscal Breakdown */}
-                                <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (Exento):</span> <span className='font-medium'>{formatCurrency(subtotalExempt, 'VES')}</span></div>
-                                <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (16%):</span> <span className='font-medium'>{formatCurrency(subtotalGeneral, 'VES')}</span></div>
-                                <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (8%):</span> <span className='font-medium'>{formatCurrency(subtotalReduced, 'VES')}</span></div>
-                                <Separator className='my-1' />
-                                <div className='flex justify-between'><span className='text-muted-foreground'>IVA (16%):</span> <span className='font-medium'>{formatCurrency(taxGeneralAmount, 'VES')}</span></div>
-                                <div className='flex justify-between'><span className='text-muted-foreground'>IVA (8%):</span> <span className='font-medium'>{formatCurrency(taxReducedAmount, 'VES')}</span></div>
-                                <Separator className='my-2 bg-foreground' />
+                      {/* Columna Derecha (Cliente y Pago) */}
+                      <div className="lg:col-span-2 space-y-6">
+                          <Card>
+                              <CardHeader>
+                                  <CardTitle>Cliente</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                  { !selectedCustomer ? (
+                                      <>
+                                          <CustomerSearch onCustomerSelect={handleCustomerSelect} />
+                                          <FormField
+                                              control={form.control}
+                                              name="customerName"
+                                              render={({ field }) => (
+                                                  <FormItem className='mt-2'>
+                                                      <FormControl>
+                                                          <Input {...field} readOnly className="hidden"/>
+                                                      </FormControl>
+                                                      <FormMessage />
+                                                  </FormItem>
+                                              )}
+                                          />
+                                      </>
+                                  ) : (
+                                      <div className='border rounded-lg p-4 space-y-2 bg-muted/50'>
+                                          <div className='flex justify-between items-start'>
+                                              <div>
+                                                  <p className='font-semibold'>{selectedCustomer.name}</p>
+                                                  <p className='text-sm text-muted-foreground'>{selectedCustomer.idNumber}</p>
+                                              </div>
+                                              <Button variant="outline" size="sm" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', '', { shouldValidate: true }); }}>Cambiar</Button>
+                                          </div>
+                                          {selectedCustomer.phone && <p className='text-sm'><span className='font-medium'>Teléfono:</span> {selectedCustomer.phone}</p>}
+                                      </div>
+                                  )}
+                              </CardContent>
+                          </Card>
+                          <Card>
+                              <CardHeader>
+                                  <CardTitle>Información de Pago</CardTitle>
+                                  <CardDescription>Selecciona el método y registra los detalles del pago.</CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                  <FormField
+                                      control={form.control}
+                                      name="paymentMethod"
+                                      render={({ field }) => (
+                                          <FormItem>
+                                              <FormLabel>Método de Pago</FormLabel>
+                                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                  <FormControl>
+                                                      <SelectTrigger>
+                                                          <SelectValue placeholder="Seleccione un método" />
+                                                      </SelectTrigger>
+                                                  </FormControl>
+                                                  <SelectContent>
+                                                      <SelectItem value="Efectivo">Efectivo</SelectItem>
+                                                      <SelectItem value="Tarjeta">Tarjeta</SelectItem>
+                                                      <SelectItem value="Transferencia">Transferencia</SelectItem>
+                                                      <SelectItem value="Pago Móvil">Pago Móvil</SelectItem>
+                                                  </SelectContent>
+                                              </Select>
+                                              <FormMessage />
+                                          </FormItem>
+                                      )}
+                                  />
+                                  {(watchPaymentMethod === 'Transferencia' || watchPaymentMethod === 'Pago Móvil') && (
+                                      <FormField
+                                          control={form.control}
+                                          name="paymentReference"
+                                          render={({ field }) => (
+                                              <FormItem>
+                                                  <FormLabel>Nº de Referencia</FormLabel>
+                                                  <FormControl>
+                                                      <Input placeholder="Introduce el número de referencia" {...field} />
+                                                  </FormControl>
+                                                  <FormMessage />
+                                              </FormItem>
+                                          )}
+                                      />
+                                  )}
+                                  {watchPaymentMethod === 'Efectivo' && (
+                                      <>
+                                          <FormField
+                                              control={form.control}
+                                              name="paymentCurrency"
+                                              render={({ field }) => (
+                                                  <FormItem>
+                                                      <FormLabel>Moneda de Pago</FormLabel>
+                                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                          <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                          <SelectContent>
+                                                              <SelectItem value="USD">Dólares (USD)</SelectItem>
+                                                              <SelectItem value="VES">Bolívares (VES)</SelectItem>
+                                                              <SelectItem value="COP">Pesos (COP)</SelectItem>
+                                                          </SelectContent>
+                                                      </Select>
+                                                  </FormItem>
+                                              )}
+                                          />
+                                          <div className='grid grid-cols-2 gap-4'>
+                                              <FormField
+                                                  control={form.control}
+                                                  name="amountReceived"
+                                                  render={({ field }) => (
+                                                      <FormItem>
+                                                          <FormLabel>Monto Recibido</FormLabel>
+                                                          <FormControl>
+                                                              <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                                                          </FormControl>
+                                                      </FormItem>
+                                                  )}
+                                              />
+                                              <FormItem>
+                                                  <FormLabel>Vuelto</FormLabel>
+                                                  <Input
+                                                      type="text"
+                                                      readOnly
+                                                      value={formatCurrency(changeAmount, watchPaymentCurrency || 'USD')}
+                                                      className="font-bold text-lg bg-muted border-none"
+                                                  />
+                                              </FormItem>
+                                          </div>
+                                      </>
+                                  )}
+                              </CardContent>
+                              <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2 text-sm'>
+                                  {/* Fiscal Breakdown */}
+                                  <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (Exento):</span> <span className='font-medium'>{formatCurrency(subtotalExempt, 'VES')}</span></div>
+                                  <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (16%):</span> <span className='font-medium'>{formatCurrency(subtotalGeneral, 'VES')}</span></div>
+                                  <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (8%):</span> <span className='font-medium'>{formatCurrency(subtotalReduced, 'VES')}</span></div>
+                                  <Separator className='my-1' />
+                                  <div className='flex justify-between'><span className='text-muted-foreground'>IVA (16%):</span> <span className='font-medium'>{formatCurrency(taxGeneralAmount, 'VES')}</span></div>
+                                  <div className='flex justify-between'><span className='text-muted-foreground'>IVA (8%):</span> <span className='font-medium'>{formatCurrency(taxReducedAmount, 'VES')}</span></div>
+                                  <Separator className='my-2 bg-foreground' />
 
-                                {/* Totals */}
-                                <div className='flex justify-between items-center text-lg font-bold text-primary'>
-                                    <span>TOTAL (VES):</span>
-                                    <span>{ratesLoading.usd ? '...' : formatCurrency(totalVES, 'VES')}</span>
-                                </div>
-                                <Separator className='my-1' />
-                                 <div className='flex justify-between items-center text-muted-foreground'>
-                                    <span>Total (USD):</span>
-                                    <span>{ratesLoading.usd ? '...' : formatCurrency(totalUSD, 'USD')}</span>
-                                 </div>
-                                 <div className='flex justify-between items-center text-muted-foreground'>
-                                    <span>Total (COP):</span>
-                                    <span>{ratesLoading.cop ? '...' : formatCurrency(totalCOP, 'COP')}</span>
-                                 </div>
-                            </CardFooter>
-                        </Card>
-                    </div>
-                </div>
-                 <div className="mt-8 flex justify-end">
-                    <Button 
-                        type="submit" 
-                        form="sale-form"
-                        size="lg"
-                        disabled={isSubmitting || watchItems.length === 0}
-                        className="min-w-[200px]"
-                    >
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Procesando...' : 'Completar Venta'}
-                    </Button>
-                </div>
-            </form>
-         </Form>
+                                  {/* Totals */}
+                                  <div className='flex justify-between items-center text-lg font-bold text-primary'>
+                                      <span>TOTAL (VES):</span>
+                                      <span>{ratesLoading.usd ? '...' : formatCurrency(totalVES, 'VES')}</span>
+                                  </div>
+                                  <Separator className='my-1' />
+                                  <div className='flex justify-between items-center text-muted-foreground'>
+                                      <span>Total (USD):</span>
+                                      <span>{ratesLoading.usd ? '...' : formatCurrency(totalUSD, 'USD')}</span>
+                                  </div>
+                                  <div className='flex justify-between items-center text-muted-foreground'>
+                                      <span>Total (COP):</span>
+                                      <span>{ratesLoading.cop ? '...' : formatCurrency(totalCOP, 'COP')}</span>
+                                  </div>
+                              </CardFooter>
+                          </Card>
+                      </div>
+                  </div>
+                  <div className="mt-8 flex justify-end">
+                      <Button 
+                          type="submit" 
+                          form="sale-form"
+                          size="lg"
+                          disabled={isSubmitting || watchItems.length === 0}
+                          className="min-w-[200px]"
+                      >
+                          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {isSubmitting ? 'Procesando...' : 'Completar Venta'}
+                      </Button>
+                  </div>
+              </form>
+            </Form>
+        )}
        </main>
     </div>
   );

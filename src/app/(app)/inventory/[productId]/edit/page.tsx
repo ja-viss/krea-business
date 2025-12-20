@@ -69,6 +69,11 @@ export default function EditProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -231,281 +236,281 @@ export default function EditProductPage() {
             onClose={() => setShowScanner(false)}
           />
         )}
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-              {/* Columna Izquierda */}
-              <div className="space-y-6 lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Información General</CardTitle>
-                    <CardDescription>
-                      Datos básicos del producto.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-6 sm:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem className="sm:col-span-2">
-                          <FormLabel>Nombre del Producto</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Ej: Leche Entera 1L"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="brand"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Marca</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: La Pradera" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="vendor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Proveedor</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: Lácteos Los Andes" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="productType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Producto</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un tipo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Inventariable">
-                                Inventariable
-                              </SelectItem>
-                              <SelectItem value="No Inventariable">
-                                No Inventariable
-                              </SelectItem>
-                              <SelectItem value="Servicio">
-                                Servicio
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Categoría</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: Lácteos" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Códigos y Almacén</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-6 sm:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="barcode"
-                      render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Código de Barras (UPC/EAN)</FormLabel>
-                            <div className="flex gap-2">
-                                <FormControl>
-                                    <Input placeholder="Escanea o ingresa el código" {...field} />
-                                </FormControl>
-                                <Button type="button" variant="outline" size="icon" onClick={() => setShowScanner(true)}>
-                                    <Camera className="h-4 w-4" />
-                                    <span className="sr-only">Escanear</span>
-                                </Button>
-                            </div>
-                            <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="sku"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>SKU (Código Interno)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: LAC-001" {...field} />
-                          </FormControl>
-                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="location"
-                      render={({ field }) => (
-                        <FormItem className="sm:col-span-2">
-                          <FormLabel>Ubicación en Almacén</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: Pasillo 3, Estante B" {...field} />
-                          </FormControl>
-                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Columna Derecha */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Stock y Precios</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-6">
-                     <FormField
-                      control={form.control}
-                      name="stock"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stock Actual</FormLabel>
-                          <FormControl>
-                            <Input type="number" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="minStock"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stock Mínimo (Punto de Reorden)</FormLabel>
-                          <FormControl>
-                            <Input type="number" {...field} />
-                          </FormControl>
-                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="cost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Costo Unitario (VES)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
-                          </FormControl>
-                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Precio de Venta (VES)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
-                          </FormControl>
-                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="taxRate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Impuesto (IVA)</FormLabel>
-                           <Select onValueChange={(value) => field.onChange(parseFloat(value))} defaultValue={String(field.value)}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un impuesto" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="0.16">Gravado (16%)</SelectItem>
-                              <SelectItem value="0.08">Reducido (8%)</SelectItem>
-                              <SelectItem value="0">Exento (0%)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-                 <Card>
+        
+        {!isClient ? <Skeleton className='h-96 w-full' /> : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                {/* Columna Izquierda */}
+                <div className="space-y-6 lg:col-span-2">
+                  <Card>
                     <CardHeader>
-                        <CardTitle>Imagen del Producto</CardTitle>
+                      <CardTitle>Información General</CardTitle>
+                      <CardDescription>
+                        Datos básicos del producto.
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                         <FormField
-                            control={form.control}
-                            name="imageUrl"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>URL de la Imagen</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                            />
+                    <CardContent className="grid gap-6 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel>Nombre del Producto</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Ej: Leche Entera 1L"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="brand"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Marca</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: La Pradera" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="vendor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Proveedor</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Lácteos Los Andes" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="productType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tipo de Producto</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona un tipo" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="Inventariable">
+                                  Inventariable
+                                </SelectItem>
+                                <SelectItem value="No Inventariable">
+                                  No Inventariable
+                                </SelectItem>
+                                <SelectItem value="Servicio">
+                                  Servicio
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Categoría</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Lácteos" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </CardContent>
-                </Card>
-              </div>
-            </div>
+                  </Card>
 
-            <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => router.push('/inventory')}>Cancelar</Button>
-                <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isSubmitting ? 'Guardando Cambios...' : 'Guardar Cambios'}
-                </Button>
-            </div>
-          </form>
-        </Form>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Códigos y Almacén</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="barcode"
+                        render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Código de Barras (UPC/EAN)</FormLabel>
+                              <div className="flex gap-2">
+                                  <FormControl>
+                                      <Input placeholder="Escanea o ingresa el código" {...field} />
+                                  </FormControl>
+                                  <Button type="button" variant="outline" size="icon" onClick={() => setShowScanner(true)}>
+                                      <Camera className="h-4 w-4" />
+                                      <span className="sr-only">Escanear</span>
+                                  </Button>
+                              </div>
+                              <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="sku"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>SKU (Código Interno)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: LAC-001" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="location"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel>Ubicación en Almacén</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Ej: Pasillo 3, Estante B" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Columna Derecha */}
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Stock y Precios</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                      <FormField
+                        control={form.control}
+                        name="stock"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Stock Actual</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="minStock"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Stock Mínimo (Punto de Reorden)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="cost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Costo Unitario (VES)</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Precio de Venta (VES)</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="taxRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Impuesto (IVA)</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(parseFloat(value))} defaultValue={String(field.value)}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona un impuesto" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="0.16">Gravado (16%)</SelectItem>
+                                <SelectItem value="0.08">Reducido (8%)</SelectItem>
+                                <SelectItem value="0">Exento (0%)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                      <CardHeader>
+                          <CardTitle>Imagen del Producto</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <FormField
+                              control={form.control}
+                              name="imageUrl"
+                              render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel>URL de la Imagen</FormLabel>
+                                      <FormControl>
+                                          <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                  </FormItem>
+                              )}
+                              />
+                      </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => router.push('/inventory')}>Cancelar</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isSubmitting ? 'Guardando Cambios...' : 'Guardar Cambios'}
+                  </Button>
+              </div>
+            </form>
+          </Form>
+        )}
       </main>
     </div>
   );
 }
-
-    
