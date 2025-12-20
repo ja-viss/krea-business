@@ -329,7 +329,7 @@ export default function ReportsPage() {
                                     ) : kardexData.length > 0 ? (
                                         kardexData.map((item, index) => (
                                             <TableRow key={index}>
-                                                <TableCell>{format(new Date(`${item.date.split('T')[0]}T00:00:00`), 'dd/MM/yyyy')}</TableCell>
+                                                <TableCell>{format(new Date(`${item.date.split('T')[0]}T00:00:00`), 'dd/MM/yyyy', { locale: es })}</TableCell>
                                                 <TableCell className='font-mono text-xs'>{item.document}</TableCell>
                                                 <TableCell>{item.concept}</TableCell>
                                                 <TableCell className='text-center text-green-600 font-medium'>{item.entry > 0 ? `+${item.entry}` : ''}</TableCell>
