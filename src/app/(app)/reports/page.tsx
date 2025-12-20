@@ -281,6 +281,7 @@ export default function ReportsPage() {
                                             locale={es}
                                             initialFocus
                                             mode="range"
+                                            captionLayout="dropdown-buttons" fromYear={1960} toYear={2030}
                                             defaultMonth={dateRange?.from}
                                             selected={dateRange}
                                             onSelect={setDateRange}
