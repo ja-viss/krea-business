@@ -208,6 +208,7 @@ export function NewTransactionDialog({ isOpen, onOpenChange, onTransactionAdded 
                         <Calendar
                           locale={es}
                           mode="single"
+                          captionLayout="dropdown-buttons" fromYear={1960} toYear={2030}
                           selected={field.value}
                           onSelect={field.onChange}
                           initialFocus

@@ -9,7 +9,10 @@ const expenseSchema = z.object({
   description: z.string().min(3, 'La descripción es obligatoria.'),
   amount: z.number().positive('El monto debe ser positivo.'),
   category: z.string().min(1, 'La categoría es obligatoria.'),
-  date: z.string().datetime('La fecha debe ser una fecha válida.'),
+  date: z.coerce.date({
+    required_error: "La fecha es obligatoria.",
+    invalid_type_error: "Formato de fecha inválido.",
+  }),
 });
 
 export async function POST(req: NextRequest) {
@@ -17,13 +20,7 @@ export async function POST(req: NextRequest) {
     await dbConnect();
     const body = await req.json();
 
-    // Re-parse date string to Date object
-    const parsedBody = {
-      ...body,
-      date: new Date(body.date),
-    };
-
-    const validation = expenseSchema.safeParse(parsedBody);
+    const validation = expenseSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json({ message: 'Datos inválidos.', errors: validation.error.flatten().fieldErrors }, { status: 400 });
