@@ -278,13 +278,13 @@ export default function ReportsPage() {
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0" align="start">
                                         <Calendar
+                                            locale={es}
                                             initialFocus
                                             mode="range"
                                             defaultMonth={dateRange?.from}
                                             selected={dateRange}
                                             onSelect={setDateRange}
                                             numberOfMonths={2}
-                                            locale={es}
                                         />
                                     </PopoverContent>
                                 </Popover>
