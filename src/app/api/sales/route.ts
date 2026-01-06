@@ -16,24 +16,24 @@ export async function GET(req: NextRequest) {
     let query: any = { store: storeId };
     let queryBuilder;
 
-    // Filtering for Kardex Report
+    // Filtering for Kardex Report or Sales Ledger
     const productId = req.nextUrl.searchParams.get('productId');
     const fromDate = req.nextUrl.searchParams.get('from');
     const toDate = req.nextUrl.searchParams.get('to');
 
-    if (productId && fromDate) {
-        query['items.product'] = new mongoose.Types.ObjectId(productId);
-        
+    if (fromDate) { // Common filter for both reports
         const start = new Date(fromDate);
         // Adjust to include the whole day
         const end = toDate ? new Date(toDate) : new Date(fromDate);
         end.setHours(23, 59, 59, 999);
-
         query.createdAt = { $gte: start, $lte: end };
+    }
 
+    if (productId) { // Specific to Kardex
+        query['items.product'] = new mongoose.Types.ObjectId(productId);
         queryBuilder = SaleModel.find(query).sort({ createdAt: -1 }).populate('items.product');
-    } else {
-        queryBuilder = SaleModel.find(query).sort({ createdAt: -1 });
+    } else { // General sales query (for Sales Ledger or default view)
+        queryBuilder = SaleModel.find(query).sort({ createdAt: -1 }).populate('customer', 'idNumber');
     }
 
     const sales = await queryBuilder.exec();

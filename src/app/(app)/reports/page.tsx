@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, MoreVertical, AlertTriangle, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { MonthlyProfitChart } from '@/components/dashboard/monthly-profit-chart';
@@ -17,11 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 
 interface ReportData {
   monthlyProfit: { month: string; profit: number }[];
@@ -43,6 +42,8 @@ export default function ReportsPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // State for Kardex
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date(),
@@ -50,6 +51,13 @@ export default function ReportsPage() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [kardexData, setKardexData] = useState<KardexEntry[]>([]);
   const [loadingKardex, setLoadingKardex] = useState(false);
+
+  // State for Sales Ledger
+  const [salesReportData, setSalesReportData] = useState<ISale[]>([]);
+  const [loadingSalesReport, setLoadingSalesReport] = useState(false);
+  const [reportMonth, setReportMonth] = useState<string>(String(new Date().getMonth()));
+  const [reportYear, setReportYear] = useState<string>(String(new Date().getFullYear()));
+  const years = Array.from({ length: 10 }, (_, i) => String(new Date().getFullYear() - i));
 
 
   useEffect(() => {
@@ -113,31 +121,28 @@ export default function ReportsPage() {
              throw new Error('Producto seleccionado no encontrado.');
         }
 
-        // We can't calculate initial stock without full history, so we'll work backwards from current stock.
-        // This is an approximation. A true Kardex would need opening balances.
         let currentBalance = selectedProduct.stock;
         
         const saleMovements = sales
             .flatMap(sale => 
                 sale.items
-                    .filter(item => String(item.product) === selectedProductId)
-                    .map(item => ({
+                    .filter((item: any) => String(item.product) === selectedProductId)
+                    .map((item: any) => ({
                         date: String(sale.createdAt),
                         document: `FV-${String(sale.invoiceNumber).padStart(8, '0')}`,
                         concept: 'Venta a Cliente',
                         entry: 0,
                         exit: item.quantity,
-                        balance: 0 // Will be calculated later
+                        balance: 0 
                     }))
             )
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-        // Calculate balance backwards
         const finalMovements = saleMovements.map(mov => {
             const movementWithBalance = { ...mov, balance: currentBalance };
-            currentBalance += mov.exit; // Add back the sold quantity
+            currentBalance += mov.exit;
             return movementWithBalance;
-        }).reverse(); // Put back in chronological order
+        }).reverse(); 
 
         setKardexData(finalMovements);
 
@@ -148,6 +153,31 @@ export default function ReportsPage() {
     }
   };
 
+   const handleGenerateSalesReport = async () => {
+    setLoadingSalesReport(true);
+    setError(null);
+    setSalesReportData([]);
+
+    try {
+      const storeId = localStorage.getItem('storeId');
+      const date = new Date(parseInt(reportYear), parseInt(reportMonth));
+      const fromDate = format(startOfMonth(date), 'yyyy-MM-dd');
+      const toDate = format(endOfMonth(date), 'yyyy-MM-dd');
+
+      const response = await fetch(`/api/sales?storeId=${storeId}&from=${fromDate}&to=${toDate}`);
+      if (!response.ok) {
+        throw new Error('No se pudieron obtener los datos de ventas para el libro.');
+      }
+      
+      const sales: ISale[] = await response.json();
+      setSalesReportData(sales);
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoadingSalesReport(false);
+    }
+  };
 
   const getReportComponent = (componentName: string) => {
     if (loading) return <Skeleton className="h-[250px] w-full" />;
@@ -157,7 +187,19 @@ export default function ReportsPage() {
         default: return <div className="flex h-full items-center justify-center text-muted-foreground">Componente no encontrado</div>;
     }
   }
-
+  
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(value);
+  };
+  
+  const salesReportTotals = salesReportData.reduce((acc, sale) => {
+    const taxableBase = (sale.subtotals?.general || 0) + (sale.subtotals?.reduced || 0);
+    const taxAmount = (sale.taxDetails?.general || 0) + (sale.taxDetails?.reduced || 0);
+    acc.totalAmount += sale.totalAmount;
+    acc.taxableBase += taxableBase;
+    acc.taxAmount += taxAmount;
+    return acc;
+  }, { totalAmount: 0, taxableBase: 0, taxAmount: 0 });
 
   return (
     <div className="flex flex-1 flex-col">
@@ -219,13 +261,88 @@ export default function ReportsPage() {
             <TabsContent value="sales">
                  <Card className="mt-6">
                     <CardHeader>
-                        <CardTitle>Reportes de Ventas</CardTitle>
-                        <CardDescription>Análisis detallado de clientes, productos y rendimiento de ventas.</CardDescription>
+                        <CardTitle>Libro de Ventas (SENIAT)</CardTitle>
+                        <CardDescription>Genera el reporte de ventas con formato fiscal para el período que selecciones.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="flex h-[250px] w-full items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
-                            Próximamente: Reportes de ventas avanzados.
+                    <CardContent className='space-y-4'>
+                        <div className='flex flex-col sm:flex-row gap-4 items-center p-4 border rounded-lg bg-muted/50'>
+                             <div className='w-full sm:w-auto'>
+                                <p className='text-sm font-medium mb-2'>Mes</p>
+                                <Select value={reportMonth} onValueChange={setReportMonth}>
+                                    <SelectTrigger className="w-full sm:w-[180px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Array.from({length: 12}).map((_, i) => (
+                                            <SelectItem key={i} value={String(i)}>
+                                                {format(new Date(0, i), 'MMMM', { locale: es })}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className='w-full sm:w-auto'>
+                                <p className='text-sm font-medium mb-2'>Año</p>
+                                <Select value={reportYear} onValueChange={setReportYear}>
+                                    <SelectTrigger className="w-full sm:w-[120px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {years.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className='self-end w-full sm:w-auto'>
+                                <Button onClick={handleGenerateSalesReport} className="w-full" disabled={loadingSalesReport}>
+                                    {loadingSalesReport && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Generar Reporte
+                                </Button>
+                            </div>
                         </div>
+                         <div className='border rounded-lg'>
+                           <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Nº Factura</TableHead>
+                                    <TableHead>Nº Control</TableHead>
+                                    <TableHead>Cliente</TableHead>
+                                    <TableHead>RIF/Cédula</TableHead>
+                                    <TableHead className='text-right'>Total</TableHead>
+                                    <TableHead className='text-right'>Base Imponible</TableHead>
+                                    <TableHead className='text-right'>IVA</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loadingSalesReport ? (
+                                    <TableRow><TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                                ) : salesReportData.length > 0 ? (
+                                    salesReportData.map((sale) => (
+                                        <TableRow key={sale._id}>
+                                            <TableCell>{format(new Date(`${String(sale.createdAt).split('T')[0]}T00:00:00`), 'dd/MM/yyyy')}</TableCell>
+                                            <TableCell>00-{String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
+                                            <TableCell>01-{String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
+                                            <TableCell>{sale.customerName}</TableCell>
+                                            <TableCell>{(sale.customer as any)?.idNumber || 'N/A'}</TableCell>
+                                            <TableCell className='text-right'>{formatCurrency(sale.totalAmount)}</TableCell>
+                                            <TableCell className='text-right'>{formatCurrency((sale.subtotals?.general || 0) + (sale.subtotals?.reduced || 0))}</TableCell>
+                                            <TableCell className='text-right'>{formatCurrency((sale.taxDetails?.general || 0) + (sale.taxDetails?.reduced || 0))}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow><TableCell colSpan={8} className="h-24 text-center text-muted-foreground">Selecciona un período y genera el reporte.</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                             <TableFooter>
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-right font-bold text-lg">TOTALES</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(salesReportTotals.totalAmount)}</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(salesReportTotals.taxableBase)}</TableCell>
+                                    <TableCell className="text-right font-bold">{formatCurrency(salesReportTotals.taxAmount)}</TableCell>
+                                </TableRow>
+                            </TableFooter>
+                           </Table>
+                         </div>
                     </CardContent>
                 </Card>
             </TabsContent>
