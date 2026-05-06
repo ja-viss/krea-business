@@ -3,8 +3,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from './use-toast';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 interface Rate {
     usd: number;
@@ -12,16 +10,6 @@ interface Rate {
     date: string;
 }
 
-interface DolarVzlaResponse {
-    current: Rate;
-    previous: Rate;
-    changePercentage: {
-        usd: number;
-        eur: number;
-    };
-}
-
-// Updated interface for local COP rate management
 interface CopRate {
     rate: number;
     updated: string;
@@ -33,17 +21,15 @@ interface HistoricalRate {
     eur: number;
 }
 
-interface HistoricalResponse {
-    rates: HistoricalRate[];
-}
-
 interface ProcessedHistoricalRate extends HistoricalRate {
     variation: number;
 }
 
-const DOLAR_API_URL = 'https://api.dolarvzla.com/public/exchange-rate';
+// Nuevos endpoints actualizados según solicitud
+const USD_API_URL = 'https://ve.dolarapi.com/v1/dolares/oficial';
+const EUR_API_URL = 'https://ve.dolarapi.com/v1/euro/oficial';
 const HISTORICAL_API_URL = 'https://api.dolarvzla.com/public/exchange-rate/list';
-const DEFAULT_COP_RATE = 3600;
+const DEFAULT_COP_RATE = 4200;
 
 export function useExchangeRates() {
   const { toast } = useToast();
@@ -52,7 +38,7 @@ export function useExchangeRates() {
   const [loading, setLoading] = useState({ usd: true, cop: true, historical: true });
   const [error, setError] = useState<string | null>(null);
 
-  // State for editing COP rate
+  // Estado para edición local de la tasa COP (ya que no hay API oficial directa para USD/COP en este contexto)
   const [isEditingCop, setIsEditingCop] = useState(false);
   const [editedCopRate, setEditedCopRate] = useState('');
 
@@ -61,35 +47,50 @@ export function useExchangeRates() {
       setLoading(prev => ({ ...prev, usd: true, cop: true }));
       setError(null);
       
-      const dolarRes = await fetch(DOLAR_API_URL).catch(e => { console.error("DolarVzla fetch failed:", e); return null; });
+      // Intentamos obtener USD y EUR en paralelo de la nueva API
+      const [usdRes, eurRes] = await Promise.all([
+          fetch(USD_API_URL),
+          fetch(EUR_API_URL).catch(() => null)
+      ]);
 
       let finalCopRate: CopRate | null = null;
-      // Check for locally saved COP rate
       const savedCopRate = localStorage.getItem('copRate');
       if (savedCopRate) {
           finalCopRate = JSON.parse(savedCopRate);
       } else {
-        // Set default COP rate if not saved
         finalCopRate = {
             rate: DEFAULT_COP_RATE,
             updated: new Date().toISOString()
         };
       }
 
-      if (!dolarRes || !dolarRes.ok) {
-        console.warn('Could not fetch USD/EUR rates. Proceeding with COP rate if available.');
+      if (!usdRes.ok) {
+        throw new Error('Error al conectar con la API de tasas oficiales.');
       }
 
-      const dolarData: DolarVzlaResponse | null = dolarRes && dolarRes.ok ? await dolarRes.json() : null;
+      const usdData = await usdRes.json();
+      const eurData = (eurRes && eurRes.ok) ? await eurRes.json() : null;
+
+      // La nueva API devuelve "promedio" para el valor de la tasa
+      const usdValue = usdData.promedio;
+      const eurValue = eurData ? eurData.promedio : (usdValue * 1.08); // Estimación si falla EUR
+      const dateString = usdData.fechaActualizacion;
+
+      const consolidatedRate: Rate = {
+          usd: usdValue,
+          eur: eurValue,
+          date: dateString
+      };
 
       setRates({
-        usd: dolarData?.current || null,
-        eur: dolarData?.current || null,
+        usd: consolidatedRate,
+        eur: consolidatedRate,
         cop: finalCopRate,
       });
 
     } catch (err: any) {
-      setError(err.message);
+      console.error('Error fetching rates:', err);
+      setError('No se pudieron cargar las tasas de cambio oficiales del BCV.');
     } finally {
       setLoading(prev => ({ ...prev, usd: false, cop: false }));
     }
@@ -98,17 +99,26 @@ export function useExchangeRates() {
   const fetchHistoricalRates = useCallback(async () => {
      try {
         setLoading(prev => ({ ...prev, historical: true }));
-        const historicalRes = await fetch(HISTORICAL_API_URL);
+        // DolarApi no tiene un endpoint de listado histórico simple de 30 días aún,
+        // así que mantenemos el anterior con manejo de error silencioso.
+        const historicalRes = await fetch(HISTORICAL_API_URL).catch(() => null);
 
-        if (!historicalRes.ok) {
-          throw new Error('No se pudo obtener el historial de tasas.');
+        if (!historicalRes || !historicalRes.ok) {
+          console.warn('Historial de tasas no disponible actualmente.');
+          setHistoricalRates([]);
+          return;
         }
         
-        const historicalData: HistoricalResponse = await historicalRes.json();
+        const historicalData = await historicalRes.json();
         
+        if (!historicalData || !historicalData.rates) {
+            setHistoricalRates([]);
+            return;
+        }
+
         const processedData = historicalData.rates
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .map((rate, index, array) => {
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .map((rate: any, index: number, array: any[]) => {
             const previousDayRate = array[index + 1];
             let variation = 0;
             if (previousDayRate) {
@@ -119,7 +129,8 @@ export function useExchangeRates() {
 
         setHistoricalRates(processedData.slice(0, 30));
      } catch (err: any) {
-        setError(err.message);
+        console.error('Error fetching historical rates:', err);
+        setHistoricalRates([]);
      } finally {
         setLoading(prev => ({ ...prev, historical: false }));
      }
