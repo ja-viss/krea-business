@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, ChevronLeft, Minus, Plus } from 'lucide-react';
+import { Loader2, Trash2, ChevronLeft, Minus, Plus, DollarSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
@@ -51,13 +51,13 @@ const saleSchema = z.object({
   items: z.array(z.object({
     productId: z.string(),
     name: z.string(),
-    price: z.number(), // Precio en VES
+    price: z.number(), 
     quantity: z.coerce.number().min(1, 'La cantidad debe ser al menos 1'),
     stock: z.number(),
     taxRate: z.number(),
-  })).min(1, 'Debes añadir al menos un producto a la venta.'),
+  })).min(1, 'Debes añadir al menos un producto.'),
   paymentMethod: z.enum(['Efectivo', 'Tarjeta', 'Transferencia', 'Pago Móvil'], {
-    required_error: 'Debes seleccionar un método de pago.',
+    required_error: 'Selecciona un método de pago.',
   }),
   paymentReference: z.string().optional(),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).optional(),
@@ -68,7 +68,7 @@ const saleSchema = z.object({
     }
     return true;
 }, {
-    message: 'La referencia es obligatoria para este método de pago.',
+    message: 'La referencia es obligatoria.',
     path: ['paymentReference'],
 });
 
@@ -126,7 +126,7 @@ export default function NewSalePage() {
             subtotals.exempt += itemTotal;
         } else if (item.taxRate === 0.08) {
             subtotals.reduced += itemTotal;
-        } else { // Default to 16%
+        } else { 
             subtotals.general += itemTotal;
         }
     });
@@ -199,7 +199,7 @@ export default function NewSalePage() {
         toast({
             variant: 'destructive',
             title: 'Stock Insuficiente',
-            description: `No puedes añadir más de ${product.stock} unidades de ${product.name}.`,
+            description: `No puedes añadir más de ${product.stock} unidades.`,
         });
       }
     } else {
@@ -207,7 +207,7 @@ export default function NewSalePage() {
             append({
                 productId: String(product._id),
                 name: product.name,
-                price: product.price, // Precio en VES
+                price: product.price, 
                 quantity: 1,
                 stock: product.stock,
                 taxRate: product.taxRate,
@@ -230,38 +230,11 @@ export default function NewSalePage() {
        toast({
             variant: 'destructive',
             title: 'Stock Insuficiente',
-            description: `Solo hay ${item.stock} unidades disponibles de ${item.name}.`,
+            description: `Límite alcanzado (${item.stock} disponibles).`,
         });
         update(index, { ...item, quantity: item.stock });
     } else if (newQuantity < 1) {
       update(index, { ...item, quantity: 1 });
-    }
-  };
-
-  const handleIncreaseQuantity = (index: number) => {
-    const item = fields[index];
-    handleQuantityChange(index, item.quantity + 1);
-  }
-
-  const handleDecreaseQuantity = (index: number) => {
-    const item = fields[index];
-    handleQuantityChange(index, item.quantity - 1);
-  }
-
-  const handleQuantityKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
-    const item = fields[index];
-    let newQuantity = item.quantity;
-
-    if (e.key === '+' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        newQuantity = Math.min(item.stock, item.quantity + 1);
-    } else if (e.key === '-' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        newQuantity = Math.max(1, item.quantity - 1);
-    }
-
-    if (newQuantity !== item.quantity) {
-        handleQuantityChange(index, newQuantity);
     }
   };
 
@@ -271,39 +244,13 @@ export default function NewSalePage() {
       setSelectedCustomer(customer);
   };
 
-  const onInvalid = (errors: FieldErrors<SaleFormValues>) => {
-    // Find the first error message to display
-    let firstErrorMessage = "Error de validación. Por favor, revisa todos los campos.";
-    const errorKeys = Object.keys(errors) as (keyof SaleFormValues)[];
-
-    if (errorKeys.length > 0) {
-      const firstErrorKey = errorKeys[0];
-      const error = errors[firstErrorKey];
-
-      if (error && typeof error === 'object' && 'message' in error) {
-        firstErrorMessage = error.message as string;
-      } else if (firstErrorKey === 'items' && typeof errors.items === 'object' && errors.items !== null && 'message' in errors.items) {
-         firstErrorMessage = errors.items.message as string;
-      }
-    }
-  
-    toast({
-      variant: 'destructive',
-      title: 'Error de Validación',
-      description: firstErrorMessage,
-    });
-  };
-
   const onSubmit = async (data: SaleFormValues) => {
     setIsSubmitting(true);
     try {
         const storeId = localStorage.getItem('storeId');
-        if (!storeId) {
-            throw new Error('No se encontró la tienda. Por favor, inicia sesión de nuevo.');
-        }
+        if (!storeId) throw new Error('Sesión expirada.');
 
-        const payload = { ...data, storeId, };
-
+        const payload = { ...data, storeId };
         const response = await fetch('/api/sales/new', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -311,21 +258,15 @@ export default function NewSalePage() {
         });
 
         const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Error al procesar.');
 
-        if (!response.ok) {
-            throw new Error(result.message || 'Error al crear la venta.');
-        }
-
-        toast({
-            title: '¡Venta Creada!',
-            description: `La venta se ha registrado correctamente.`,
-        });
+        toast({ title: 'Venta Completada' });
         router.push(`/sales/${result._id}/invoice`);
 
     } catch (error: any) {
         toast({
             variant: 'destructive',
-            title: 'Error al Procesar la Venta',
+            title: 'Error',
             description: error.message,
         });
     } finally {
@@ -338,109 +279,102 @@ export default function NewSalePage() {
        <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
             <PageHeader
                 title="Nueva Venta"
-                description="Busca productos, añade clientes y registra una nueva transacción."
+                description="Registro rápido de transacciones."
                 actions={
-                    <Button variant="outline" asChild>
+                    <Button variant="outline" asChild className="w-full sm:w-auto">
                         <Link href="/sales">
-                        <ChevronLeft />
+                        <ChevronLeft className="mr-2 h-4 w-4" />
                         Cancelar
                         </Link>
                     </Button>
                 }
             />
-        <div className="border rounded-lg p-4 flex justify-between items-center text-sm bg-muted/50 mb-6">
-            <div className='flex items-center gap-4'>
-                <div className='font-semibold'>Tipo de Documento:</div>
-                 <Select defaultValue="factura">
-                    <SelectTrigger className="w-[180px] bg-background">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="factura">Factura</SelectItem>
-                        <SelectItem value="nota_credito" disabled>Nota de Crédito</SelectItem>
-                        <SelectItem value="nota_debito" disabled>Nota de Débito</SelectItem>
-                    </SelectContent>
-                </Select>
+        
+        <div className="flex flex-col sm:flex-row gap-4 border rounded-lg p-4 bg-muted/30 mb-6">
+            <div className='flex items-center gap-3 flex-1'>
+                <span className='font-semibold text-sm whitespace-nowrap'>Factura Oficial</span>
+                <div className='h-2 w-2 rounded-full bg-green-500 animate-pulse' />
             </div>
-            <div className='flex items-center gap-2'>
-                <div className='font-semibold'>Tasa BCV (VES/USD):</div>
-                 <div className='font-mono p-2 bg-background rounded-md'>
-                    {ratesLoading.usd ? 'Cargando...' : rates.usd?.usd.toFixed(2) || 'N/A'}
-                </div>
+            <div className='flex items-center gap-2 text-sm'>
+                <span className='text-muted-foreground'>BCV:</span>
+                <span className='font-mono font-bold bg-background px-2 py-1 rounded border'>
+                    {ratesLoading.usd ? '...' : rates.usd?.usd.toFixed(2) || '0.00'}
+                </span>
+                <span className='text-[10px] text-muted-foreground'>VES/USD</span>
             </div>
         </div>
 
         {!isClient ? <Skeleton className="h-96 w-full" /> : (
             <Form {...form}>
-              <form id="sale-form" onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
-                  <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 mt-6">
-                      {/* Columna Izquierda (Productos y Tabla) */}
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+                      {/* Columna Izquierda (Productos) */}
                       <div className="lg:col-span-3 space-y-6">
                           <Card>
                               <CardHeader>
-                                  <CardTitle>Buscar Productos</CardTitle>
+                                  <CardTitle>Productos</CardTitle>
                               </CardHeader>
                               <CardContent>
                                   <ProductSearch onProductSelect={handleProductSelect} />
                               </CardContent>
                           </Card>
-                          <Card>
+                          <Card className="overflow-hidden">
                               <CardHeader>
-                                  <CardTitle>Artículos de la Venta</CardTitle>
+                                  <CardTitle>Detalle</CardTitle>
                               </CardHeader>
-                              <CardContent>
-                                  <Table>
-                                      <TableHeader>
-                                          <TableRow>
-                                              <TableHead>Producto</TableHead>
-                                              <TableHead className="text-right">P. Unit (VES)</TableHead>
-                                              <TableHead className="text-center w-[150px]">Cantidad</TableHead>
-                                              <TableHead className="text-right">Subtotal (VES)</TableHead>
-                                              <TableHead className="w-[50px]"></TableHead>
-                                          </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                          {fields.length > 0 ? (
-                                              fields.map((item, index) => (
-                                                  <TableRow key={item.id}>
-                                                      <TableCell>{item.name}</TableCell>
-                                                      <TableCell className="text-right">{formatCurrency(item.price, 'VES')}</TableCell>
-                                                      <TableCell>
-                                                        <div className='flex items-center justify-center gap-1'>
-                                                          <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleDecreaseQuantity(index)} disabled={item.quantity <= 1}>
-                                                            <Minus className='h-4 w-4'/>
-                                                          </Button>
-                                                          <Input
-                                                              type="number"
-                                                              className="text-center h-8 w-14"
-                                                              value={item.quantity}
-                                                              onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
-                                                              onKeyDown={(e) => handleQuantityKeyDown(e, index)}
-                                                              max={item.stock}
-                                                              min={1}
-                                                          />
-                                                          <Button type="button" variant="outline" size="icon" className='h-8 w-8' onClick={() => handleIncreaseQuantity(index)} disabled={item.quantity >= item.stock}>
-                                                            <Plus className='h-4 w-4'/>
-                                                          </Button>
-                                                        </div>
-                                                      </TableCell>
-                                                      <TableCell className="text-right font-medium">{formatCurrency(item.price * item.quantity, 'VES')}</TableCell>
-                                                      <TableCell>
-                                                          <Button variant="ghost" size="icon" onClick={() => remove(index)}>
-                                                              <Trash2 className="h-4 w-4 text-red-500" />
-                                                          </Button>
-                                                      </TableCell>
-                                                  </TableRow>
-                                              ))
-                                          ) : (
-                                              <TableRow>
-                                                  <TableCell colSpan={5} className="h-24 text-center">
-                                                      Añade productos para comenzar la venta.
-                                                  </TableCell>
-                                              </TableRow>
-                                          )}
-                                      </TableBody>
-                                  </Table>
+                              <CardContent className="p-0">
+                                  <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="pl-4">Item</TableHead>
+                                                <TableHead className="text-right">P. Unit</TableHead>
+                                                <TableHead className="text-center w-[120px]">Cant</TableHead>
+                                                <TableHead className="text-right pr-4">Total</TableHead>
+                                                <TableHead className="w-[40px]"></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {fields.length > 0 ? (
+                                                fields.map((item, index) => (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell className="pl-4 max-w-[150px] truncate uppercase font-medium text-xs sm:text-sm">
+                                                            {item.name}
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-xs">
+                                                            {item.price.toLocaleString('es-VE')}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className='flex items-center justify-center gap-1'>
+                                                                <Button type="button" variant="ghost" size="icon" className='h-7 w-7' onClick={() => handleQuantityChange(index, item.quantity - 1)}>
+                                                                    <Minus className='h-3 w-3'/>
+                                                                </Button>
+                                                                <span className="w-6 text-center text-sm font-bold">{item.quantity}</span>
+                                                                <Button type="button" variant="ghost" size="icon" className='h-7 w-7' onClick={() => handleQuantityChange(index, item.quantity + 1)}>
+                                                                    <Plus className='h-3 w-3'/>
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-right pr-4 font-bold text-xs sm:text-sm">
+                                                            {(item.price * item.quantity).toLocaleString('es-VE')}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => remove(index)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-sm italic">
+                                                        Escanea o busca productos para vender.
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                  </div>
                               </CardContent>
                           </Card>
                       </div>
@@ -453,39 +387,25 @@ export default function NewSalePage() {
                               </CardHeader>
                               <CardContent>
                                   { !selectedCustomer ? (
-                                      <>
-                                          <CustomerSearch onCustomerSelect={handleCustomerSelect} />
-                                          <FormField
-                                              control={form.control}
-                                              name="customerName"
-                                              render={({ field }) => (
-                                                  <FormItem className='mt-2'>
-                                                      <FormControl>
-                                                          <Input {...field} readOnly className="hidden"/>
-                                                      </FormControl>
-                                                      <FormMessage />
-                                                  </FormItem>
-                                              )}
-                                          />
-                                      </>
+                                      <CustomerSearch onCustomerSelect={handleCustomerSelect} />
                                   ) : (
-                                      <div className='border rounded-lg p-4 space-y-2 bg-muted/50'>
-                                          <div className='flex justify-between items-start'>
-                                              <div>
-                                                  <p className='font-semibold'>{selectedCustomer.name}</p>
-                                                  <p className='text-sm text-muted-foreground'>{selectedCustomer.idNumber}</p>
-                                              </div>
-                                              <Button variant="outline" size="sm" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', '', { shouldValidate: true }); }}>Cambiar</Button>
+                                      <div className='border rounded-lg p-3 space-y-1 bg-muted/40 flex justify-between items-center'>
+                                          <div>
+                                              <p className='font-bold uppercase text-sm'>{selectedCustomer.name}</p>
+                                              <p className='text-xs text-muted-foreground'>{selectedCustomer.idNumber}</p>
                                           </div>
-                                          {selectedCustomer.phone && <p className='text-sm'><span className='font-medium'>Teléfono:</span> {selectedCustomer.phone}</p>}
+                                          <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(null)}>Cambiar</Button>
                                       </div>
                                   )}
+                                  <FormField control={form.control} name="customerName" render={({ field }) => (
+                                      <FormItem><FormControl><Input {...field} className="hidden"/></FormControl><FormMessage /></FormItem>
+                                  )} />
                               </CardContent>
                           </Card>
+                          
                           <Card>
                               <CardHeader>
-                                  <CardTitle>Información de Pago</CardTitle>
-                                  <CardDescription>Selecciona el método y registra los detalles del pago.</CardDescription>
+                                  <CardTitle>Pago</CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-4">
                                   <FormField
@@ -493,13 +413,8 @@ export default function NewSalePage() {
                                       name="paymentMethod"
                                       render={({ field }) => (
                                           <FormItem>
-                                              <FormLabel>Método de Pago</FormLabel>
                                               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                  <FormControl>
-                                                      <SelectTrigger>
-                                                          <SelectValue placeholder="Seleccione un método" />
-                                                      </SelectTrigger>
-                                                  </FormControl>
+                                                  <FormControl><SelectTrigger><SelectValue placeholder="Método" /></SelectTrigger></FormControl>
                                                   <SelectContent>
                                                       <SelectItem value="Efectivo">Efectivo</SelectItem>
                                                       <SelectItem value="Tarjeta">Tarjeta</SelectItem>
@@ -511,105 +426,96 @@ export default function NewSalePage() {
                                           </FormItem>
                                       )}
                                   />
+                                  
+                                  {watchPaymentMethod === 'Efectivo' && (
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-muted/20 rounded-lg border">
+                                          <FormField
+                                              control={form.control}
+                                              name="paymentCurrency"
+                                              render={({ field }) => (
+                                                  <FormItem>
+                                                      <FormLabel className="text-[10px] uppercase">Moneda</FormLabel>
+                                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                          <FormControl><SelectTrigger className="h-8"><SelectValue /></SelectTrigger></FormControl>
+                                                          <SelectContent>
+                                                              <SelectItem value="USD">USD ($)</SelectItem>
+                                                              <SelectItem value="VES">VES (Bs)</SelectItem>
+                                                              <SelectItem value="COP">COP (P)</SelectItem>
+                                                          </SelectContent>
+                                                      </Select>
+                                                  </FormItem>
+                                              )}
+                                          />
+                                          <FormField
+                                              control={form.control}
+                                              name="amountReceived"
+                                              render={({ field }) => (
+                                                  <FormItem>
+                                                      <FormLabel className="text-[10px] uppercase">Recibido</FormLabel>
+                                                      <FormControl><Input type="number" step="0.01" className="h-8 font-bold" {...field} /></FormControl>
+                                                  </FormItem>
+                                              )}
+                                          />
+                                          <div className="sm:col-span-2 pt-2 border-t flex justify-between items-center">
+                                              <span className="text-xs font-semibold">Cambio:</span>
+                                              <span className="font-bold text-green-600 underline">
+                                                {formatCurrency(changeAmount, watchPaymentCurrency || 'USD')}
+                                              </span>
+                                          </div>
+                                      </div>
+                                  )}
+
                                   {(watchPaymentMethod === 'Transferencia' || watchPaymentMethod === 'Pago Móvil') && (
                                       <FormField
                                           control={form.control}
                                           name="paymentReference"
                                           render={({ field }) => (
                                               <FormItem>
-                                                  <FormLabel>Nº de Referencia</FormLabel>
-                                                  <FormControl>
-                                                      <Input placeholder="Introduce el número de referencia" {...field} />
-                                                  </FormControl>
+                                                  <FormControl><Input placeholder="Ref / Nº Transacción" {...field} /></FormControl>
                                                   <FormMessage />
                                               </FormItem>
                                           )}
                                       />
                                   )}
-                                  {watchPaymentMethod === 'Efectivo' && (
-                                      <>
-                                          <FormField
-                                              control={form.control}
-                                              name="paymentCurrency"
-                                              render={({ field }) => (
-                                                  <FormItem>
-                                                      <FormLabel>Moneda de Pago</FormLabel>
-                                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                          <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                          <SelectContent>
-                                                              <SelectItem value="USD">Dólares (USD)</SelectItem>
-                                                              <SelectItem value="VES">Bolívares (VES)</SelectItem>
-                                                              <SelectItem value="COP">Pesos (COP)</SelectItem>
-                                                          </SelectContent>
-                                                      </Select>
-                                                  </FormItem>
-                                              )}
-                                          />
-                                          <div className='grid grid-cols-2 gap-4'>
-                                              <FormField
-                                                  control={form.control}
-                                                  name="amountReceived"
-                                                  render={({ field }) => (
-                                                      <FormItem>
-                                                          <FormLabel>Monto Recibido</FormLabel>
-                                                          <FormControl>
-                                                              <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                                                          </FormControl>
-                                                      </FormItem>
-                                                  )}
-                                              />
-                                              <FormItem>
-                                                  <FormLabel>Vuelto</FormLabel>
-                                                  <Input
-                                                      type="text"
-                                                      readOnly
-                                                      value={formatCurrency(changeAmount, watchPaymentCurrency || 'USD')}
-                                                      className="font-bold text-lg bg-muted border-none"
-                                                  />
-                                              </FormItem>
-                                          </div>
-                                      </>
-                                  )}
                               </CardContent>
-                              <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2 text-sm'>
-                                  {/* Fiscal Breakdown */}
-                                  <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (Exento):</span> <span className='font-medium'>{formatCurrency(subtotalExempt, 'VES')}</span></div>
-                                  <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (16%):</span> <span className='font-medium'>{formatCurrency(subtotalGeneral, 'VES')}</span></div>
-                                  <div className='flex justify-between'><span className='text-muted-foreground'>Base Imponible (8%):</span> <span className='font-medium'>{formatCurrency(subtotalReduced, 'VES')}</span></div>
-                                  <Separator className='my-1' />
-                                  <div className='flex justify-between'><span className='text-muted-foreground'>IVA (16%):</span> <span className='font-medium'>{formatCurrency(taxGeneralAmount, 'VES')}</span></div>
-                                  <div className='flex justify-between'><span className='text-muted-foreground'>IVA (8%):</span> <span className='font-medium'>{formatCurrency(taxReducedAmount, 'VES')}</span></div>
-                                  <Separator className='my-2 bg-foreground' />
-
-                                  {/* Totals */}
-                                  <div className='flex justify-between items-center text-lg font-bold text-primary'>
-                                      <span>TOTAL (VES):</span>
-                                      <span>{ratesLoading.usd ? '...' : formatCurrency(totalVES, 'VES')}</span>
+                              
+                              <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2'>
+                                  <div className='flex justify-between text-[11px] text-muted-foreground uppercase'>
+                                      <span>Subtotal General (IVA 16%):</span> 
+                                      <span>{formatCurrency(subtotalGeneral, 'VES')}</span>
+                                  </div>
+                                  <div className='flex justify-between text-[11px] text-muted-foreground uppercase'>
+                                      <span>Total IVA:</span> 
+                                      <span>{formatCurrency(taxGeneralAmount, 'VES')}</span>
                                   </div>
                                   <Separator className='my-1' />
-                                  <div className='flex justify-between items-center text-muted-foreground'>
-                                      <span>Total (USD):</span>
-                                      <span>{ratesLoading.usd ? '...' : formatCurrency(totalUSD, 'USD')}</span>
+                                  <div className='flex justify-between items-center py-2'>
+                                      <span className='font-bold text-sm uppercase'>Total a Pagar:</span>
+                                      <span className='text-2xl font-black text-primary'>{formatCurrency(totalVES, 'VES')}</span>
                                   </div>
-                                  <div className='flex justify-between items-center text-muted-foreground'>
-                                      <span>Total (COP):</span>
-                                      <span>{ratesLoading.cop ? '...' : formatCurrency(totalCOP, 'COP')}</span>
+                                  <div className='flex flex-col gap-1 pt-2 border-t border-dotted'>
+                                      <div className='flex justify-between text-xs font-medium'>
+                                          <span className='text-muted-foreground italic'>Ref. USD:</span>
+                                          <span className='font-mono'>{formatCurrency(totalUSD, 'USD')}</span>
+                                      </div>
+                                      <div className='flex justify-between text-xs font-medium'>
+                                          <span className='text-muted-foreground italic'>Ref. COP:</span>
+                                          <span className='font-mono'>{formatCurrency(totalCOP, 'COP')}</span>
+                                      </div>
                                   </div>
+                                  
+                                  <Button 
+                                    type="submit" 
+                                    size="lg"
+                                    disabled={isSubmitting || watchItems.length === 0}
+                                    className="w-full mt-4 font-bold shadow-lg shadow-primary/20"
+                                  >
+                                      {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DollarSign className="mr-2 h-4 w-4" />}
+                                      Finalizar Venta
+                                  </Button>
                               </CardFooter>
                           </Card>
                       </div>
-                  </div>
-                  <div className="mt-8 flex justify-end">
-                      <Button 
-                          type="submit" 
-                          form="sale-form"
-                          size="lg"
-                          disabled={isSubmitting || watchItems.length === 0}
-                          className="min-w-[200px]"
-                      >
-                          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          {isSubmitting ? 'Procesando...' : 'Completar Venta'}
-                      </Button>
                   </div>
               </form>
             </Form>

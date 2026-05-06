@@ -72,8 +72,8 @@ export default function InvoicePage() {
     };
 
     const getTaxCondition = (rate: number): string => {
-        if (rate === 0) return 'Exento (E) 0%';
-        return `Gravado ${rate * 100}%`;
+        if (rate === 0) return 'E';
+        return `G ${rate * 100}%`;
     }
 
     if (loading) {
@@ -111,7 +111,7 @@ export default function InvoicePage() {
     
     return (
         <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 flex justify-center bg-gray-100 dark:bg-gray-900">
-            <div className="w-full max-w-4xl space-y-4 print:space-y-2">
+            <div className="w-full max-w-4xl space-y-4 print:max-w-none print:w-full print:m-0 print:p-0">
                  <div className="flex justify-between items-center gap-4 print:hidden">
                     <Button variant="outline" asChild>
                         <Link href="/billing">
@@ -121,147 +121,133 @@ export default function InvoicePage() {
                     </Button>
                     <Button onClick={() => window.print()}>
                         <Printer className="mr-2 h-4 w-4" />
-                        Imprimir
+                        Imprimir Factura
                     </Button>
                 </div>
-                <Card className="p-6 md:p-8 shadow-lg print:shadow-none print:border-none">
-                    <div className="grid grid-cols-2 gap-4 border-b pb-4">
-                        <div>
-                            <h1 className="text-xl font-bold">SOLUCIONES INTEGRALES, C.A.</h1>
-                            <p className="text-sm font-semibold">RIF: J-40123456-7</p>
-                            <p className="text-xs text-muted-foreground">CONTRIBUYENTE ORDINARIO DEL IVA</p>
-                        </div>
-                        <div className="text-right">
-                            <h2 className="text-2xl font-bold text-primary">FACTURA</h2>
-                        </div>
+                <Card className="p-6 md:p-12 shadow-lg print:shadow-none print:border-none print:p-0">
+                    <div className="flex flex-col gap-2 border-b pb-4 print:text-center print:border-dashed">
+                        <h1 className="text-xl font-bold uppercase">SOLUCIONES INTEGRALES, C.A.</h1>
+                        <p className="text-sm font-semibold">RIF: J-40123456-7</p>
+                        <p className="text-xs text-muted-foreground uppercase">Contribuyente Ordinario del IVA</p>
+                        <p className="text-xs">Av. Las Industrias, Edif. Krea, Caracas.</p>
+                        <div className="mt-2 text-2xl font-bold text-primary print:text-black">FACTURA</div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 border-b py-2 text-sm">
-                         <div className='space-y-1'>
-                             <p><span className="font-semibold">Fecha de Emisión:</span> {formatShortDate(String(sale.createdAt))}</p>
-                             <p><span className="font-semibold">Hora de Emisión:</span> {formatTime(String(sale.createdAt))}</p>
+
+                    <div className="grid grid-cols-1 gap-1 border-b py-4 text-sm print:border-dashed">
+                         <div className='flex justify-between'>
+                             <span className="font-semibold">Fecha:</span> <span>{formatShortDate(String(sale.createdAt))}</span>
                          </div>
-                         <div className='space-y-1 text-right'>
-                            <p><span className="font-semibold">Nº de Factura:</span> {`00-${String(sale.invoiceNumber).padStart(8, '0')}`}</p>
-                            <p><span className="font-semibold">Nº de Control:</span> {`01-${String(sale.invoiceNumber).padStart(8, '0')}`}</p>
+                         <div className='flex justify-between'>
+                             <span className="font-semibold">Hora:</span> <span>{formatTime(String(sale.createdAt))}</span>
+                         </div>
+                         <div className='flex justify-between'>
+                            <span className="font-semibold">Factura Nº:</span> <span>{`00-${String(sale.invoiceNumber).padStart(8, '0')}`}</span>
+                         </div>
+                         <div className='flex justify-between'>
+                            <span className="font-semibold">Control Nº:</span> <span>{`01-${String(sale.invoiceNumber).padStart(8, '0')}`}</span>
                          </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 border-b py-2 text-sm">
-                        <div>
-                            <p className="font-semibold">DATOS DEL CLIENTE:</p>
-                            <p>Cliente: {sale.customerName}</p>
-                            <p>CI/RIF: {sale.customer?.idNumber || 'N/A'}</p>
-                        </div>
-                        <div className='text-right'>
-                            <p className='font-semibold'>TASA DE CONVERSIÓN:</p>
-                            <p>TASA BCV APLICADA: {tasaBcv.toFixed(2)} VES/USD</p>
-                        </div>
+
+                    <div className="grid grid-cols-1 gap-1 border-b py-4 text-sm print:border-dashed">
+                        <div className="font-semibold uppercase text-xs text-muted-foreground mb-1">Datos del Cliente</div>
+                        <div className='flex justify-between'><span>Cliente:</span> <span className='font-medium uppercase'>{sale.customerName}</span></div>
+                        <div className='flex justify-between'><span>CI/RIF:</span> <span className='font-medium uppercase'>{sale.customer?.idNumber || 'V-XXXXXXXX'}</span></div>
+                        <div className='flex justify-between mt-2 pt-2 border-t border-dotted'><span>Tasa BCV:</span> <span className='font-mono'>{tasaBcv.toFixed(2)} VES/USD</span></div>
                     </div>
                     
-                    <Table className='mt-4 text-xs'>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[40px] text-center">Cant.</TableHead>
-                                <TableHead className="w-[60px]">Unidad</TableHead>
-                                <TableHead>Descripción del Producto/Servicio</TableHead>
-                                <TableHead>Condición Fiscal</TableHead>
-                                <TableHead className="text-right">P. Unit (USD)</TableHead>
-                                <TableHead className="text-right">Total Línea (USD)</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                    <div className='mt-4'>
+                        <div className='hidden md:grid grid-cols-6 text-xs font-bold uppercase border-b pb-2 mb-2 print:grid'>
+                            <div className='col-span-3'>Descripción</div>
+                            <div className='text-center'>Cant</div>
+                            <div className='text-right'>P.Unit</div>
+                            <div className='text-right'>Total</div>
+                        </div>
+                        <div className='space-y-2'>
                             {sale.items.map((item: any) => (
-                                <TableRow key={item._id}>
-                                    <TableCell className="text-center">{item.quantity}</TableCell>
-                                    <TableCell>UND</TableCell>
-                                    <TableCell>{item.name}</TableCell>
-                                    <TableCell>{getTaxCondition(item.taxRate)}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(item.price / tasaBcv, 'USD')}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency((item.price * item.quantity) / tasaBcv, 'USD')}</TableCell>
-                                </TableRow>
+                                <div key={item._id} className='grid grid-cols-6 text-sm items-start gap-1 print:text-xs'>
+                                    <div className='col-span-3 flex flex-col'>
+                                        <span className='font-medium uppercase'>{item.name}</span>
+                                        <span className='text-[10px] text-muted-foreground'>IVA: {getTaxCondition(item.taxRate)}</span>
+                                    </div>
+                                    <div className='text-center'>{item.quantity}</div>
+                                    <div className='text-right'>{formatCurrency(item.price / tasaBcv, 'USD').replace('$', '')}</div>
+                                    <div className='text-right font-medium'>{formatCurrency((item.price * item.quantity) / tasaBcv, 'USD').replace('$', '')}</div>
+                                </div>
                             ))}
-                        </TableBody>
-                    </Table>
-                    
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className='text-xs text-muted-foreground'>
-                            <p className='font-bold'>MÉTODO DE PAGO:</p>
-                            <p>PAGO RECIBIDO EN {sale.paymentMethod.toUpperCase()}</p>
                         </div>
+                    </div>
+                    
+                    <Separator className="my-6 print:my-4 print:border-dashed" />
 
-                         <div className="w-full space-y-1 text-sm">
-                             <div className="flex justify-between">
-                                <span className='font-semibold'>Total Monto Exento (E):</span>
-                                <span>{formatCurrency(totalExentoUSD, 'USD')}</span>
-                                <span className='font-bold'>{formatCurrency(totalExentoVES, 'VES')}</span>
-                            </div>
-                             <div className="flex justify-between">
-                                <span className='font-semibold'>Base Imponible al 16%:</span>
-                                <span>{formatCurrency((sale.subtotals?.general || 0) / tasaBcv, 'USD')}</span>
-                                <span className='font-bold'>{formatCurrency(sale.subtotals?.general || 0, 'VES')}</span>
-                            </div>
-                             <div className="flex justify-between">
-                                <span className='font-semibold'>Base Imponible al 8%:</span>
-                                <span>{formatCurrency((sale.subtotals?.reduced || 0) / tasaBcv, 'USD')}</span>
-                                <span className='font-bold'>{formatCurrency(sale.subtotals?.reduced || 0, 'VES')}</span>
-                            </div>
-                            <Separator className='my-1'/>
-                             <div className="flex justify-between">
-                                <span className='font-semibold'>SUBTOTAL BASE IMPONIBLE:</span>
-                                <span>{formatCurrency(((sale.subtotals?.general || 0) + (sale.subtotals?.reduced || 0)) / tasaBcv, 'USD')}</span>
-                                <span className='font-bold'>{formatCurrency((sale.subtotals?.general || 0) + (sale.subtotals?.reduced || 0), 'VES')}</span>
-                            </div>
-                            <Separator className='my-1'/>
-                             <div className="flex justify-between">
-                                <span className='font-semibold'>IVA Alícuota General (16%):</span>
-                                <span>{formatCurrency((sale.taxDetails?.general || 0) / tasaBcv, 'USD')}</span>
-                                <span className='font-bold'>{formatCurrency(sale.taxDetails?.general || 0, 'VES')}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className='font-semibold'>IVA Alícuota Reducida (8%):</span>
-                                <span>{formatCurrency((sale.taxDetails?.reduced || 0) / tasaBcv, 'USD')}</span>
-                                <span className='font-bold'>{formatCurrency(sale.taxDetails?.reduced || 0, 'VES')}</span>
-                            </div>
-                             <Separator className='my-1 bg-foreground'/>
-                             <div className="flex justify-between text-base font-bold">
-                                <span>TOTAL GENERAL:</span>
-                                <span>{formatCurrency(totalInUSD, 'USD')}</span>
-                                <span>{formatCurrency(sale.totalAmount, 'VES')}</span>
-                            </div>
+                    <div className="flex flex-col gap-2 text-sm ml-auto w-full md:w-1/2 print:w-full">
+                         <div className="flex justify-between">
+                            <span>Monto Exento:</span>
+                            <span className='font-medium'>{formatCurrency(totalExentoVES, 'VES')}</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>Base Imponible (16%):</span>
+                            <span className='font-medium'>{formatCurrency(sale.subtotals?.general || 0, 'VES')}</span>
+                        </div>
+                         <div className="flex justify-between">
+                            <span>IVA (16%):</span>
+                            <span className='font-medium'>{formatCurrency(sale.taxDetails?.general || 0, 'VES')}</span>
+                        </div>
+                        <Separator className='my-1'/>
+                         <div className="flex justify-between text-lg font-bold">
+                            <span>TOTAL VES:</span>
+                            <span>{formatCurrency(sale.totalAmount, 'VES')}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground font-mono text-xs italic">
+                            <span>REF. USD:</span>
+                            <span>{formatCurrency(totalInUSD, 'USD')}</span>
                         </div>
                     </div>
 
-                    <Separator className="my-4" />
-                     
-                    <footer className="mt-4 text-center text-xs text-muted-foreground print:mt-2">
-                        <p className='font-bold'>TOTAL A PAGAR: {formatCurrency(totalInUSD, 'USD')} ó {formatCurrency(sale.totalAmount, 'VES')} (según el método de pago).</p>
-                        <p className='italic mt-2'>ESTA FACTURA NO ES VÁLIDA SIN LA INSCRIPCIÓN DE LAS CIFRAS EN EL DISPOSITIVO DE SEGURIDAD. VA SIN TACHADURAS NI ENMIENDAS.</p>
-                    </footer>
+                    <div className="mt-8 border-t pt-4 text-center text-[10px] uppercase space-y-1 print:border-dashed">
+                        <p className='font-bold'>Pago: {sale.paymentMethod}</p>
+                        <p>Gracias por su compra</p>
+                        <p className='italic'>Esta factura no es válida sin la inscripción de las cifras en el dispositivo de seguridad.</p>
+                    </div>
                 </Card>
             </div>
             <style jsx global>{`
                 @media print {
+                    @page {
+                        margin: 0;
+                        size: auto;
+                    }
                     body {
                         background-color: white !important;
+                        font-family: 'Courier New', Courier, monospace !important;
+                        color: black !important;
+                    }
+                    header, footer, nav, aside, button {
+                        display: none !important;
                     }
                     main {
                          padding: 0 !important;
+                         margin: 0 !important;
+                         width: 100% !important;
                     }
-                    .print\\:shadow-none {
-                        box-shadow: none !important;
+                    .print\\:p-0 { padding: 0 !important; }
+                    .print\\:m-0 { margin: 0 !important; }
+                    .print\\:w-full { width: 100% !important; }
+                    .print\\:text-center { text-align: center !important; }
+                    .print\\:border-none { border: none !important; }
+                    .print\\:border-dashed { border-bottom: 1px dashed black !important; }
+                    .print\\:shadow-none { box-shadow: none !important; }
+                    .print\\:hidden { display: none !important; }
+                    .print\\:text-black { color: black !important; }
+                    
+                    /* Optimización Térmica */
+                    .print-thermal {
+                        width: 80mm;
+                        padding: 10px;
                     }
-                     .print\\:border-none {
-                        border: none !important;
-                    }
-                    .print\\:hidden {
-                        display: none !important;
-                    }
-                    .print\\:space-y-2 > :not([hidden]) ~ :not([hidden]) {
-                        --tw-space-y-reverse: 0;
-                        margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
-                        margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
-                    }
-                    .print\\:mt-2 {
-                        margin-top: 0.5rem !important;
+                    
+                    /* Asegurar que el contenido no se corte */
+                    * {
+                        overflow: visible !important;
                     }
                 }
             `}</style>

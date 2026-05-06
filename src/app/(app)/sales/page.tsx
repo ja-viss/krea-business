@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Printer, Eye } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -84,10 +84,10 @@ export default function SalesPage() {
 
       toast({
         title: 'Venta Eliminada',
-        description: `La venta con factura Nº ${saleToDelete.invoiceNumber} ha sido eliminada y el stock ha sido restaurado.`,
+        description: `Factura Nº ${saleToDelete.invoiceNumber} eliminada. Stock restaurado.`,
       });
       
-      fetchSales(); // Re-fetch sales to update the list
+      fetchSales();
 
     } catch (err: any) {
        toast({
@@ -99,14 +99,6 @@ export default function SalesPage() {
         setSaleToDelete(null);
     }
   };
-
-  const handleEdit = (saleId: string) => {
-    // router.push(`/sales/${saleId}/edit`);
-    toast({
-      title: "Función no implementada",
-      description: "La edición de ventas estará disponible próximamente."
-    })
-  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-ES', {
@@ -128,20 +120,20 @@ export default function SalesPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Ventas"
-          description="Registra y gestiona tus ventas."
+          description="Gestión y registro de transacciones."
           actions={
-            <>
-              <Button variant="outline">
-                <FileDown />
+            <div className='flex flex-wrap gap-2 w-full sm:w-auto'>
+              <Button variant="outline" className='flex-1 sm:flex-none'>
+                <FileDown className="mr-2 h-4 w-4" />
                 Exportar
               </Button>
-              <Button asChild>
+              <Button asChild className='flex-1 sm:flex-none'>
                 <Link href="/sales/new">
-                  <PlusCircle />
+                  <PlusCircle className="mr-2 h-4 w-4" />
                   Nueva Venta
                 </Link>
               </Button>
-            </>
+            </div>
           }
         />
 
@@ -153,99 +145,96 @@ export default function SalesPage() {
             </Alert>
         )}
 
-        <div className="rounded-lg border bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Factura</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                  </TableRow>
-                ))
-              ) : sales.length > 0 ? (
-                sales.map((sale) => (
-                  <TableRow key={sale._id}>
-                    <TableCell className="font-medium">Nº {String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
-                    <TableCell>{sale.customerName}</TableCell>
-                    <TableCell>{formatDate(String(sale.createdAt))}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          sale.status === 'Pagado'
-                            ? 'secondary'
-                            : sale.status === 'Pendiente'
-                            ? 'outline'
-                            : 'destructive'
-                        }
-                        className={sale.status === 'Pagado' ? 'bg-green-100 text-green-800' : ''}
-                      >
-                        {sale.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{formatCurrency(sale.totalAmount)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => router.push(`/sales/${sale._id}/invoice`)}>
-                            Ver detalles
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleEdit(sale._id)}>
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-red-600"
-                            onSelect={() => setSaleToDelete(sale)}>
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+                <TableHeader>
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        No se encontraron ventas.
-                    </TableCell>
+                    <TableHead className="pl-4">Factura</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="hidden sm:table-cell">Fecha</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="w-[50px] pr-4"></TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell className="pl-4"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                        <TableCell className="pr-4"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                    </TableRow>
+                    ))
+                ) : sales.length > 0 ? (
+                    sales.map((sale) => (
+                    <TableRow key={sale._id}>
+                        <TableCell className="font-mono text-xs pl-4">Nº {String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
+                        <TableCell className="text-sm font-medium uppercase truncate max-w-[150px]">{sale.customerName}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs">{formatDate(String(sale.createdAt))}</TableCell>
+                        <TableCell>
+                        <Badge
+                            variant={
+                            sale.status === 'Pagado' ? 'secondary' : 'outline'
+                            }
+                            className={sale.status === 'Pagado' ? 'bg-green-100 text-green-800 border-none' : ''}
+                        >
+                            {sale.status}
+                        </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-sm">{formatCurrency(sale.totalAmount)}</TableCell>
+                        <TableCell className="pr-4">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 ml-auto">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => router.push(`/sales/${sale._id}/invoice`)}>
+                                <Eye className="mr-2 h-4 w-4" /> Ver factura
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
+                                <Printer className="mr-2 h-4 w-4" /> Imprimir
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                                className="text-red-600"
+                                onSelect={() => setSaleToDelete(sale)}>
+                                Eliminar
+                            </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                            No se encontraron ventas.
+                        </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+          </div>
         </div>
         
         <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro de que quieres eliminar esta venta?</AlertDialogTitle>
+                <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Se eliminará la factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} y el stock de los productos asociados será restaurado.
+                    Se eliminará la factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} y el stock de los productos será restaurado.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setSaleToDelete(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteSale}>Eliminar Venta</AlertDialogAction>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 hover:bg-red-700">Eliminar Venta</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

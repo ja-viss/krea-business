@@ -102,7 +102,6 @@ export default function InventoryPage() {
           productId: String(p._id),
           productName: p.name,
           currentStock: p.stock,
-          // Placeholder data - in a real app, this would come from sales data
           averageMonthlySales: Math.floor(Math.random() * 50) + 10,
           holdingCostPerUnit: p.price * 0.05,
           leadTimeInMonths: 0.5,
@@ -133,7 +132,7 @@ export default function InventoryPage() {
         description: `El producto "${productToDelete.name}" ha sido eliminado.`,
       });
       
-      await fetchProducts(); // Re-fetch products to update the list
+      await fetchProducts();
 
     } catch (err: any) {
        toast({
@@ -170,24 +169,25 @@ export default function InventoryPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Inventario"
-          description="Gestiona tus productos, analiza el stock y obtén recomendaciones."
+          description="Gestión integral de stock y productos."
           actions={
-            <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-              <Button variant="outline" className='w-full sm:w-auto' asChild>
+            <div className='flex flex-wrap gap-2 w-full sm:w-auto'>
+              <Button variant="outline" className='flex-1 sm:flex-none' asChild>
                 <Link href="/reports">
-                  <BarChart3 />
+                  <BarChart3 className="mr-2 h-4 w-4" />
                   Reportes
                 </Link>
               </Button>
-              <Button asChild className='w-full sm:w-auto'>
+              <Button asChild className='flex-1 sm:flex-none'>
                 <Link href="/inventory/new-product">
-                    <PlusCircle />
-                    Añadir Producto
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nuevo Producto
                 </Link>
               </Button>
             </div>
           }
         />
+        
         {error && (
             <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -196,14 +196,14 @@ export default function InventoryPage() {
             </Alert>
         )}
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {loading ? Array.from({ length: 3 }).map((_, i) => (
                 <Card key={i}><CardHeader className='pb-2'><Skeleton className='h-4 w-1/2' /></CardHeader><CardContent><Skeleton className='h-7 w-1/3' /></CardContent></Card>
             )) : metrics && (
                 <>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Valor Total del Inventario</CardTitle>
+                            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
                             <Boxes className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -212,8 +212,8 @@ export default function InventoryPage() {
                     </Card>
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Productos con Stock Bajo</CardTitle>
-                            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
+                            <TrendingDown className="h-4 w-4 text-yellow-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{metrics.lowStockCount}</div>
@@ -221,8 +221,8 @@ export default function InventoryPage() {
                     </Card>
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Productos Agotados</CardTitle>
-                            <Ban className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-medium">Agotados</CardTitle>
+                            <Ban className="h-4 w-4 text-red-500" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{metrics.outOfStockCount}</div>
@@ -234,10 +234,10 @@ export default function InventoryPage() {
         
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="lg:col-span-3">
-              <Card>
+              <Card className="h-full">
                   <CardHeader>
-                      <CardTitle>Recomendaciones de IA para Inventario</CardTitle>
-                      <CardDescription>Obtén sugerencias para optimizar tu stock y evitar quiebres.</CardDescription>
+                      <CardTitle>IA: Optimización de Stock</CardTitle>
+                      <CardDescription>Sugerencias para evitar quiebres de inventario.</CardDescription>
                   </CardHeader>
                   <CardContent>
                       {loadingRecommendations ? (
@@ -247,32 +247,32 @@ export default function InventoryPage() {
                               <Skeleton className='h-8 w-4/5' />
                           </div>
                       ) : aiRecommendations.length > 0 ? (
-                         <Table>
-                             <TableHeader>
-                                 <TableRow>
-                                     <TableHead>Producto</TableHead>
-                                     <TableHead className='text-center'>Nivel Rec.</TableHead>
-                                     <TableHead className='text-center'>Cantidad a Reponer</TableHead>
-                                 </TableRow>
-                             </TableHeader>
-                             <TableBody>
-                                 {aiRecommendations.slice(0, 5).map(rec => (
-                                     <TableRow key={rec.productId}>
-                                         <TableCell>
-                                             <div className='font-medium'>{products.find(p => String(p._id) === rec.productId)?.name}</div>
-                                             <p className='text-xs text-muted-foreground hidden sm:block'>{rec.reasoning}</p>
-                                         </TableCell>
-                                         <TableCell className='text-center font-bold'>{rec.recommendedStockLevel}</TableCell>
-                                         <TableCell className='text-center font-bold text-primary'>{rec.reorderQuantity}</TableCell>
-                                     </TableRow>
-                                 ))}
-                             </TableBody>
-                         </Table>
+                         <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Producto</TableHead>
+                                        <TableHead className='text-center'>Cant. Reponer</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {aiRecommendations.slice(0, 5).map(rec => (
+                                        <TableRow key={rec.productId}>
+                                            <TableCell>
+                                                <div className='font-medium'>{products.find(p => String(p._id) === rec.productId)?.name}</div>
+                                                <p className='text-[10px] text-muted-foreground line-clamp-1'>{rec.reasoning}</p>
+                                            </TableCell>
+                                            <TableCell className='text-center font-bold text-primary'>{rec.reorderQuantity}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                         </div>
                       ) : (
-                          <div className="text-center p-4 border-dashed border-2 rounded-lg">
-                              <p className="text-muted-foreground mb-2">Analiza tu inventario con IA</p>
-                              <Button onClick={handleGetRecommendations} disabled={loading}>
-                                  Generar Recomendaciones
+                          <div className="text-center py-8 border-dashed border-2 rounded-lg bg-muted/20">
+                              <p className="text-muted-foreground mb-4 text-sm">Analiza tu inventario con inteligencia artificial</p>
+                              <Button onClick={handleGetRecommendations} disabled={loading} size="sm">
+                                  Generar Análisis
                               </Button>
                           </div>
                       )}
@@ -280,127 +280,117 @@ export default function InventoryPage() {
               </Card>
           </div>
             <div className="lg:col-span-2">
-                {loading ? <Skeleton className="h-[400px] w-full" /> : <TopStockChart data={products} />}
+                {loading ? <Skeleton className="h-[300px] w-full" /> : <TopStockChart data={products} />}
             </div>
         </div>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-4">
             <div className='flex flex-col sm:flex-row justify-between sm:items-center gap-4'>
               <div>
-                <CardTitle>Todos los Productos</CardTitle>
-                <CardDescription>Busca, filtra y gestiona todos los productos de tu inventario.</CardDescription>
+                <CardTitle>Listado de Productos</CardTitle>
+                <CardDescription>Gestión y búsqueda rápida.</CardDescription>
               </div>
               <div className="relative w-full sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nombre o ID..."
-                  className="pl-9"
+                  className="pl-9 w-full"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead className='text-right'>Precio</TableHead>
-                  <TableHead className='text-right'>Stock</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
-                      <TableCell className='text-right'><Skeleton className="h-4 w-[50px] ml-auto" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+          <CardContent className="p-0 sm:p-6">
+            <div className="overflow-x-auto">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead className="pl-4">Producto</TableHead>
+                    <TableHead className='text-right'>Precio</TableHead>
+                    <TableHead className='text-right'>Stock</TableHead>
+                    <TableHead className="hidden md:table-cell">Estado</TableHead>
+                    <TableHead className="w-[50px] pr-4"></TableHead>
                     </TableRow>
-                  ))
-                ) : filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => (
-                    <TableRow key={product._id}>
-                      <TableCell>
-                        <div className="font-medium">{product.name}</div>
-                        <div className="text-xs text-muted-foreground">ID: {String(product._id).slice(-6)}</div>
-                      </TableCell>
-                      <TableCell className="text-right">{formatCurrency(product.price)}</TableCell>
-                      <TableCell className='text-right'>{product.stock}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            product.status === 'En Stock'
-                              ? 'secondary'
-                              : product.status === 'Stock Bajo'
-                              ? 'outline'
-                              : 'destructive'
-                          }
-                          className={
-                            product.status === 'En Stock' ? 'bg-green-100 text-green-800'
-                            : product.status === 'Stock Bajo' ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                          }
-                        >
-                          {product.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Abrir menú</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => router.push(`/inventory/${product._id}`)}>
-                              Ver detalles
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => router.push(`/inventory/${product._id}/edit`)}>
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-red-600"
-                              onSelect={() => setProductToDelete(product)}>
-                              Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                </TableHeader>
+                <TableBody>
+                    {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-[150px] ml-4" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                        <TableCell className='text-right'><Skeleton className="h-4 w-[40px] ml-auto" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
+                        <TableCell className="pr-4"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                        </TableRow>
+                    ))
+                    ) : filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => (
+                        <TableRow key={product._id}>
+                        <TableCell className="pl-4">
+                            <div className="font-medium text-sm sm:text-base">{product.name}</div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground uppercase">{product.sku || String(product._id).slice(-6)}</div>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{formatCurrency(product.price)}</TableCell>
+                        <TableCell className='text-right font-medium'>{product.stock}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                            <Badge
+                            variant={
+                                product.status === 'En Stock' ? 'secondary'
+                                : product.status === 'Stock Bajo' ? 'outline'
+                                : 'destructive'
+                            }
+                            className={
+                                product.status === 'En Stock' ? 'bg-green-100 text-green-800 border-none'
+                                : product.status === 'Stock Bajo' ? 'bg-yellow-100 text-yellow-800 border-none'
+                                : 'bg-red-100 text-red-800 border-none'
+                            }
+                            >
+                            {product.status}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="pr-4">
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0 ml-auto">
+                                <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => router.push(`/inventory/${product._id}`)}>Ver detalles</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => router.push(`/inventory/${product._id}/edit`)}>Editar</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600" onSelect={() => setProductToDelete(product)}>Eliminar</DropdownMenuItem>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                            No se encontraron productos.
+                        </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                          No se encontraron productos que coincidan con la búsqueda.
-                      </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                    )}
+                </TableBody>
+                </Table>
+            </div>
           </CardContent>
         </Card>
         
         <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro de que quieres eliminar este producto?</AlertDialogTitle>
+                <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Esta acción no se puede deshacer. Esto eliminará permanentemente el producto
-                    "{productToDelete?.name}" de tu inventario.
+                    Esta acción eliminará permanentemente "{productToDelete?.name}" de tu inventario.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteProduct}>Eliminar</AlertDialogAction>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600 hover:bg-red-700">Eliminar</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -409,6 +399,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-
-    
-    
