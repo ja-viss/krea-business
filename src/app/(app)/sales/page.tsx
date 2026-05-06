@@ -50,13 +50,9 @@ export default function SalesPage() {
     try {
       setLoading(true);
       const storeId = localStorage.getItem('storeId');
-      if (!storeId) {
-          throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
-      }
+      if (!storeId) throw new Error('No se ha iniciado sesión.');
       const response = await fetch(`/api/sales?storeId=${storeId}`);
-      if (!response.ok) {
-        throw new Error('No se pudieron obtener las ventas.');
-      }
+      if (!response.ok) throw new Error('Error al obtener ventas.');
       const data = await response.json();
       setSales(data);
     } catch (err: any) {
@@ -73,172 +69,61 @@ export default function SalesPage() {
   const handleDeleteSale = async () => {
     if (!saleToDelete) return;
     try {
-      const response = await fetch(`/api/sales/${saleToDelete._id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'No se pudo eliminar la venta.');
-      }
-
-      toast({
-        title: 'Venta Eliminada',
-        description: `Factura Nº ${saleToDelete.invoiceNumber} eliminada. Stock restaurado.`,
-      });
-      
+      const response = await fetch(`/api/sales/${saleToDelete._id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('No se pudo eliminar.');
+      toast({ title: 'Venta Eliminada', description: 'Stock restaurado.' });
       fetchSales();
-
     } catch (err: any) {
-       toast({
-        variant: 'destructive',
-        title: 'Error al Eliminar',
-        description: err.message,
-      });
+       toast({ variant: 'destructive', title: 'Error', description: err.message });
     } finally {
         setSaleToDelete(null);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'VES',
-    }).format(value);
-  }
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const formatCurrency = (value: number) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(value);
 
   return (
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Ventas"
-          description="Gestión y registro de transacciones."
+          description="Gestión de transacciones."
           actions={
             <div className='flex flex-wrap gap-2 w-full sm:w-auto'>
-              <Button variant="outline" className='flex-1 sm:flex-none'>
-                <FileDown className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-              <Button asChild className='flex-1 sm:flex-none'>
-                <Link href="/sales/new">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Nueva Venta
-                </Link>
-              </Button>
+              <Button variant="outline" className='flex-1 sm:flex-none'><FileDown className="mr-2 h-4 w-4" />Exportar</Button>
+              <Button asChild className='flex-1 sm:flex-none'><Link href="/sales/new"><PlusCircle className="mr-2 h-4 w-4" />Nueva Venta</Link></Button>
             </div>
           }
         />
 
-        {error && (
-            <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-            </Alert>
-        )}
+        {error && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
         <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
-                <TableHeader>
-                <TableRow>
-                    <TableHead className="pl-4">Factura</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="hidden sm:table-cell">Fecha</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="w-[50px] pr-4"></TableHead>
-                </TableRow>
-                </TableHeader>
+                <TableHeader><TableRow><TableHead className="pl-4">Factura</TableHead><TableHead>Cliente</TableHead><TableHead className="hidden sm:table-cell">Fecha</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Total</TableHead><TableHead className="w-[50px] pr-4"></TableHead></TableRow></TableHeader>
                 <TableBody>
-                {loading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                        <TableCell className="pl-4"><Skeleton className="h-4 w-[60px]" /></TableCell>
-                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
-                        <TableCell className="pr-4"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
-                    </TableRow>
-                    ))
-                ) : sales.length > 0 ? (
-                    sales.map((sale) => (
+                {loading ? Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}><TableCell className="pl-4"><Skeleton className="h-4 w-[60px]" /></TableCell><TableCell><Skeleton className="h-4 w-[120px]" /></TableCell><TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell><TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell><TableCell className="text-right"><Skeleton className="h-4 w-[80px]" /></TableCell><TableCell className="pr-4"><Skeleton className="h-8 w-8 ml-auto" /></TableCell></TableRow>
+                )) : sales.length > 0 ? sales.map((sale) => (
                     <TableRow key={sale._id}>
                         <TableCell className="font-mono text-xs pl-4">Nº {String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
                         <TableCell className="text-sm font-medium uppercase truncate max-w-[150px]">{sale.customerName}</TableCell>
                         <TableCell className="hidden sm:table-cell text-xs">{formatDate(String(sale.createdAt))}</TableCell>
-                        <TableCell>
-                        <Badge
-                            variant={
-                            sale.status === 'Pagado' ? 'secondary' : 'outline'
-                            }
-                            className={sale.status === 'Pagado' ? 'bg-green-100 text-green-800 border-none' : ''}
-                        >
-                            {sale.status}
-                        </Badge>
-                        </TableCell>
+                        <TableCell><Badge variant={sale.status === 'Pagado' ? 'secondary' : 'outline'} className={sale.status === 'Pagado' ? 'bg-green-100 text-green-800' : ''}>{sale.status}</Badge></TableCell>
                         <TableCell className="text-right font-medium text-sm">{formatCurrency(sale.totalAmount)}</TableCell>
-                        <TableCell className="pr-4">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 ml-auto">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => router.push(`/sales/${sale._id}/invoice`)}>
-                                <Eye className="mr-2 h-4 w-4" /> Ver factura
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
-                                <Printer className="mr-2 h-4 w-4" /> Imprimir
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                                className="text-red-600"
-                                onSelect={() => setSaleToDelete(sale)}>
-                                Eliminar
-                            </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        </TableCell>
-                    </TableRow>
-                    ))
-                ) : (
-                    <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                            No se encontraron ventas.
-                        </TableCell>
-                    </TableRow>
-                )}
-                </TableBody>
-            </Table>
+                        <TableCell className="pr-4"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-auto"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => router.push(`/sales/${sale._id}/invoice`)}><Eye className="mr-2 h-4 w-4" /> Ver</DropdownMenuItem><DropdownMenuItem onSelect={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}><Printer className="mr-2 h-4 w-4" /> Imprimir</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600" onSelect={() => setSaleToDelete(sale)}>Eliminar</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>
+                    )) : <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">No hay ventas.</TableCell></TableRow>}
+                </TableBody></Table>
           </div>
         </div>
         
         <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Se eliminará la factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} y el stock de los productos será restaurado.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 hover:bg-red-700">Eliminar Venta</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+            <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Anular venta?</AlertDialogTitle><AlertDialogDescription>Se eliminará la factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} y se restaurará el stock.</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSale} className="bg-red-600">Anular</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
         </AlertDialog>
-
       </main>
     </div>
   );

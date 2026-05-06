@@ -39,14 +39,14 @@ export interface ISalePopulated extends Omit<ISale, 'customer'> {
     customer?: ICustomer;
 }
 
-// Counter for invoice numbers
-// Se usa storeId para coincidir con el índice existente en la DB y evitar errores E11000
-const SaleCounterSchema = new Schema({
+// Renombrado a V2 para evitar conflictos con esquemas antiguos en cache
+const SaleCounterV2Schema = new Schema({
     storeId: { type: String, required: true },
     seq: { type: Number, default: 0 }
-});
-SaleCounterSchema.index({ storeId: 1 }, { unique: true });
-export const SaleCounterModel = (mongoose.models.SaleCounter || mongoose.model('SaleCounter', SaleCounterSchema));
+}, { strict: false }); // strict false como medida de seguridad extra
+
+SaleCounterV2Schema.index({ storeId: 1 }, { unique: true });
+export const SaleCounterV2Model = (mongoose.models.SaleCounterV2 || mongoose.model('SaleCounterV2', SaleCounterV2Schema));
 
 
 const SaleItemSchema: Schema = new Schema({
@@ -82,7 +82,6 @@ const SaleSchema: Schema = new Schema({
 
 // Ensure that the combination of store and invoiceNumber is unique.
 SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
-
 
 const SaleModel = (mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)) as mongoose.Model<ISale>;
 
