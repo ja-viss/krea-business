@@ -31,8 +31,9 @@ export async function POST(req: NextRequest) {
     }
     
     // 1. Get the next invoice number atomically within the transaction
+    // Se usa storeId para coincidir con el índice existente en la DB
     const counter = await SaleCounterModel.findOneAndUpdate(
-        { store: storeId },
+        { storeId: storeId },
         { $inc: { seq: 1 } },
         { new: true, upsert: true, session }
     );
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
           $inc: { stock: -item.quantity },
           $set: { status: newStatus }
         },
-        { session } // THIS IS THE FIX: ensure update runs in session
+        { session }
       );
     }
     
@@ -136,11 +137,9 @@ export async function POST(req: NextRequest) {
     // If any operation fails, abort the transaction
     await session.abortTransaction();
     console.error('Error al crear la venta:', error);
-    // Ensure a JSON response is always sent on error
     const errorMessage = error.message || 'Error interno del servidor.';
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   } finally {
-    // End the session
     session.endSession();
   }
 }
