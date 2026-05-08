@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SaleModel from '@/models/Sale';
 import ExpenseModel from '@/models/Expense';
-import UserModel from '@/models/User';
 import ProductModel from '@/models/Product';
 import { subMonths, startOfMonth, endOfMonth, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -41,7 +40,6 @@ export async function GET(req: NextRequest) {
 
     const salesChange = previousMonthSales > 0 ? ((lastMonthSales - previousMonthSales) / previousMonthSales) * 100 : (lastMonthSales > 0 ? 100 : 0);
 
-
     // KPI: Total Expenses
     const totalExpensesData = await ExpenseModel.aggregate([
       { $match: { store: storeId } },
@@ -49,8 +47,9 @@ export async function GET(req: NextRequest) {
     ]);
     const totalExpenses = totalExpensesData[0]?.total || 0;
 
-    // KPI: Customer Count (using distinct emails from sales for this store)
-    const customerCount = await SaleModel.distinct('customerEmail', { store: storeId }).countDocuments();
+    // KPI: Customer Count (Fix: distinct returns array, get length)
+    const customers = await SaleModel.distinct('customerName', { store: storeId });
+    const customerCount = customers.length;
 
     // KPI: Product Count
     const productCount = await ProductModel.countDocuments({ store: storeId });
@@ -59,7 +58,7 @@ export async function GET(req: NextRequest) {
     const recentSales = await SaleModel.find({ store: storeId })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('customerName customerEmail totalAmount');
+      .select('customerName totalAmount');
 
     // Monthly Profit Chart
     const monthlyProfit: { month: string, profit: number }[] = [];
@@ -81,7 +80,7 @@ export async function GET(req: NextRequest) {
         const profit = (salesInMonth[0]?.total || 0) - (expensesInMonth[0]?.total || 0);
         monthlyProfit.push({
             month: format(date, 'MMM', { locale: es }),
-            profit: Math.max(0, profit), // Avoid negative profit for chart
+            profit: Math.max(0, profit),
         });
     }
     
@@ -101,7 +100,7 @@ export async function GET(req: NextRequest) {
         fill: chartColors[index % chartColors.length]
     }));
 
-    const response = {
+    return NextResponse.json({
       totalSales,
       salesChange,
       totalExpenses,
@@ -110,12 +109,9 @@ export async function GET(req: NextRequest) {
       recentSales,
       monthlyProfit,
       expenseDistribution
-    };
-
-    return NextResponse.json(response, { status: 200 });
+    }, { status: 200 });
   } catch (error) {
-    console.error('Error al obtener datos del dashboard:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor.';
-    return NextResponse.json({ message: 'Error al obtener datos del dashboard.', error: errorMessage }, { status: 500 });
+    console.error('Error dashboard:', error);
+    return NextResponse.json({ message: 'Error interno.' }, { status: 500 });
   }
 }
