@@ -13,8 +13,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, LogOut, PanelLeft } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { LogOut, PanelLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { SideNav } from '@/components/side-nav';
@@ -66,7 +66,7 @@ const UserMenu = ({ user }: { user: User | null }) => {
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                        <AvatarFallback>
+                        <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                             {user?.name?.charAt(0).toUpperCase() ?? 'U'}
                         </AvatarFallback>
                     </Avatar>
@@ -97,7 +97,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // This effect runs only on the client, after the initial render.
     setIsClient(true);
 
     const storedUser = {

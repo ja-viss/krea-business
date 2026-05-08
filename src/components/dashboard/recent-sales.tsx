@@ -45,12 +45,12 @@ export function RecentSales({ data = [] }: RecentSalesProps) {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-muted text-muted-foreground font-bold">
                         {sale.customerName
-                          .split(' ')
+                          ?.split(' ')
                           .map((n) => n[0])
                           .join('')
-                          .toUpperCase()}
+                          .toUpperCase() || 'C'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="font-medium">
