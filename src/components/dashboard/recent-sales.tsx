@@ -1,4 +1,3 @@
-
 import {
   Card,
   CardContent,
@@ -14,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface RecentSalesProps {
   data?: {
@@ -41,32 +40,28 @@ export function RecentSales({ data = [] }: RecentSalesProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((sale, index) => (
+            {data.map((sale) => (
               <TableRow key={sale._id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage
-                        src={`https://picsum.photos/seed/avatar-${sale._id}/40/40`}
-                        alt="Avatar"
-                        data-ai-hint="person portrait"
-                      />
                       <AvatarFallback>
                         {sale.customerName
                           .split(' ')
                           .map((n) => n[0])
-                          .join('')}
+                          .join('')
+                          .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="font-medium">
                       {sale.customerName}
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-xs text-muted-foreground truncate max-w-[120px]">
                         {sale.customerEmail}
                       </div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right font-medium">
                   {new Intl.NumberFormat('es-VE', {
                     style: 'currency',
                     currency: 'VES',
@@ -76,7 +71,7 @@ export function RecentSales({ data = [] }: RecentSalesProps) {
             ))}
              {data.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={2} className="h-24 text-center">
+                    <TableCell colSpan={2} className="h-24 text-center text-muted-foreground italic">
                         No hay ventas recientes.
                     </TableCell>
                 </TableRow>
