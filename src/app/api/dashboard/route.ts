@@ -19,14 +19,14 @@ export async function GET(req: NextRequest) {
 
     const storeId = new mongoose.Types.ObjectId(storeIdStr);
 
-    // KPI: Total Sales
+    // KPI: Ventas Totales
     const totalSalesData = await SaleModel.aggregate([
       { $match: { store: storeId, status: 'Pagado' } },
       { $group: { _id: null, total: { $sum: '$totalAmount' } } },
     ]);
     const totalSales = totalSalesData[0]?.total || 0;
     
-    // KPI: Sales Change
+    // KPI: Variación de Ventas
     const oneMonthAgo = subMonths(new Date(), 1);
     const twoMonthsAgo = subMonths(new Date(), 2);
 
@@ -44,27 +44,26 @@ export async function GET(req: NextRequest) {
 
     const salesChange = previousMonthSales > 0 ? ((lastMonthSales - previousMonthSales) / previousMonthSales) * 100 : (lastMonthSales > 0 ? 100 : 0);
 
-    // KPI: Total Expenses
+    // KPI: Gastos Totales
     const totalExpensesData = await ExpenseModel.aggregate([
       { $match: { store: storeId } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     const totalExpenses = totalExpensesData[0]?.total || 0;
 
-    // KPI: Customer Count
-    const customers = await SaleModel.distinct('customerName', { store: storeId });
-    const customerCount = customers.length;
+    // KPI: Conteo de Clientes únicos
+    const customerCount = await SaleModel.distinct('customerName', { store: storeId }).then(res => res.length);
 
-    // KPI: Product Count
+    // KPI: Conteo de Productos
     const productCount = await ProductModel.countDocuments({ store: storeId });
 
-    // Recent Sales
+    // Ventas Recientes
     const recentSales = await SaleModel.find({ store: storeId })
       .sort({ createdAt: -1 })
       .limit(5)
       .select('customerName totalAmount');
 
-    // Monthly Profit Chart
+    // Gráfico de Ganancias Mensuales
     const monthlyProfit: { month: string, profit: number }[] = [];
     for (let i = 5; i >= 0; i--) {
         const date = subMonths(new Date(), i);
@@ -88,7 +87,7 @@ export async function GET(req: NextRequest) {
         });
     }
     
-    // Expense Distribution
+    // Distribución de Gastos
     const expenseDistributionData = await ExpenseModel.aggregate([
         { $match: { store: storeId } },
         { $group: { _id: '$category', total: { $sum: '$amount' } } },
@@ -114,8 +113,8 @@ export async function GET(req: NextRequest) {
       monthlyProfit,
       expenseDistribution
     }, { status: 200 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error dashboard:', error);
-    return NextResponse.json({ message: 'Error interno en el dashboard.' }, { status: 500 });
+    return NextResponse.json({ message: 'Error interno en el dashboard.', error: error.message }, { status: 500 });
   }
 }

@@ -18,9 +18,8 @@ export async function POST(req: NextRequest) {
     if (!storeId) throw new Error("El ID de la tienda es obligatorio.");
     if (!customerName) throw new Error("El nombre del cliente es obligatorio.");
     if (!Array.isArray(items) || items.length === 0) throw new Error("La lista de artículos está vacía.");
-    if (!paymentMethod) throw new Error("El método de pago es obligatorio.");
     
-    // 1. Obtener número de factura usando el nuevo modelo V2
+    // 1. Obtener número de factura con el modelo V2
     const counter = await SaleCounterV2Model.findOneAndUpdate(
         { storeId: storeId },
         { $inc: { seq: 1 } },
@@ -30,7 +29,7 @@ export async function POST(req: NextRequest) {
     if (!counter) throw new Error('No se pudo generar el número de factura.');
     const newInvoiceNumber = counter.seq;
 
-    // 2. Actualizar stock
+    // 2. Validar stock y preparar items
     for (const item of items) {
       const product = await ProductModel.findById(item.productId).session(session);
       if (!product || product.stock < item.quantity) {
@@ -51,7 +50,7 @@ export async function POST(req: NextRequest) {
     
     const finalStatus = (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta') ? 'Pagado' : 'Pendiente';
 
-    // Cálculos de montos
+    // Cálculos financieros
     const subtotals = { exempt: 0, general: 0, reduced: 0 };
     for (const item of items) {
         const itemTotal = item.price * item.quantity;
@@ -65,11 +64,13 @@ export async function POST(req: NextRequest) {
     };
     const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
 
-    // 3. Crear la venta
+    // 3. Crear la venta (Validando que el customerId sea un ObjectId válido o null)
+    const validCustomerId = (customerId && mongoose.Types.ObjectId.isValid(customerId)) ? customerId : null;
+
     const newSale = new SaleModel({
       store: storeId,
       invoiceNumber: newInvoiceNumber,
-      customer: customerId,
+      customer: validCustomerId,
       customerName: customerName,
       subtotals,
       taxDetails,
@@ -85,9 +86,10 @@ export async function POST(req: NextRequest) {
       paymentReference: paymentReference || '',
       status: finalStatus,
     });
+    
     await newSale.save({ session });
 
-    // 4. Cuenta por cobrar si aplica
+    // 4. Crear cuenta por cobrar si queda pendiente
     if (newSale.status === 'Pendiente') {
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 30);
@@ -106,9 +108,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(newSale, { status: 201 });
 
   } catch (error: any) {
-    await session.abortTransaction();
-    console.error('Error al crear la venta:', error);
-    return NextResponse.json({ message: error.message || 'Error interno' }, { status: 500 });
+    if (session.inTransaction()) {
+        await session.abortTransaction();
+    }
+    console.error('Error al procesar la venta:', error);
+    return NextResponse.json({ message: error.message || 'Error interno del servidor' }, { status: 500 });
   } finally {
     session.endSession();
   }
