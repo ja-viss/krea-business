@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SaleModel from '@/models/Sale';
@@ -5,15 +6,18 @@ import ExpenseModel from '@/models/Expense';
 import ProductModel from '@/models/Product';
 import { subMonths, startOfMonth, endOfMonth, format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
-    const storeId = req.nextUrl.searchParams.get('storeId');
+    const storeIdStr = req.nextUrl.searchParams.get('storeId');
 
-    if (!storeId) {
-      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    if (!storeIdStr || !mongoose.Types.ObjectId.isValid(storeIdStr)) {
+      return NextResponse.json({ message: 'El ID de la tienda es inválido o falta.' }, { status: 400 });
     }
+
+    const storeId = new mongoose.Types.ObjectId(storeIdStr);
 
     // KPI: Total Sales
     const totalSalesData = await SaleModel.aggregate([
@@ -47,7 +51,7 @@ export async function GET(req: NextRequest) {
     ]);
     const totalExpenses = totalExpensesData[0]?.total || 0;
 
-    // KPI: Customer Count (Fix: distinct returns array, get length)
+    // KPI: Customer Count
     const customers = await SaleModel.distinct('customerName', { store: storeId });
     const customerCount = customers.length;
 
@@ -112,6 +116,6 @@ export async function GET(req: NextRequest) {
     }, { status: 200 });
   } catch (error) {
     console.error('Error dashboard:', error);
-    return NextResponse.json({ message: 'Error interno.' }, { status: 500 });
+    return NextResponse.json({ message: 'Error interno en el dashboard.' }, { status: 500 });
   }
 }

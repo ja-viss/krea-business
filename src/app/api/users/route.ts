@@ -1,18 +1,20 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
+import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    // Se filtra por storeId para asegurar el aislamiento de datos
     const storeId = req.nextUrl.searchParams.get('storeId');
-    if (!storeId) {
-      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
+      return NextResponse.json({ message: 'El ID de la tienda es inválido o falta.' }, { status: 400 });
     }
     
-    const users = await UserModel.find({ store: storeId }).select('-password').populate('role store');
+    const storeObjectId = new mongoose.Types.ObjectId(storeId);
+    const users = await UserModel.find({ store: storeObjectId }).select('-password').populate('role store');
 
     return NextResponse.json(users, { status: 200 });
 

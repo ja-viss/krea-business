@@ -9,11 +9,12 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     const storeId = req.nextUrl.searchParams.get('storeId');
-    if (!storeId) {
-      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
+      return NextResponse.json({ message: 'El ID de la tienda es inválido o falta.' }, { status: 400 });
     }
     
-    let query: any = { store: storeId };
+    const storeObjectId = new mongoose.Types.ObjectId(storeId);
+    let query: any = { store: storeObjectId };
     let queryBuilder;
 
     // Filtering for Kardex Report or Sales Ledger
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
         query.createdAt = { $gte: start, $lte: end };
     }
 
-    if (productId) { // Specific to Kardex
+    if (productId && mongoose.Types.ObjectId.isValid(productId)) { // Specific to Kardex
         query['items.product'] = new mongoose.Types.ObjectId(productId);
         queryBuilder = SaleModel.find(query).sort({ createdAt: -1 }).populate('items.product');
     } else { // General sales query (for Sales Ledger or default view)

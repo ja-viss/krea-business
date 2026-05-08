@@ -1,6 +1,8 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import ProductModel from '@/models/Product';
+import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,11 +11,12 @@ export async function GET(req: NextRequest) {
     const storeId = req.nextUrl.searchParams.get('storeId');
     const searchQuery = req.nextUrl.searchParams.get('search');
     
-    if (!storeId) {
-      return NextResponse.json({ message: 'El ID de la tienda es obligatorio.' }, { status: 400 });
+    if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
+      return NextResponse.json({ message: 'El ID de la tienda es inválido o falta.' }, { status: 400 });
     }
     
-    let query: any = { store: storeId };
+    const storeObjectId = new mongoose.Types.ObjectId(storeId);
+    let query: any = { store: storeObjectId };
 
     if (searchQuery) {
         query.$or = [
