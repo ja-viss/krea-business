@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -45,9 +46,9 @@ const getSalesAndStockData = ai.defineTool({
   outputSchema: z.object({
       topProducts: z.array(z.object({
           name: z.string(),
-          totalSold: number,
-          currentStock: number,
-          minStock: number
+          totalSold: z.number(),
+          currentStock: z.number(),
+          minStock: z.number()
       }))
   }),
 }, async (input) => {

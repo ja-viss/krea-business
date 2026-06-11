@@ -407,10 +407,10 @@ export default function NewSalePage() {
                                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                   <FormControl><SelectTrigger className='font-bold'><SelectValue placeholder="Método" /></SelectTrigger></FormControl>
                                                   <SelectContent>
-                                                      <SelectItem value="Efectivo" className='font-bold'>💵 Efectivo</SelectItem>
-                                                      <SelectItem value="Tarjeta" className='font-bold'>💳 Tarjeta / Punto</SelectItem>
-                                                      <SelectItem value="Transferencia" className='font-bold'>🏛️ Transferencia</SelectItem>
-                                                      <SelectItem value="Pago Móvil" className='font-bold'>📱 Pago Móvil</SelectItem>
+                                                      <SelectItem value="Efectivo" className='font-bold'>Efectivo</SelectItem>
+                                                      <SelectItem value="Tarjeta" className='font-bold'>Tarjeta / Punto</SelectItem>
+                                                      <SelectItem value="Transferencia" className='font-bold'>Transferencia</SelectItem>
+                                                      <SelectItem value="Pago Móvil" className='font-bold'>Pago Móvil</SelectItem>
                                                   </SelectContent>
                                               </Select>
                                               <FormMessage />
@@ -429,9 +429,9 @@ export default function NewSalePage() {
                                                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                           <FormControl><SelectTrigger className="h-9 font-bold bg-background"><SelectValue /></SelectTrigger></FormControl>
                                                           <SelectContent>
-                                                              <SelectItem value="USD" className='font-bold'>Dólares ($)</SelectItem>
-                                                              <SelectItem value="VES" className='font-bold'>Bolívares (Bs)</SelectItem>
-                                                              <SelectItem value="COP" className='font-bold'>Pesos (P)</SelectItem>
+                                                              <SelectItem value="USD" className='font-bold'>Dólares</SelectItem>
+                                                              <SelectItem value="VES" className='font-bold'>Bolívares</SelectItem>
+                                                              <SelectItem value="COP" className='font-bold'>Pesos</SelectItem>
                                                           </SelectContent>
                                                       </Select>
                                                   </FormItem>
