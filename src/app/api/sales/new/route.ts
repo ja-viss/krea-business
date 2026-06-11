@@ -17,23 +17,27 @@ export async function POST(req: NextRequest) {
 
     if (!storeId) throw new Error("El ID de la tienda es obligatorio.");
     if (!customerName) throw new Error("El nombre del cliente es obligatorio.");
-    if (!Array.isArray(items) || items.length === 0) throw new Error("La lista de artículos está vacía.");
+    if (!Array.isArray(items) || items.length === 0) throw new Error("La lista de productos está vacía.");
     
-    // 1. Obtener número de factura con el modelo V2
+    // 1. Obtener número de factura con contador único por tienda
     const counter = await SaleCounterV2Model.findOneAndUpdate(
         { storeId: storeId },
         { $inc: { seq: 1 } },
         { new: true, upsert: true, session, setDefaultsOnInsert: true }
     );
     
-    if (!counter) throw new Error('No se pudo generar el número de factura.');
+    if (!counter) throw new Error('No se pudo generar el número de factura correlativo.');
     const newInvoiceNumber = counter.seq;
 
-    // 2. Validar stock y preparar items
+    // 2. Validar stock y descontar inventario
     for (const item of items) {
       const product = await ProductModel.findById(item.productId).session(session);
-      if (!product || product.stock < item.quantity) {
-        throw new Error(`Stock insuficiente para: ${item.name}`);
+      if (!product) {
+        throw new Error(`El producto ${item.name} ya no existe en el catálogo.`);
+      }
+      
+      if (product.stock < item.quantity) {
+        throw new Error(`Stock insuficiente para: ${item.name}. Disponible: ${product.stock}`);
       }
 
       const newStock = product.stock - item.quantity;
@@ -48,9 +52,10 @@ export async function POST(req: NextRequest) {
       );
     }
     
+    // Determinar estado de la venta
     const finalStatus = (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta') ? 'Pagado' : 'Pendiente';
 
-    // Cálculos financieros
+    // Cálculos financieros para auditoría
     const subtotals = { exempt: 0, general: 0, reduced: 0 };
     for (const item of items) {
         const itemTotal = item.price * item.quantity;
@@ -64,7 +69,8 @@ export async function POST(req: NextRequest) {
     };
     const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
 
-    // 3. Crear la venta (Validando que el customerId sea un ObjectId válido o null)
+    // 3. Crear el documento de venta
+    // Validamos que el customerId sea un ObjectId válido para evitar errores de casteo en el futuro
     const validCustomerId = (customerId && mongoose.Types.ObjectId.isValid(customerId)) ? customerId : null;
 
     const newSale = new SaleModel({
@@ -89,10 +95,10 @@ export async function POST(req: NextRequest) {
     
     await newSale.save({ session });
 
-    // 4. Crear cuenta por cobrar si queda pendiente
+    // 4. Crear cuenta por cobrar automática si el pago no es inmediato
     if (newSale.status === 'Pendiente') {
         const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 30);
+        dueDate.setDate(dueDate.getDate() + 30); // Crédito por defecto 30 días
         const newReceivable = new AccountReceivableModel({
             store: storeId,
             customer: customerName,
@@ -111,8 +117,10 @@ export async function POST(req: NextRequest) {
     if (session.inTransaction()) {
         await session.abortTransaction();
     }
-    console.error('Error al procesar la venta:', error);
-    return NextResponse.json({ message: error.message || 'Error interno del servidor' }, { status: 500 });
+    console.error('Fallo al procesar la venta:', error);
+    return NextResponse.json({ 
+        message: error.message || 'Error interno al procesar la transacción bancaria/inventario.' 
+    }, { status: 500 });
   } finally {
     session.endSession();
   }

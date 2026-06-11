@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, ChevronLeft, Minus, Plus, DollarSign } from 'lucide-react';
+import { Loader2, Trash2, ChevronLeft, Minus, Plus, DollarSign, Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
@@ -68,7 +68,7 @@ const saleSchema = z.object({
     }
     return true;
 }, {
-    message: 'La referencia es obligatoria.',
+    message: 'La referencia es obligatoria para este método de pago.',
     path: ['paymentReference'],
 });
 
@@ -110,12 +110,11 @@ export default function NewSalePage() {
   const watchAmountReceived = form.watch('amountReceived');
   const watchPaymentCurrency = form.watch('paymentCurrency');
 
+  // Cálculos de Totales en VES
   const {
     subtotalExempt,
     subtotalGeneral,
-    subtotalReduced,
     taxGeneralAmount,
-    taxReducedAmount,
     totalVES,
   } = useMemo(() => {
     const subtotals = { exempt: 0, general: 0, reduced: 0 };
@@ -124,8 +123,6 @@ export default function NewSalePage() {
         const itemTotal = item.price * item.quantity;
         if (item.taxRate === 0) {
             subtotals.exempt += itemTotal;
-        } else if (item.taxRate === 0.08) {
-            subtotals.reduced += itemTotal;
         } else { 
             subtotals.general += itemTotal;
         }
@@ -133,21 +130,19 @@ export default function NewSalePage() {
 
     const taxes = {
         general: subtotals.general * 0.16,
-        reduced: subtotals.reduced * 0.08,
     };
 
-    const grandTotal = subtotals.exempt + subtotals.general + subtotals.reduced + taxes.general + taxes.reduced;
+    const grandTotal = subtotals.exempt + subtotals.general + taxes.general;
 
     return {
       subtotalExempt: subtotals.exempt,
       subtotalGeneral: subtotals.general,
-      subtotalReduced: subtotals.reduced,
       taxGeneralAmount: taxes.general,
-      taxReducedAmount: taxes.reduced,
       totalVES: grandTotal
     };
   }, [watchItems]);
 
+  // Conversiones Dinámicas usando la API del BCV
   const totalUSD = useMemo(() => {
     if (!rates.usd || !rates.usd.usd) return 0;
     return totalVES / rates.usd.usd;
@@ -155,8 +150,8 @@ export default function NewSalePage() {
   
   const totalCOP = useMemo(() => {
     if (!rates.usd?.usd || !rates.cop?.rate) return 0;
-    const totalInUSD = totalVES / rates.usd.usd;
-    return totalInUSD * rates.cop.rate;
+    const tUSD = totalVES / rates.usd.usd;
+    return tUSD * rates.cop.rate;
   }, [totalVES, rates.usd, rates.cop]);
 
 
@@ -169,6 +164,7 @@ export default function NewSalePage() {
     }
   }, [watchPaymentCurrency, totalUSD, totalVES, totalCOP]);
 
+  // Autocálculo de Vuelto (Cambio)
   const changeAmount = useMemo(() => {
     const totalInCurrency = getAmountInSelectedCurrency;
     const received = watchAmountReceived || 0;
@@ -198,8 +194,8 @@ export default function NewSalePage() {
       } else {
         toast({
             variant: 'destructive',
-            title: 'Stock Insuficiente',
-            description: `No puedes añadir más de ${product.stock} unidades.`,
+            title: 'Límite de Inventario',
+            description: `No hay más existencias de ${product.name}.`,
         });
       }
     } else {
@@ -215,8 +211,8 @@ export default function NewSalePage() {
        } else {
             toast({
                 variant: 'destructive',
-                title: 'Sin Stock',
-                description: `El producto ${product.name} está agotado.`,
+                title: 'Producto Agotado',
+                description: `El artículo ${product.name} no tiene stock disponible.`,
             });
        }
     }
@@ -227,14 +223,7 @@ export default function NewSalePage() {
     if (newQuantity > 0 && newQuantity <= item.stock) {
       update(index, { ...item, quantity: newQuantity });
     } else if (newQuantity > item.stock) {
-       toast({
-            variant: 'destructive',
-            title: 'Stock Insuficiente',
-            description: `Límite alcanzado (${item.stock} disponibles).`,
-        });
         update(index, { ...item, quantity: item.stock });
-    } else if (newQuantity < 1) {
-      update(index, { ...item, quantity: 1 });
     }
   };
 
@@ -248,7 +237,7 @@ export default function NewSalePage() {
     setIsSubmitting(true);
     try {
         const storeId = localStorage.getItem('storeId');
-        if (!storeId) throw new Error('Sesión expirada.');
+        if (!storeId) throw new Error('Sesión de usuario no válida.');
 
         const payload = { ...data, storeId };
         const response = await fetch('/api/sales/new', {
@@ -258,15 +247,15 @@ export default function NewSalePage() {
         });
 
         const result = await response.json();
-        if (!response.ok) throw new Error(result.message || 'Error al procesar.');
+        if (!response.ok) throw new Error(result.message || 'Error al procesar la venta.');
 
-        toast({ title: 'Venta Completada' });
+        toast({ title: 'Venta Registrada con Éxito' });
         router.push(`/sales/${result._id}/invoice`);
 
     } catch (error: any) {
         toast({
             variant: 'destructive',
-            title: 'Error',
+            title: 'Error de Venta',
             description: error.message,
         });
     } finally {
@@ -278,88 +267,89 @@ export default function NewSalePage() {
     <div className="flex flex-1 flex-col">
        <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
             <PageHeader
-                title="Nueva Venta"
-                description="Registro rápido de transacciones."
+                title="Punto de Venta"
+                description="Registra ventas rápidas con autocálculo de divisas."
                 actions={
                     <Button variant="outline" asChild className="w-full sm:w-auto">
                         <Link href="/sales">
                         <ChevronLeft className="mr-2 h-4 w-4" />
-                        Cancelar
+                        Regresar
                         </Link>
                     </Button>
                 }
             />
         
-        <div className="flex flex-col sm:flex-row gap-4 border rounded-lg p-4 bg-muted/30 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 border rounded-lg p-4 bg-primary/5 mb-6">
             <div className='flex items-center gap-3 flex-1'>
-                <span className='font-semibold text-sm whitespace-nowrap'>Factura Oficial</span>
+                <Calculator className='h-5 w-5 text-primary' />
+                <span className='font-bold text-sm'>Modo Venta Activo</span>
                 <div className='h-2 w-2 rounded-full bg-green-500 animate-pulse' />
             </div>
             <div className='flex items-center gap-2 text-sm'>
-                <span className='text-muted-foreground'>BCV:</span>
-                <span className='font-mono font-bold bg-background px-2 py-1 rounded border'>
-                    {ratesLoading.usd ? '...' : rates.usd?.usd.toFixed(2) || '0.00'}
+                <span className='text-muted-foreground font-medium uppercase'>Tasa BCV:</span>
+                <span className='font-mono font-black bg-background px-3 py-1 rounded-md border shadow-sm text-primary'>
+                    {ratesLoading.usd ? 'Cargando...' : rates.usd?.usd.toFixed(2) || '0.00'}
                 </span>
-                <span className='text-[10px] text-muted-foreground'>VES/USD</span>
+                <span className='text-[10px] text-muted-foreground font-bold'>Bs./USD</span>
             </div>
         </div>
 
-        {!isClient ? <Skeleton className="h-96 w-full" /> : (
+        {!isClient ? <Skeleton className="h-[500px] w-full" /> : (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-                      {/* Columna Izquierda (Productos) */}
+                      {/* Búsqueda y Detalle de Items */}
                       <div className="lg:col-span-3 space-y-6">
-                          <Card>
-                              <CardHeader>
-                                  <CardTitle>Productos</CardTitle>
+                          <Card className='shadow-md'>
+                              <CardHeader className='pb-3'>
+                                  <CardTitle className='text-lg'>Buscador de Productos</CardTitle>
                               </CardHeader>
                               <CardContent>
                                   <ProductSearch onProductSelect={handleProductSelect} />
                               </CardContent>
                           </Card>
-                          <Card className="overflow-hidden">
-                              <CardHeader>
-                                  <CardTitle>Detalle</CardTitle>
+                          <Card className="overflow-hidden shadow-md">
+                              <CardHeader className='pb-3'>
+                                  <CardTitle className='text-lg'>Carrito de Compra</CardTitle>
                               </CardHeader>
                               <CardContent className="p-0">
                                   <div className="overflow-x-auto">
                                     <Table>
-                                        <TableHeader>
+                                        <TableHeader className='bg-muted/30'>
                                             <TableRow>
-                                                <TableHead className="pl-4">Item</TableHead>
-                                                <TableHead className="text-right">P. Unit</TableHead>
-                                                <TableHead className="text-center w-[120px]">Cant</TableHead>
-                                                <TableHead className="text-right pr-4">Total</TableHead>
+                                                <TableHead className="pl-4">Descripción</TableHead>
+                                                <TableHead className="text-right">Precio</TableHead>
+                                                <TableHead className="text-center">Cant.</TableHead>
+                                                <TableHead className="text-right pr-4">Subtotal</TableHead>
                                                 <TableHead className="w-[40px]"></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {fields.length > 0 ? (
                                                 fields.map((item, index) => (
-                                                    <TableRow key={item.id}>
-                                                        <TableCell className="pl-4 max-w-[150px] truncate uppercase font-medium text-xs sm:text-sm">
+                                                    <TableRow key={item.id} className='hover:bg-muted/10'>
+                                                        <TableCell className="pl-4 max-w-[180px] truncate uppercase font-bold text-xs">
                                                             {item.name}
                                                         </TableCell>
-                                                        <TableCell className="text-right text-xs">
+                                                        <TableCell className="text-right text-xs font-mono">
                                                             {item.price.toLocaleString('es-VE')}
                                                         </TableCell>
                                                         <TableCell>
                                                             <div className='flex items-center justify-center gap-1'>
-                                                                <Button type="button" variant="ghost" size="icon" className='h-7 w-7' onClick={() => handleQuantityChange(index, item.quantity - 1)}>
+                                                                <Button type="button" variant="outline" size="icon" className='h-7 w-7' onClick={() => handleQuantityChange(index, item.quantity - 1)}>
                                                                     <Minus className='h-3 w-3'/>
                                                                 </Button>
-                                                                <span className="w-6 text-center text-sm font-bold">{item.quantity}</span>
-                                                                <Button type="button" variant="ghost" size="icon" className='h-7 w-7' onClick={() => handleQuantityChange(index, item.quantity + 1)}>
+                                                                <span className="w-8 text-center text-sm font-black">{item.quantity}</span>
+                                                                <Button type="button" variant="outline" size="icon" className='h-7 w-7' onClick={() => handleQuantityChange(index, item.quantity + 1)}>
                                                                     <Plus className='h-3 w-3'/>
                                                                 </Button>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="text-right pr-4 font-bold text-xs sm:text-sm">
+                                                        <TableCell className="text-right pr-4 font-black text-xs sm:text-sm">
                                                             {(item.price * item.quantity).toLocaleString('es-VE')}
                                                         </TableCell>
                                                         <TableCell>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => remove(index)}>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => remove(index)}>
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </TableCell>
@@ -368,7 +358,7 @@ export default function NewSalePage() {
                                             ) : (
                                                 <TableRow>
                                                     <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-sm italic">
-                                                        Escanea o busca productos para vender.
+                                                        El carrito está vacío. Agrega productos arriba.
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -379,22 +369,22 @@ export default function NewSalePage() {
                           </Card>
                       </div>
 
-                      {/* Columna Derecha (Cliente y Pago) */}
+                      {/* Cliente y Resumen de Pago */}
                       <div className="lg:col-span-2 space-y-6">
-                          <Card>
-                              <CardHeader>
-                                  <CardTitle>Cliente</CardTitle>
+                          <Card className='shadow-md border-primary/20'>
+                              <CardHeader className='pb-3'>
+                                  <CardTitle className='text-lg'>Cliente</CardTitle>
                               </CardHeader>
                               <CardContent>
                                   { !selectedCustomer ? (
                                       <CustomerSearch onCustomerSelect={handleCustomerSelect} />
                                   ) : (
-                                      <div className='border rounded-lg p-3 space-y-1 bg-muted/40 flex justify-between items-center'>
+                                      <div className='border-2 border-primary/20 rounded-xl p-4 space-y-1 bg-primary/5 flex justify-between items-center'>
                                           <div>
-                                              <p className='font-bold uppercase text-sm'>{selectedCustomer.name}</p>
-                                              <p className='text-xs text-muted-foreground'>{selectedCustomer.idNumber}</p>
+                                              <p className='font-black uppercase text-sm text-primary'>{selectedCustomer.name}</p>
+                                              <p className='text-xs font-bold text-muted-foreground'>{selectedCustomer.idNumber}</p>
                                           </div>
-                                          <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(null)}>Cambiar</Button>
+                                          <Button variant="ghost" size="sm" className='font-bold' onClick={() => setSelectedCustomer(null)}>Cambiar</Button>
                                       </div>
                                   )}
                                   <FormField control={form.control} name="customerName" render={({ field }) => (
@@ -403,23 +393,24 @@ export default function NewSalePage() {
                               </CardContent>
                           </Card>
                           
-                          <Card>
-                              <CardHeader>
-                                  <CardTitle>Pago</CardTitle>
+                          <Card className='shadow-lg border-2'>
+                              <CardHeader className='pb-3 bg-muted/20 border-b'>
+                                  <CardTitle className='text-lg'>Finalizar Pago</CardTitle>
                               </CardHeader>
-                              <CardContent className="space-y-4">
+                              <CardContent className="space-y-4 pt-4">
                                   <FormField
                                       control={form.control}
                                       name="paymentMethod"
                                       render={({ field }) => (
                                           <FormItem>
+                                              <FormLabel className='text-xs font-bold uppercase'>Forma de Pago</FormLabel>
                                               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                  <FormControl><SelectTrigger><SelectValue placeholder="Método" /></SelectTrigger></FormControl>
+                                                  <FormControl><SelectTrigger className='font-bold'><SelectValue placeholder="Método" /></SelectTrigger></FormControl>
                                                   <SelectContent>
-                                                      <SelectItem value="Efectivo">Efectivo</SelectItem>
-                                                      <SelectItem value="Tarjeta">Tarjeta</SelectItem>
-                                                      <SelectItem value="Transferencia">Transferencia</SelectItem>
-                                                      <SelectItem value="Pago Móvil">Pago Móvil</SelectItem>
+                                                      <SelectItem value="Efectivo" className='font-bold'>💵 Efectivo</SelectItem>
+                                                      <SelectItem value="Tarjeta" className='font-bold'>💳 Tarjeta / Punto</SelectItem>
+                                                      <SelectItem value="Transferencia" className='font-bold'>🏛️ Transferencia</SelectItem>
+                                                      <SelectItem value="Pago Móvil" className='font-bold'>📱 Pago Móvil</SelectItem>
                                                   </SelectContent>
                                               </Select>
                                               <FormMessage />
@@ -428,19 +419,19 @@ export default function NewSalePage() {
                                   />
                                   
                                   {watchPaymentMethod === 'Efectivo' && (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-muted/20 rounded-lg border">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-muted/40 rounded-xl border-2 border-dashed">
                                           <FormField
                                               control={form.control}
                                               name="paymentCurrency"
                                               render={({ field }) => (
                                                   <FormItem>
-                                                      <FormLabel className="text-[10px] uppercase">Moneda</FormLabel>
+                                                      <FormLabel className="text-[10px] font-black uppercase">Moneda de Pago</FormLabel>
                                                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                          <FormControl><SelectTrigger className="h-8"><SelectValue /></SelectTrigger></FormControl>
+                                                          <FormControl><SelectTrigger className="h-9 font-bold bg-background"><SelectValue /></SelectTrigger></FormControl>
                                                           <SelectContent>
-                                                              <SelectItem value="USD">USD ($)</SelectItem>
-                                                              <SelectItem value="VES">VES (Bs)</SelectItem>
-                                                              <SelectItem value="COP">COP (P)</SelectItem>
+                                                              <SelectItem value="USD" className='font-bold'>Dólares ($)</SelectItem>
+                                                              <SelectItem value="VES" className='font-bold'>Bolívares (Bs)</SelectItem>
+                                                              <SelectItem value="COP" className='font-bold'>Pesos (P)</SelectItem>
                                                           </SelectContent>
                                                       </Select>
                                                   </FormItem>
@@ -451,14 +442,14 @@ export default function NewSalePage() {
                                               name="amountReceived"
                                               render={({ field }) => (
                                                   <FormItem>
-                                                      <FormLabel className="text-[10px] uppercase">Recibido</FormLabel>
-                                                      <FormControl><Input type="number" step="0.01" className="h-8 font-bold" {...field} /></FormControl>
+                                                      <FormLabel className="text-[10px] font-black uppercase">Monto Recibido</FormLabel>
+                                                      <FormControl><Input type="number" step="0.01" className="h-9 font-black text-lg bg-background" {...field} /></FormControl>
                                                   </FormItem>
                                               )}
                                           />
-                                          <div className="sm:col-span-2 pt-2 border-t flex justify-between items-center">
-                                              <span className="text-xs font-semibold">Cambio:</span>
-                                              <span className="font-bold text-green-600 underline">
+                                          <div className="sm:col-span-2 pt-3 border-t flex justify-between items-center">
+                                              <span className="text-xs font-black uppercase">Vuelto a entregar:</span>
+                                              <span className="font-black text-xl text-green-700 underline decoration-double">
                                                 {formatCurrency(changeAmount, watchPaymentCurrency || 'USD')}
                                               </span>
                                           </div>
@@ -471,7 +462,8 @@ export default function NewSalePage() {
                                           name="paymentReference"
                                           render={({ field }) => (
                                               <FormItem>
-                                                  <FormControl><Input placeholder="Ref / Nº Transacción" {...field} /></FormControl>
+                                                  <FormLabel className='text-xs font-bold uppercase'>Referencia / Lote</FormLabel>
+                                                  <FormControl><Input placeholder="Escribe el nº de confirmación" className='font-mono uppercase' {...field} /></FormControl>
                                                   <FormMessage />
                                               </FormItem>
                                           )}
@@ -479,27 +471,27 @@ export default function NewSalePage() {
                                   )}
                               </CardContent>
                               
-                              <CardFooter className='flex flex-col items-stretch bg-muted/50 p-4 border-t gap-2'>
-                                  <div className='flex justify-between text-[11px] text-muted-foreground uppercase'>
-                                      <span>Subtotal General (IVA 16%):</span> 
+                              <CardFooter className='flex flex-col items-stretch bg-muted/60 p-5 border-t gap-3'>
+                                  <div className='flex justify-between text-[11px] font-bold text-muted-foreground uppercase'>
+                                      <span>Gravable (IVA 16%):</span> 
                                       <span>{formatCurrency(subtotalGeneral, 'VES')}</span>
                                   </div>
-                                  <div className='flex justify-between text-[11px] text-muted-foreground uppercase'>
-                                      <span>Total IVA:</span> 
+                                  <div className='flex justify-between text-[11px] font-bold text-muted-foreground uppercase'>
+                                      <span>IVA Total:</span> 
                                       <span>{formatCurrency(taxGeneralAmount, 'VES')}</span>
                                   </div>
-                                  <Separator className='my-1' />
-                                  <div className='flex justify-between items-center py-2'>
-                                      <span className='font-bold text-sm uppercase'>Total a Pagar:</span>
-                                      <span className='text-2xl font-black text-primary'>{formatCurrency(totalVES, 'VES')}</span>
+                                  <Separator className='my-1 bg-muted-foreground/20' />
+                                  <div className='flex justify-between items-center py-1'>
+                                      <span className='font-black text-sm uppercase text-primary'>Total a Pagar:</span>
+                                      <span className='text-3xl font-black text-primary tracking-tighter'>{formatCurrency(totalVES, 'VES')}</span>
                                   </div>
-                                  <div className='flex flex-col gap-1 pt-2 border-t border-dotted'>
-                                      <div className='flex justify-between text-xs font-medium'>
-                                          <span className='text-muted-foreground italic'>Ref. USD:</span>
-                                          <span className='font-mono'>{formatCurrency(totalUSD, 'USD')}</span>
+                                  <div className='flex flex-col gap-1.5 pt-3 border-t border-dotted border-muted-foreground/50'>
+                                      <div className='flex justify-between text-xs font-bold'>
+                                          <span className='text-muted-foreground italic uppercase'>Equivalente USD:</span>
+                                          <span className='font-black text-base'>{formatCurrency(totalUSD, 'USD')}</span>
                                       </div>
-                                      <div className='flex justify-between text-xs font-medium'>
-                                          <span className='text-muted-foreground italic'>Ref. COP:</span>
+                                      <div className='flex justify-between text-xs font-bold'>
+                                          <span className='text-muted-foreground italic uppercase'>Equivalente COP:</span>
                                           <span className='font-mono'>{formatCurrency(totalCOP, 'COP')}</span>
                                       </div>
                                   </div>
@@ -508,9 +500,9 @@ export default function NewSalePage() {
                                     type="submit" 
                                     size="lg"
                                     disabled={isSubmitting || watchItems.length === 0}
-                                    className="w-full mt-4 font-bold shadow-lg shadow-primary/20"
+                                    className="w-full mt-4 font-black uppercase text-lg shadow-xl shadow-primary/20 h-14"
                                   >
-                                      {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DollarSign className="mr-2 h-4 w-4" />}
+                                      {isSubmitting ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <DollarSign className="mr-2 h-6 w-6" />}
                                       Finalizar Venta
                                   </Button>
                               </CardFooter>
