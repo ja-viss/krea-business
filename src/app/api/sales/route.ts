@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SaleModel from '@/models/Sale';
+// Importamos CustomerModel para registrar el esquema en Mongoose y evitar el error "Schema hasn't been registered"
+import CustomerModel from '@/models/Customer'; 
 import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
@@ -25,6 +27,7 @@ export async function GET(req: NextRequest) {
         const start = new Date(fromDate);
         const end = toDate && toDate !== 'undefined' ? new Date(toDate) : new Date(fromDate);
         if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+            start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
             query.createdAt = { $gte: start, $lte: end };
         }
@@ -34,14 +37,14 @@ export async function GET(req: NextRequest) {
         query['items.product'] = new mongoose.Types.ObjectId(productId);
     }
 
-    // Usamos lean() para rendimiento y populate selectivo para evitar errores de casteo
+    // Usamos lean() para rendimiento y populate para traer datos del cliente
+    // Mongoose ahora encontrará el modelo "Customer" porque lo importamos arriba
     const sales = await SaleModel.find(query)
       .sort({ createdAt: -1 })
       .populate({
           path: 'customer',
+          model: CustomerModel,
           select: 'name idNumber',
-          // match asegura que solo intentemos popular si el ID es un ObjectId válido en la colección de clientes
-          options: { retainNullValues: true }
       })
       .lean()
       .exec();
