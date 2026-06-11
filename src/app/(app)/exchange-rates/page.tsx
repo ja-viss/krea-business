@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -7,27 +6,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertTriangle, TrendingDown, TrendingUp, Edit, Check } from 'lucide-react';
+import { AlertTriangle, TrendingDown, TrendingUp, Edit, Check, RotateCcw, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-
-interface HistoricalRate {
-    date: string;
-    usd: number;
-    eur: number;
-}
-
-interface HistoricalResponse {
-    rates: HistoricalRate[];
-}
-
-interface ProcessedHistoricalRate extends HistoricalRate {
-    variation: number;
-}
-
+import { Badge } from '@/components/ui/badge';
 
 export default function ExchangeRatesPage() {
   const {
@@ -35,18 +20,18 @@ export default function ExchangeRatesPage() {
     historicalRates,
     loading,
     error,
-    isEditingCop,
-    editedCopRate,
-    setEditedCopRate,
-    handleEditCop,
-    handleSaveCop,
+    editingCurrency,
+    editValue,
+    setEditValue,
+    handleEdit,
+    handleSave,
+    handleReset,
     fetchHistoricalRates,
   } = useExchangeRates();
 
   useEffect(() => {
     fetchHistoricalRates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchHistoricalRates]);
 
   const formatCurrency = (value: number, currency = 'VES') => {
       if (currency === 'COP') {
@@ -58,20 +43,28 @@ export default function ExchangeRatesPage() {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    // Verificar si la fecha es válida
-    if (isNaN(date.getTime())) return 'Fecha inválida';
-    // Añadir T00:00:00 para evitar problemas de zona horaria
-    return format(new Date(`${dateString.split('T')[0]}T00:00:00`), "eeee, dd 'de' MMMM, yyyy", { locale: es });
+    try {
+        return format(new Date(dateString), "eeee, dd 'de' MMMM, yyyy", { locale: es });
+    } catch (e) {
+        return 'Fecha no disponible';
+    }
   }
 
   return (
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
-          title="Tasas de Cambio Oficiales"
-          description="Consulta las tasas de cambio oficiales y configura tasas personalizadas."
+          title="Gestión de Divisas"
+          description="Controla las tasas de cambio operativas y consulta las oficiales del BCV."
         />
+
+        <Alert variant="destructive" className="bg-amber-50 border-amber-500 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            <ShieldAlert className="h-5 w-5 text-amber-600" />
+            <AlertTitle className="font-bold">Advertencia Fiscal y Legal</AlertTitle>
+            <AlertDescription className="text-sm">
+                Según la normativa vigente del Banco Central de Venezuela (BCV), los comercios están obligados a utilizar la tasa oficial publicada por dicho ente para todas las transacciones comerciales. El uso de tasas personalizadas es responsabilidad exclusiva del usuario y puede acarrear sanciones administrativas.
+            </AlertDescription>
+        </Alert>
 
         {error && (
             <Alert variant="destructive">
@@ -82,122 +75,141 @@ export default function ExchangeRatesPage() {
         )}
 
         <div className="grid gap-6 md:grid-cols-3">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Tasa Actual del Dólar (USD)</CardTitle>
-                    {loading.usd ? <Skeleton className="h-4 w-1/2 mt-1" /> : (
-                         <CardDescription>
-                            Actualizado el: {rates.usd?.date ? formatDate(rates.usd.date) : '...'}
-                        </CardDescription>
-                    )}
+            {/* USD Card */}
+            <Card className={rates.usd?.isManual ? "border-amber-500 shadow-amber-100" : ""}>
+                <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-bold uppercase text-muted-foreground tracking-widest">Dólar (USD)</CardTitle>
+                        {rates.usd?.isManual ? <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-amber-300">MANUAL</Badge> : <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300">BCV</Badge>}
+                    </div>
                 </CardHeader>
-                <CardContent>
-                    {loading.usd ? <Skeleton className="h-12 w-3/4" /> : (
-                         <p className="text-4xl font-bold tracking-tight">
-                            {rates.usd ? formatCurrency(rates.usd.usd) : 'Cargando...'}
-                        </p>
+                <CardContent className="space-y-4">
+                    {loading.usd ? <Skeleton className="h-10 w-full" /> : (
+                         editingCurrency === 'USD' ? (
+                             <div className="flex gap-2">
+                                <Input type="number" step="0.01" value={editValue} onChange={(e) => setEditValue(e.target.value)} className="text-2xl font-black h-12" />
+                                <Button size="icon" onClick={handleSave} className="h-12 w-12"><Check /></Button>
+                             </div>
+                         ) : (
+                             <div className="flex items-baseline justify-between">
+                                <p className="text-3xl font-black tracking-tighter">{rates.usd ? formatCurrency(rates.usd.usd) : '0,00'}</p>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit('USD')} className="h-8 w-8"><Edit className="h-4 w-4" /></Button>
+                                    {rates.usd?.isManual && <Button variant="ghost" size="icon" onClick={() => handleReset('USD')} className="h-8 w-8 text-amber-600"><RotateCcw className="h-4 w-4" /></Button>}
+                                </div>
+                             </div>
+                         )
                     )}
+                    <p className="text-[10px] text-muted-foreground italic truncate">Actualizado: {rates.usd?.date ? formatDate(rates.usd.date) : '...'}</p>
                 </CardContent>
             </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Tasa Actual del Euro (EUR)</CardTitle>
-                     {loading.usd ? <Skeleton className="h-4 w-1/2 mt-1" /> : (
-                         <CardDescription>
-                             Actualizado el: {rates.eur?.date ? formatDate(rates.eur.date) : '...'}
-                        </CardDescription>
-                    )}
+
+            {/* EUR Card */}
+            <Card className={rates.eur?.isManual ? "border-amber-500 shadow-amber-100" : ""}>
+                <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-bold uppercase text-muted-foreground tracking-widest">Euro (EUR)</CardTitle>
+                         {rates.eur?.isManual ? <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-amber-300">MANUAL</Badge> : <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-green-300">BCV</Badge>}
+                    </div>
                 </CardHeader>
-                <CardContent>
-                     {loading.usd ? <Skeleton className="h-12 w-3/4" /> : (
-                         <p className="text-4xl font-bold tracking-tight">
-                            {rates.eur ? formatCurrency(rates.eur.eur) : 'Cargando...'}
-                        </p>
+                <CardContent className="space-y-4">
+                    {loading.usd ? <Skeleton className="h-10 w-full" /> : (
+                         editingCurrency === 'EUR' ? (
+                             <div className="flex gap-2">
+                                <Input type="number" step="0.01" value={editValue} onChange={(e) => setEditValue(e.target.value)} className="text-2xl font-black h-12" />
+                                <Button size="icon" onClick={handleSave} className="h-12 w-12"><Check /></Button>
+                             </div>
+                         ) : (
+                             <div className="flex items-baseline justify-between">
+                                <p className="text-3xl font-black tracking-tighter">{rates.eur ? formatCurrency(rates.eur.eur) : '0,00'}</p>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit('EUR')} className="h-8 w-8"><Edit className="h-4 w-4" /></Button>
+                                    {rates.eur?.isManual && <Button variant="ghost" size="icon" onClick={() => handleReset('EUR')} className="h-8 w-8 text-amber-600"><RotateCcw className="h-4 w-4" /></Button>}
+                                </div>
+                             </div>
+                         )
                     )}
+                     <p className="text-[10px] text-muted-foreground italic truncate">Actualizado: {rates.eur?.date ? formatDate(rates.eur.date) : '...'}</p>
                 </CardContent>
             </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                        Tasa Dólar (USD) a Pesos (COP)
-                        {!isEditingCop ? (
-                            <Button variant="ghost" size="icon" onClick={handleEditCop}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                        ) : (
-                             <Button variant="ghost" size="icon" onClick={handleSaveCop}>
-                                <Check className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </CardTitle>
-                     {loading.cop ? <Skeleton className="h-4 w-1/2 mt-1" /> : (
-                         <CardDescription>
-                             Última actualización: {rates.cop?.updated ? formatDate(rates.cop.updated) : 'N/A'}
-                        </CardDescription>
-                    )}
+
+            {/* COP Card */}
+            <Card className={rates.cop?.isManual ? "border-amber-500 shadow-amber-100" : ""}>
+                <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-bold uppercase text-muted-foreground tracking-widest">Dólar a Pesos (COP)</CardTitle>
+                        {rates.cop?.isManual ? <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-amber-300">MANUAL</Badge> : <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-800 border-blue-300">REF</Badge>}
+                    </div>
                 </CardHeader>
-                <CardContent>
-                     {loading.cop ? <Skeleton className="h-12 w-3/4" /> : isEditingCop ? (
-                        <Input
-                            type="number"
-                            value={editedCopRate}
-                            onChange={(e) => setEditedCopRate(e.target.value)}
-                            className="text-4xl font-bold tracking-tight h-auto p-0 border-0 shadow-none focus-visible:ring-0"
-                        />
-                     ) : (
-                         <p className="text-4xl font-bold tracking-tight">
-                            {rates.cop ? formatCurrency(rates.cop.rate, 'COP') : 'Cargando...'}
-                        </p>
+                <CardContent className="space-y-4">
+                    {loading.cop ? <Skeleton className="h-10 w-full" /> : (
+                         editingCurrency === 'COP' ? (
+                             <div className="flex gap-2">
+                                <Input type="number" value={editValue} onChange={(e) => setEditValue(e.target.value)} className="text-2xl font-black h-12" />
+                                <Button size="icon" onClick={handleSave} className="h-12 w-12"><Check /></Button>
+                             </div>
+                         ) : (
+                             <div className="flex items-baseline justify-between">
+                                <p className="text-3xl font-black tracking-tighter">{rates.cop ? formatCurrency(rates.cop.rate, 'COP') : '0'}</p>
+                                <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit('COP')} className="h-8 w-8"><Edit className="h-4 w-4" /></Button>
+                                    {rates.cop?.isManual && <Button variant="ghost" size="icon" onClick={() => handleReset('COP')} className="h-8 w-8 text-amber-600"><RotateCcw className="h-4 w-4" /></Button>}
+                                </div>
+                             </div>
+                         )
                     )}
+                    <p className="text-[10px] text-muted-foreground italic truncate">Referencia: Mercado Fronterizo</p>
                 </CardContent>
             </Card>
         </div>
 
         <Card>
-            <CardHeader>
-                <CardTitle>Historial de Tasas (Últimos 30 días)</CardTitle>
-                <CardDescription>Evolución de la tasa de cambio oficial del Dólar (USD).</CardDescription>
+            <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-bold">Historial BCV (Últimos 30 días)</CardTitle>
+                <CardDescription>Seguimiento de la volatilidad oficial del mercado cambiario.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead className="text-right">Tasa (Bs.)</TableHead>
-                            <TableHead className="text-right">Variación Diaria</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading.historical ? (
-                            Array.from({ length: 7 }).map((_, i) => (
-                                <TableRow key={i}>
-                                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
-                                    <TableCell className="text-right"><Skeleton className="h-4 w-[100px] ml-auto" /></TableCell>
-                                    <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
-                                </TableRow>
-                            ))
-                        ) : historicalRates.length > 0 ? (
-                            historicalRates.map((rate) => (
-                                <TableRow key={rate.date}>
-                                    <TableCell>{format(new Date(`${rate.date}T00:00:00`), "dd/MM/yyyy")}</TableCell>
-                                    <TableCell className="text-right font-medium">{formatCurrency(rate.usd)}</TableCell>
-                                    <TableCell className="text-right">
-                                        <span className={`flex items-center justify-end gap-1 ${rate.variation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {rate.variation > 0 ? <TrendingUp size={16} /> : rate.variation < 0 ? <TrendingDown size={16} /> : null}
-                                            {rate.variation.toFixed(2)}%
-                                        </span>
+            <CardContent className="p-0 sm:p-6">
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                <TableHead className="pl-6">Fecha</TableHead>
+                                <TableHead className="text-right">Tasa (Bs.)</TableHead>
+                                <TableHead className="text-right pr-6">Variación</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading.historical ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell className="pl-6"><Skeleton className="h-4 w-[120px]" /></TableCell>
+                                        <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                                        <TableCell className="text-right pr-6"><Skeleton className="h-4 w-[60px] ml-auto" /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : historicalRates.length > 0 ? (
+                                historicalRates.map((rate) => (
+                                    <TableRow key={rate.date}>
+                                        <TableCell className="pl-6 font-medium text-xs sm:text-sm">{format(new Date(`${rate.date}T00:00:00`), "dd/MM/yyyy")}</TableCell>
+                                        <TableCell className="text-right font-black text-sm">{formatCurrency(rate.usd)}</TableCell>
+                                        <TableCell className="text-right pr-6">
+                                            <span className={`flex items-center justify-end gap-1 font-bold text-xs ${rate.variation > 0 ? 'text-green-600' : rate.variation < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                                {rate.variation > 0 ? <TrendingUp size={14} /> : rate.variation < 0 ? <TrendingDown size={14} /> : null}
+                                                {rate.variation.toFixed(2)}%
+                                            </span>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-32 text-center text-muted-foreground italic">
+                                        No se pudo obtener el historial de tasas.
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center">
-                                    No se encontró historial de tasas.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
       </main>

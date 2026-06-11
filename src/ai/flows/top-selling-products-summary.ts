@@ -1,21 +1,32 @@
 'use server';
 
 /**
- * @fileOverview Provides a summarized analysis of top-selling products.
+ * @fileOverview Análisis inteligente de ventas e inventario.
  *
- * - topSellingProductsSummary - A function that generates a summary of top-selling products.
- * - TopSellingProductsSummaryInput - The input type for the topSellingProductsSummary function (currently empty).
- * - TopSellingProductsSummaryOutput - The return type for the topSellingProductsSummary function.
+ * Proporciona un resumen ejecutivo de los productos más vendidos y genera recomendaciones
+ * estratégicas de reabastecimiento utilizando IA.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import dbConnect from '@/lib/dbConnect';
+import SaleModel from '@/models/Sale';
+import ProductModel from '@/models/Product';
+import mongoose from 'mongoose';
 
-const TopSellingProductsSummaryInputSchema = z.object({}).describe('Input for top selling products summary flow');
+const TopSellingProductsSummaryInputSchema = z.object({
+    storeId: z.string().describe('ID de la tienda para filtrar datos.')
+});
 export type TopSellingProductsSummaryInput = z.infer<typeof TopSellingProductsSummaryInputSchema>;
 
 const TopSellingProductsSummaryOutputSchema = z.object({
-  summary: z.string().describe('A summary of the top-selling products, including key trends and insights.'),
+  summary: z.string().describe('Resumen narrativo de los productos más vendidos.'),
+  recommendations: z.array(z.object({
+      productName: z.string(),
+      reason: z.string(),
+      suggestedAction: z.string(),
+      priority: z.enum(['Alta', 'Media', 'Baja'])
+  })).describe('Lista de recomendaciones tácticas para el inventario.')
 });
 export type TopSellingProductsSummaryOutput = z.infer<typeof TopSellingProductsSummaryOutputSchema>;
 
@@ -25,41 +36,69 @@ export async function topSellingProductsSummary(
   return topSellingProductsSummaryFlow(input);
 }
 
-const getTopSellingProducts = ai.defineTool({
-  name: 'getTopSellingProducts',
-  description: 'Retrieves a list of the top-selling products from the database, including sales data.',
+const getSalesAndStockData = ai.defineTool({
+  name: 'getSalesAndStockData',
+  description: 'Recupera datos reales de ventas y stock actual para análisis.',
   inputSchema: z.object({
-    limit: z
-      .number()
-      .default(10)
-      .describe('The maximum number of top-selling products to retrieve.'),
+    storeId: z.string(),
   }),
-  outputSchema: z.array(z.object({
-    productName: z.string(),
-    totalSales: z.number(),
-  })).describe('An array of top selling products with their names and total sales.'),
+  outputSchema: z.object({
+      topProducts: z.array(z.object({
+          name: z.string(),
+          totalSold: number,
+          currentStock: number,
+          minStock: number
+      }))
+  }),
 }, async (input) => {
-  // TODO: Replace with actual database call.
-  // Placeholder data for demonstration.
-  const topProducts = [
-    { productName: 'Product A', totalSales: 1200 },
-    { productName: 'Product B', totalSales: 950 },
-    { productName: 'Product C', totalSales: 800 },
-  ];
+  await dbConnect();
+  
+  const storeId = new mongoose.Types.ObjectId(input.storeId);
+  
+  // Agregación para obtener los productos más vendidos
+  const salesData = await SaleModel.aggregate([
+      { $match: { store: storeId, status: 'Pagado' } },
+      { $unwind: '$items' },
+      { $group: { 
+          _id: '$items.product', 
+          totalQuantity: { $sum: '$items.quantity' } 
+      } },
+      { $sort: { totalQuantity: -1 } },
+      { $limit: 10 }
+  ]);
 
-  return topProducts.slice(0, input.limit);
+  const results = [];
+  for (const item of salesData) {
+      const product = await ProductModel.findById(item._id);
+      if (product) {
+          results.push({
+              name: product.name,
+              totalSold: item.totalQuantity,
+              currentStock: product.stock,
+              minStock: product.minStock
+          });
+      }
+  }
+
+  return { topProducts: results };
 });
 
 const prompt = ai.definePrompt({
-  name: 'topSellingProductsSummaryPrompt',
+  name: 'businessIntelligencePrompt',
   input: {schema: TopSellingProductsSummaryInputSchema},
   output: {schema: TopSellingProductsSummaryOutputSchema},
-  tools: [getTopSellingProducts],
-  prompt: `You are a business analyst tasked with summarizing the top-selling products for a small business.
-  Analyze the data provided by the getTopSellingProducts tool and provide a concise summary of key trends and insights.
-  Focus on providing actionable recommendations for marketing and inventory management based on the sales data.
-
-  Summary: {{#tool_use "getTopSellingProducts"}} {{/tool_use}}`,
+  tools: [getSalesAndStockData],
+  prompt: `Eres un consultor experto en retail y analista de negocios para pequeñas y medianas empresas en Venezuela.
+  
+  Tu tarea es analizar los datos de ventas e inventario proporcionados por la herramienta getSalesAndStockData para la tienda con ID: {{storeId}}.
+  
+  Analiza cuidadosamente:
+  1. ¿Cuál es el producto estrella? (El más vendido).
+  2. ¿Hay productos de alta rotación con stock crítico (cerca del stock mínimo)?
+  3. Proporciona una recomendación de COMPRA inmediata si el stock está bajo y la venta es alta.
+  4. Sé específico, profesional y estratégico.
+  
+  Genera el resumen ejecutivo y las recomendaciones en formato JSON estructurado.`,
 });
 
 const topSellingProductsSummaryFlow = ai.defineFlow(

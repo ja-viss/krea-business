@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,11 +7,13 @@ interface Rate {
     usd: number;
     eur: number;
     date: string;
+    isManual?: boolean;
 }
 
 interface CopRate {
     rate: number;
     updated: string;
+    isManual?: boolean;
 }
 
 interface HistoricalRate {
@@ -28,7 +29,7 @@ interface ProcessedHistoricalRate extends HistoricalRate {
 const USD_API_URL = 'https://ve.dolarapi.com/v1/dolares/oficial';
 const EUR_API_URL = 'https://ve.dolarapi.com/v1/euro/oficial';
 const HISTORICAL_API_URL = 'https://api.dolarvzla.com/public/exchange-rate/list';
-const DEFAULT_COP_RATE = 4200; // Tasa USD/COP por defecto
+const DEFAULT_COP_RATE = 4200;
 
 export function useExchangeRates() {
   const { toast } = useToast();
@@ -37,8 +38,8 @@ export function useExchangeRates() {
   const [loading, setLoading] = useState({ usd: true, cop: true, historical: true });
   const [error, setError] = useState<string | null>(null);
 
-  const [isEditingCop, setIsEditingCop] = useState(false);
-  const [editedCopRate, setEditedCopRate] = useState('');
+  const [editingCurrency, setEditingCurrency] = useState<'USD' | 'EUR' | 'COP' | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   const fetchRates = useCallback(async () => {
     try {
@@ -46,41 +47,41 @@ export function useExchangeRates() {
       setError(null);
       
       const [usdRes, eurRes] = await Promise.all([
-          fetch(USD_API_URL),
+          fetch(USD_API_URL).catch(() => null),
           fetch(EUR_API_URL).catch(() => null)
       ]);
 
-      let finalCopRate: CopRate | null = null;
-      const savedCopRate = localStorage.getItem('copRate');
-      if (savedCopRate) {
-          finalCopRate = JSON.parse(savedCopRate);
+      const usdData = usdRes?.ok ? await usdRes.json() : null;
+      const eurData = eurRes?.ok ? await eurRes.json() : null;
+
+      // Cargar overrides manuales de localStorage
+      const manualUsd = localStorage.getItem('manual_usd');
+      const manualEur = localStorage.getItem('manual_eur');
+      const manualCop = localStorage.getItem('manual_cop');
+
+      const bcvUsd = usdData?.promedio || 0;
+      const bcvEur = eurData?.promedio || (bcvUsd * 1.08);
+
+      const finalUsd: Rate = manualUsd ? { usd: parseFloat(manualUsd), eur: bcvEur, date: new Date().toISOString(), isManual: true } : { usd: bcvUsd, eur: bcvEur, date: usdData?.fechaActualizacion || new Date().toISOString() };
+      const finalEur: Rate = manualEur ? { usd: bcvUsd, eur: parseFloat(manualEur), date: new Date().toISOString(), isManual: true } : { usd: bcvUsd, eur: bcvEur, date: eurData?.fechaActualizacion || new Date().toISOString() };
+      
+      let finalCop: CopRate;
+      if (manualCop) {
+          finalCop = { rate: parseFloat(manualCop), updated: new Date().toISOString(), isManual: true };
       } else {
-        finalCopRate = {
-            rate: DEFAULT_COP_RATE,
-            updated: new Date().toISOString()
-        };
+          const savedCop = localStorage.getItem('copRate');
+          finalCop = savedCop ? JSON.parse(savedCop) : { rate: DEFAULT_COP_RATE, updated: new Date().toISOString() };
       }
-
-      if (!usdRes.ok) {
-        throw new Error('Error al conectar con la API de tasas oficiales.');
-      }
-
-      const usdData = await usdRes.json();
-      const eurData = (eurRes && eurRes.ok) ? await eurRes.json() : null;
-
-      const usdValue = usdData.promedio;
-      const eurValue = eurData ? eurData.promedio : (usdValue * 1.08); 
-      const dateString = usdData.fechaActualizacion;
 
       setRates({
-        usd: { usd: usdValue, eur: eurValue, date: dateString },
-        eur: { usd: usdValue, eur: eurValue, date: dateString },
-        cop: finalCopRate,
+        usd: finalUsd,
+        eur: finalEur,
+        cop: finalCop,
       });
 
     } catch (err: any) {
       console.error('Error fetching rates:', err);
-      setError('No se pudieron cargar las tasas de cambio oficiales del BCV.');
+      setError('Error al cargar tasas oficiales. Verifique su conexión.');
     } finally {
       setLoading(prev => ({ ...prev, usd: false, cop: false }));
     }
@@ -90,30 +91,23 @@ export function useExchangeRates() {
      try {
         setLoading(prev => ({ ...prev, historical: true }));
         const historicalRes = await fetch(HISTORICAL_API_URL).catch(() => null);
-
-        if (!historicalRes || !historicalRes.ok) {
-          setHistoricalRates([]);
-          return;
-        }
-        
-        const historicalData = await historicalRes.json();
-        
-        if (!historicalData || !historicalData.rates) {
+        if (!historicalRes?.ok) {
             setHistoricalRates([]);
             return;
         }
-
+        const historicalData = await historicalRes.json();
+        if (!historicalData?.rates) {
+            setHistoricalRates([]);
+            return;
+        }
         const processedData = historicalData.rates
           .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .map((rate: any, index: number, array: any[]) => {
             const previousDayRate = array[index + 1];
             let variation = 0;
-            if (previousDayRate) {
-              variation = ((rate.usd - previousDayRate.usd) / previousDayRate.usd) * 100;
-            }
+            if (previousDayRate) variation = ((rate.usd - previousDayRate.usd) / previousDayRate.usd) * 100;
             return { ...rate, variation };
         });
-
         setHistoricalRates(processedData.slice(0, 30));
      } catch (err: any) {
         setHistoricalRates([]);
@@ -126,26 +120,34 @@ export function useExchangeRates() {
     fetchRates();
   }, [fetchRates]);
 
-  const handleEditCop = () => {
-    setEditedCopRate(rates.cop?.rate.toString() || '');
-    setIsEditingCop(true);
+  const handleEdit = (currency: 'USD' | 'EUR' | 'COP') => {
+    let currentVal = '';
+    if (currency === 'USD') currentVal = rates.usd?.usd.toString() || '';
+    if (currency === 'EUR') currentVal = rates.eur?.eur.toString() || '';
+    if (currency === 'COP') currentVal = rates.cop?.rate.toString() || '';
+    setEditValue(currentVal);
+    setEditingCurrency(currency);
   };
 
-  const handleSaveCop = () => {
-    const newRateValue = parseFloat(editedCopRate);
-    if (!isNaN(newRateValue)) {
-        const newCopRate: CopRate = {
-            rate: newRateValue,
-            updated: new Date().toISOString(),
-        };
-        localStorage.setItem('copRate', JSON.stringify(newCopRate));
-        setRates(prev => ({...prev, cop: newCopRate}));
-        toast({
-            title: 'Tasa Guardada',
-            description: 'La nueva tasa de USD a COP ha sido guardada localmente.',
-        });
-    }
-    setIsEditingCop(false);
+  const handleSave = () => {
+    const val = parseFloat(editValue);
+    if (isNaN(val)) return;
+
+    if (editingCurrency === 'USD') localStorage.setItem('manual_usd', val.toString());
+    if (editingCurrency === 'EUR') localStorage.setItem('manual_eur', val.toString());
+    if (editingCurrency === 'COP') localStorage.setItem('manual_cop', val.toString());
+
+    toast({ title: 'Tasa Actualizada', description: `La tasa de ${editingCurrency} ha sido establecida manualmente.` });
+    setEditingCurrency(null);
+    fetchRates();
+  };
+
+  const handleReset = (currency: 'USD' | 'EUR' | 'COP') => {
+      if (currency === 'USD') localStorage.removeItem('manual_usd');
+      if (currency === 'EUR') localStorage.removeItem('manual_eur');
+      if (currency === 'COP') localStorage.removeItem('manual_cop');
+      toast({ title: 'Tasa Restaurada', description: `Se ha vuelto a la tasa oficial para ${currency}.` });
+      fetchRates();
   };
 
   return {
@@ -153,11 +155,12 @@ export function useExchangeRates() {
     historicalRates,
     loading,
     error,
-    isEditingCop,
-    editedCopRate,
-    setEditedCopRate,
-    handleEditCop,
-    handleSaveCop,
+    editingCurrency,
+    editValue,
+    setEditValue,
+    handleEdit,
+    handleSave,
+    handleReset,
     fetchHistoricalRates,
   };
 }
