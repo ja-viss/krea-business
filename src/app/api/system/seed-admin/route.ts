@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ 
             success: true,
             message: 'Super Administrador javistech registrado correctamente.',
-            details: 'Rol Global SUPER_ADMIN_MASTER asignado. storeId: NULL'
+            details: 'Utiliza "javistech" como email y "jojoto123" como contraseña.'
         }, { status: 201 });
 
     } catch (error: any) {

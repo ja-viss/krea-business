@@ -96,16 +96,16 @@ export default function LoginPage() {
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-2xl font-bold">Bienvenido de Nuevo</CardTitle>
         <CardDescription>
-          Ingresa tu email para iniciar sesión en tu cuenta
+          Ingresa tus credenciales para acceder a tu cuenta
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Usuario / Email</Label>
           <Input 
             id="email" 
-            type="email" 
-            placeholder="m@ejemplo.com" 
+            type="text" 
+            placeholder="javistech o correo@ejemplo.com" 
             required 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
