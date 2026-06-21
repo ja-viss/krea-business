@@ -27,12 +27,13 @@ import {
     Lock,
     Trophy
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert } from '@/components/ui/alert';
 
 export default function StoreAdminDetailPage() {
     const params = useParams();
@@ -113,6 +114,12 @@ export default function StoreAdminDetailPage() {
         }
     };
 
+    const getFormattedDate = (dateVal: any) => {
+        if (!dateVal) return '';
+        const d = new Date(dateVal);
+        return isValid(d) ? format(d, 'yyyy-MM-dd') : '';
+    };
+
     if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     if (!store) return <div className="p-8">Empresa no encontrada.</div>;
 
@@ -173,13 +180,14 @@ export default function StoreAdminDetailPage() {
                                             <div className="flex gap-2">
                                                 <Input 
                                                     type="date" 
-                                                    value={format(new Date(store.expiryDate), 'yyyy-MM-dd')} 
+                                                    value={getFormattedDate(store.expiryDate)} 
                                                     onChange={(e) => handleUpdateStore({ expiryDate: new Date(e.target.value) })}
                                                     className="font-mono font-bold"
                                                     disabled={saving}
                                                 />
                                                 <Button variant="outline" size="icon" onClick={() => {
-                                                    const next = new Date(store.expiryDate);
+                                                    const currentExpiry = store.expiryDate ? new Date(store.expiryDate) : new Date();
+                                                    const next = isValid(currentExpiry) ? currentExpiry : new Date();
                                                     next.setMonth(next.getMonth() + 1);
                                                     handleUpdateStore({ expiryDate: next, status: 'Active' });
                                                 }}>
@@ -220,8 +228,8 @@ export default function StoreAdminDetailPage() {
                                         <Input 
                                             type="number" 
                                             value={store.maxUsers} 
-                                            onChange={(e) => setStore({...store, maxUsers: parseInt(e.target.value)})}
-                                            onBlur={(e) => handleUpdateStore({ maxUsers: parseInt(e.target.value) })}
+                                            onChange={(e) => setStore({...store, maxUsers: parseInt(e.target.value) || 0})}
+                                            onBlur={(e) => handleUpdateStore({ maxUsers: parseInt(e.target.value) || 0 })}
                                             disabled={saving}
                                         />
                                     </div>
@@ -233,8 +241,8 @@ export default function StoreAdminDetailPage() {
                                         <Input 
                                             type="number" 
                                             value={store.maxInvoicesPerMonth} 
-                                            onChange={(e) => setStore({...store, maxInvoicesPerMonth: parseInt(e.target.value)})}
-                                            onBlur={(e) => handleUpdateStore({ maxInvoicesPerMonth: parseInt(e.target.value) })}
+                                            onChange={(e) => setStore({...store, maxInvoicesPerMonth: parseInt(e.target.value) || 0})}
+                                            onBlur={(e) => handleUpdateStore({ maxInvoicesPerMonth: parseInt(e.target.value) || 0 })}
                                             disabled={saving}
                                         />
                                     </div>
@@ -449,4 +457,3 @@ export default function StoreAdminDetailPage() {
         </div>
     );
 }
-
