@@ -51,7 +51,7 @@ export const navLinks: NavLink[] = [
     category: 'Gestión de Clientes',
   },
   {
-    href: '/users',
+    href: '/admin/users',
     label: 'Usuarios Globales',
     icon: Users,
     roles: ['SUPER_ADMIN_MASTER'],
