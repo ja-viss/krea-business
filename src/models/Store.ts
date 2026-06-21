@@ -1,3 +1,4 @@
+
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IStore extends Document {
@@ -14,6 +15,8 @@ export interface IStore extends Document {
   expiryDate: Date;
   maxUsers: number;
   maxInvoicesPerMonth: number;
+  // Multi-Tenant Infrastructure (Encrypted)
+  tenantDbUri?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,12 +29,13 @@ const StoreSchema: Schema = new Schema({
   email: { type: String },
   seniatCondition: { type: String, default: 'Contribuyente Ordinario del IVA' },
   footerMessage: { type: String, default: 'Gracias por su compra' },
-  // Default SaaS values
   status: { type: String, enum: ['Active', 'Suspended', 'Demo', 'Expired'], default: 'Demo' },
   plan: { type: String, enum: ['Basic', 'Pro', 'Premium'], default: 'Basic' },
-  expiryDate: { type: Date, default: () => new Date(+new Date() + 15*24*60*60*1000) }, // 15 days demo by default
+  expiryDate: { type: Date, default: () => new Date(+new Date() + 15*24*60*60*1000) },
   maxUsers: { type: Number, default: 3 },
   maxInvoicesPerMonth: { type: Number, default: 100 },
+  // Campo para almacenar la URI de MongoDB Atlas cifrada
+  tenantDbUri: { type: String },
 }, {
   timestamps: true
 });

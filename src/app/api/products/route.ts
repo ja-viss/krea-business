@@ -1,44 +1,50 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
-import ProductModel from '@/models/Product';
-import mongoose from 'mongoose';
+import StoreModel from '@/models/Store';
+import { getTenantDb } from '@/lib/tenant-manager';
+
+/**
+ * Endpoint de Productos (Aislado por Tenant).
+ * Detecta automáticamente a qué base de datos consultar.
+ */
 
 export async function GET(req: NextRequest) {
   try {
+    // 1. Conectar a DB Maestra para obtener metadatos de la empresa
     await dbConnect();
-
     const storeId = req.nextUrl.searchParams.get('storeId');
-    const searchQuery = req.nextUrl.searchParams.get('search');
-    
-    if (!storeId) {
-      return NextResponse.json({ message: 'El ID de la tienda falta.' }, { status: 400 });
-    }
-    
-    let query: any = {};
-    
-    if (storeId !== 'SYSTEM_MASTER') {
-        if (!mongoose.Types.ObjectId.isValid(storeId)) {
-            return NextResponse.json({ message: 'El ID de la tienda es inválido.' }, { status: 400 });
-        }
-        query.store = new mongoose.Types.ObjectId(storeId);
+
+    if (!storeId || storeId === 'SYSTEM_MASTER') {
+      return NextResponse.json({ message: 'Acceso no permitido para este rol en esta ruta.' }, { status: 400 });
     }
 
-    if (searchQuery) {
-        query.$or = [
-            { name: { $regex: searchQuery, $options: 'i' } },
-            { sku: { $regex: searchQuery, $options: 'i' } },
-            { barcode: { $regex: searchQuery, $options: 'i' } },
-        ];
+    // 2. Obtener información de infraestructura y licencia
+    const store = await StoreModel.findById(storeId);
+    if (!store) return NextResponse.json({ message: 'Tienda inexistente.' }, { status: 404 });
+
+    // 3. BLOQUEO POR LICENCIA: Si está suspendida, abortar inmediatamente
+    if (store.status === 'Suspended' || store.status === 'Expired') {
+      return NextResponse.json({ 
+        message: 'Acceso denegado. Su suscripción está vencida o suspendida.',
+        status: store.status 
+      }, { status: 403 });
     }
 
-    const products = await ProductModel.find(query).sort({ createdAt: -1 }).limit(searchQuery ? 10 : 50);
+    // 4. ENRUTAMIENTO DINÁMICO: Obtener modelos de la DB aislada del cliente
+    if (!store.tenantDbUri) {
+      return NextResponse.json({ message: 'Infraestructura de base de datos no configurada.' }, { status: 500 });
+    }
+
+    const { models } = await getTenantDb(String(store._id), store.tenantDbUri);
+
+    // 5. OPERACIÓN: Consultar únicamente su base de datos
+    const products = await models.Product.find().sort({ createdAt: -1 });
 
     return NextResponse.json(products, { status: 200 });
 
-  } catch (error) {
-    console.error('Error al obtener los productos:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor.';
-    return NextResponse.json({ message: 'Error al obtener los productos.', error: errorMessage }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error Multi-Tenant GET Products:', error);
+    return NextResponse.json({ message: 'Error al conectar con la base de datos del cliente.' }, { status: 500 });
   }
 }
