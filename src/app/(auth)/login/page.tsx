@@ -47,6 +47,7 @@ export default function LoginPage() {
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
       localStorage.setItem('userEmail', data.user.email);
+      localStorage.setItem('isGlobalAdmin', String(data.user.isGlobalAdmin));
 
 
       toast({
@@ -94,9 +95,9 @@ export default function LoginPage() {
   return (
     <form onSubmit={handleLogin}>
       <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold">Bienvenido de Nuevo</CardTitle>
+        <CardTitle className="text-2xl font-bold">Inicia Sesión</CardTitle>
         <CardDescription>
-          Ingresa tus credenciales para acceder a tu cuenta
+          Panel de Gestión Krea Business Suite
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -105,7 +106,7 @@ export default function LoginPage() {
           <Input 
             id="email" 
             type="text" 
-            placeholder="javistech o correo@ejemplo.com" 
+            placeholder="Introduce tu identificador" 
             required 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -133,26 +134,11 @@ export default function LoginPage() {
         </div>
       </CardContent>
       <CardFooter className="flex flex-col gap-4">
-        <Button className="w-full" type="submit" disabled={isLoading}>
-          {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+        <Button className="w-full font-bold" type="submit" disabled={isLoading}>
+          {isLoading ? 'Accediendo...' : 'Iniciar Sesión'}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={handleVerifyConnection}
-          disabled={isVerifying || isLoading}
-        >
-          {isVerifying ? 'Verificando...' : 'Verificar Conexión a BD'}
-        </Button>
-        <div className="text-center text-sm text-muted-foreground">
-          ¿No tienes una cuenta?{' '}
-          <Link
-            href="/signup"
-            className="font-semibold text-primary underline-offset-4 hover:underline"
-          >
-            Regístrate
-          </Link>
+        <div className="text-center text-xs text-muted-foreground pt-4 border-t">
+          Soporte Técnico: support@krea.com
         </div>
       </CardFooter>
     </form>

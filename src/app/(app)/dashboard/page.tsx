@@ -1,18 +1,17 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle } from 'lucide-react';
+import { LayoutDashboard, Store, Users, DollarSign, Globe, PlusCircle } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { KpiCard } from '@/components/kpi-card';
 import { MonthlyProfitChart } from '@/components/dashboard/monthly-profit-chart';
 import { RecentSales } from '@/components/dashboard/recent-sales';
-import { ExpenseDistributionChart } from '@/components/dashboard/expense-distribution-chart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 
 interface DashboardData {
   totalSales: number;
@@ -20,14 +19,9 @@ interface DashboardData {
   customerCount: number;
   productCount: number;
   salesChange: number;
-  recentSales: {
-    _id: string;
-    customerName: string;
-    customerEmail: string;
-    totalAmount: number;
-  }[];
+  recentSales: any[];
   monthlyProfit: { month: string; profit: number }[];
-  expenseDistribution: { name: string; value: number; fill: string }[];
+  isSystemMaster: boolean;
 }
 
 export default function DashboardPage() {
@@ -40,14 +34,8 @@ export default function DashboardPage() {
       try {
         setLoading(true);
         const storeId = localStorage.getItem('storeId');
-        if (!storeId) {
-          throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
-        }
-
         const response = await fetch(`/api/dashboard?storeId=${storeId}`);
-        if (!response.ok) {
-          throw new Error('No se pudieron cargar los datos del dashboard.');
-        }
+        if (!response.ok) throw new Error('Error al cargar datos del dashboard.');
         const result = await response.json();
         setData(result);
       } catch (err: any) {
@@ -60,121 +48,84 @@ export default function DashboardPage() {
   }, []);
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'VES',
-    }).format(value);
-  };
-  
-  const formatPercentage = (value: number) => {
-    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}% desde el mes pasado`;
+    return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(value);
   };
 
-  const kpiData = data ? [
-    {
-      title: 'Ventas Totales',
-      value: formatCurrency(data.totalSales),
-      change: formatPercentage(data.salesChange),
-      icon: 'dollar-sign' as const,
-    },
-    {
-      title: 'Gastos Totales',
-      value: formatCurrency(data.totalExpenses),
-      change: '+15.3% desde el mes pasado', // Placeholder
-      icon: 'receipt' as const,
-    },
-    {
-      title: 'Nº de Clientes',
-      value: `+${data.customerCount}`,
-      change: '+30.1% desde el mes pasado', // Placeholder
-      icon: 'users' as const,
-    },
-    {
-      title: 'Nº de Productos',
-      value: `${data.productCount}`,
-      change: '+2.5% desde el mes pasado', // Placeholder
-      icon: 'boxes' as const,
-    },
-  ] : [];
-
-  if (error) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
-            <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-            </Alert>
-        </main>
-      </div>
-    )
-  }
+  if (error) return (
+    <div className="p-8">
+        <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
+    </div>
+  );
 
   return (
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
-          title="Dashboard"
-          description="Bienvenido a tu centro de control de negocios."
+          title={data?.isSystemMaster ? "Panel Global del Sistema" : "Resumen de Negocio"}
+          description={data?.isSystemMaster ? "Estadísticas de todas las empresas registradas en Krea." : "Bienvenido a tu centro de control."}
           actions={
-            <>
-              <Button variant="outline">
-                <FileDown />
-                Exportar Resumen PDF
+            data?.isSystemMaster ? (
+              <Button asChild className="font-bold">
+                  <Link href="/admin/stores">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Registrar Nueva Empresa
+                  </Link>
               </Button>
-              <Button>
-                <PlusCircle />
-                Añadir Venta
+            ) : (
+              <Button asChild>
+                <Link href="/sales/new">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Nueva Venta
+                </Link>
               </Button>
-            </>
+            )
           }
         />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {loading ? (
-             Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <Skeleton className="h-4 w-[100px]" />
-                        <Skeleton className="h-4 w-4" />
+             Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[120px] w-full rounded-xl" />)
+          ) : (
+            <>
+                <KpiCard
+                    title={data?.isSystemMaster ? "Ventas Globales" : "Ventas Totales"}
+                    value={formatCurrency(data?.totalSales || 0)}
+                    change={data?.isSystemMaster ? "Total plataforma" : "+1.2% desde ayer"}
+                    iconName="dollar-sign"
+                />
+                <KpiCard
+                    title={data?.isSystemMaster ? "Empresas Activas" : "Gastos Totales"}
+                    value={data?.isSystemMaster ? String(data.totalExpenses) : formatCurrency(data?.totalExpenses || 0)}
+                    change="Métricas actuales"
+                    iconName={data?.isSystemMaster ? "boxes" : "receipt"}
+                />
+                <KpiCard
+                    title={data?.isSystemMaster ? "Usuarios Registrados" : "Clientes"}
+                    value={String(data?.customerCount || 0)}
+                    change="Total histórico"
+                    iconName="users"
+                />
+                <Card className="bg-primary text-primary-foreground">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                        <CardTitle className="text-sm font-bold uppercase tracking-wider">Estado Sistema</CardTitle>
+                        <Globe className="h-4 w-4 opacity-70" />
                     </CardHeader>
                     <CardContent>
-                        <Skeleton className="h-8 w-[150px] mb-2" />
-                        <Skeleton className="h-3 w-full" />
+                        <div className="text-2xl font-black">ONLINE</div>
+                        <p className="text-xs opacity-80">Servidores operativos</p>
                     </CardContent>
                 </Card>
-             ))
-          ) : (
-            kpiData.map((kpi) => (
-              <KpiCard
-                key={kpi.title}
-                title={kpi.title}
-                value={kpi.value}
-                change={kpi.change}
-                iconName={kpi.icon}
-              />
-            ))
+            </>
           )}
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
           <div className="lg:col-span-4">
-             {loading ? <Skeleton className="h-[350px] w-full" /> : <MonthlyProfitChart data={data?.monthlyProfit} />}
+             {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <MonthlyProfitChart data={data?.monthlyProfit} />}
           </div>
-          <div className="lg:col-span-3">
-            {loading ? <Skeleton className="h-[350px] w-full" /> : <RecentSales data={data?.recentSales} />}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {loading ? <Skeleton className="h-[350px] w-full" /> : <ExpenseDistributionChart data={data?.expenseDistribution} />}
-          <div className="rounded-lg border bg-card p-4 shadow-sm">
-            <h3 className="font-semibold">Más Insights</h3>
-            <p className="text-sm text-muted-foreground">
-              Próximamente...
-            </p>
-          </div>
+          {!data?.isSystemMaster && (
+            <div className="lg:col-span-3">
+                {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <RecentSales data={data?.recentSales} />}
+            </div>
+          )}
         </div>
       </main>
     </div>
