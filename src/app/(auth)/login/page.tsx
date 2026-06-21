@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -94,7 +93,7 @@ export default function LoginPage() {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" text-xs font-bold uppercase>Contraseña</Label>
+            <Label htmlFor="password" className="text-xs font-bold uppercase">Contraseña</Label>
             <Link
               href="/forgot-password"
               className="text-[10px] font-bold text-primary underline-offset-4 hover:underline"
@@ -116,6 +115,12 @@ export default function LoginPage() {
         <Button className="w-full font-black uppercase tracking-tight shadow-lg shadow-primary/20 h-12" type="submit" disabled={isLoading}>
           {isLoading ? 'VERIFICANDO...' : 'ENTRAR AL SISTEMA'}
         </Button>
+        <div className="text-center text-sm text-muted-foreground mt-2">
+          ¿No tienes una cuenta?{' '}
+          <Link href="/signup" className="font-bold text-primary hover:underline">
+            Regístrate aquí
+          </Link>
+        </div>
         <div className="text-center text-[10px] text-muted-foreground pt-4 border-t w-full">
             Krea Suite v2.0 • Soporte Multi-Tenant
         </div>

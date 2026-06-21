@@ -72,6 +72,7 @@ export default function SignupPage() {
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
       localStorage.setItem('userEmail', data.user.email);
+      localStorage.setItem('isGlobalAdmin', String(data.user.isGlobalAdmin));
 
       toast({
         title: isGlobalAdmin ? '¡Acceso Maestro Creado!' : '¡Cuenta Creada!',
@@ -80,7 +81,11 @@ export default function SignupPage() {
           : 'Bienvenido al ecosistema Krea Business.',
       });
       
-      router.push('/dashboard');
+      if (isGlobalAdmin) {
+          router.push('/secure-verify');
+      } else {
+          router.push('/dashboard');
+      }
 
     } catch (err: any) {
       toast({
