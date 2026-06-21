@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Search, Store as StoreIcon, ShieldCheck } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -19,10 +19,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, AlertTriangle, UserCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
 
 interface Role {
   _id: string;
@@ -44,17 +46,23 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGlobal, setIsGlobal] = useState(false);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const storeId = localStorage.getItem('storeId');
+        const isMaster = localStorage.getItem('isGlobalAdmin') === 'true';
+        setIsGlobal(isMaster);
+
         if (!storeId) {
-            throw new Error('No se ha iniciado sesión o no se encontró la tienda.');
+            throw new Error('No se ha iniciado sesión.');
         }
+
         const response = await fetch(`/api/users?storeId=${storeId}`);
         if (!response.ok) {
-          throw new Error('No se pudieron obtener los usuarios.');
+          throw new Error('No se pudieron obtener los usuarios del sistema.');
         }
         const data = await response.json();
         setUsers(data);
@@ -68,36 +76,55 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(search.toLowerCase()) || 
+    u.email.toLowerCase().includes(search.toLowerCase()) ||
+    u.store?.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
-          title="Usuarios"
-          description="Gestiona los usuarios y roles de tu tienda."
+          title={isGlobal ? "Gestión de Soporte a Usuarios" : "Directorio de Personal"}
+          description={isGlobal ? "Administra el acceso de todos los usuarios registrados en la plataforma." : "Gestiona los usuarios y roles de tu tienda."}
           actions={
-            <Button>
-              <PlusCircle />
-              Invitar Usuario
-            </Button>
+            !isGlobal && (
+                <Button className="font-bold">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Registrar Usuario
+                </Button>
+            )
           }
         />
+
+        <div className="flex items-center gap-2 max-w-sm">
+            <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Buscar por nombre, email o tienda..."
+                    className="pl-8"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+            </div>
+        </div>
 
         {error && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
+            <AlertTitle>Error de Sistema</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        <div className="rounded-lg border bg-card shadow-sm">
+        <div className="rounded-xl border-2 bg-card shadow-sm overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Rol</TableHead>
-                <TableHead>Tienda</TableHead>
+                <TableHead className="font-black uppercase text-[10px]">Identidad</TableHead>
+                <TableHead className="font-black uppercase text-[10px]">Acceso (Email/User)</TableHead>
+                <TableHead className="font-black uppercase text-[10px]">Rol Asignado</TableHead>
+                {isGlobal && <TableHead className="font-black uppercase text-[10px]">Empresa / Cliente</TableHead>}
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -105,58 +132,52 @@ export default function UsersPage() {
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-9 w-9 rounded-full" />
-                        <Skeleton className="h-4 w-[150px]" />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[200px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-6 w-[100px] rounded-full" />
-                    </TableCell>
-                     <TableCell>
-                      <Skeleton className="h-4 w-[120px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-8 w-8" />
-                    </TableCell>
+                    <TableCell><div className="flex items-center gap-3"><Skeleton className="h-9 w-9 rounded-full" /><Skeleton className="h-4 w-[150px]" /></div></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-[100px] rounded-full" /></TableCell>
+                    {isGlobal && <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>}
+                    <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
                   </TableRow>
                 ))
-              ) : users.length > 0 ? (
-                users.map((user) => (
-                  <TableRow key={user._id}>
+              ) : filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <TableRow key={user._id} className="hover:bg-muted/30">
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback>
-                            {user.name.split(' ').map((n) => n[0]).join('').toUpperCase()}
+                        <Avatar className="h-9 w-9 border-2 border-primary/10">
+                          <AvatarFallback className="bg-primary/5 text-primary font-black text-xs uppercase">
+                            {user.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="font-medium">{user.name}</div>
+                        <div className="font-black uppercase text-xs tracking-tight">{user.name}</div>
                       </div>
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="font-mono text-[11px] text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{user.role?.name || 'N/A'}</Badge>
+                      <Badge variant="outline" className="font-bold border-primary/20 bg-primary/5 text-primary text-[10px] uppercase">
+                        {user.role?.name || 'SIN ROL'}
+                      </Badge>
                     </TableCell>
-                    <TableCell>{user.store?.name || 'N/A'}</TableCell>
+                    {isGlobal && (
+                        <TableCell>
+                            <div className="flex items-center gap-2 font-black text-[10px] uppercase text-muted-foreground">
+                                <StoreIcon className="h-3 w-3 opacity-50" />
+                                {user.store?.name || 'MAESTRO'}
+                            </div>
+                        </TableCell>
+                    )}
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Abrir menú</span>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
-                          <DropdownMenuItem>Cambiar Rol</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            Eliminar
-                          </DropdownMenuItem>
+                          <DropdownMenuItem className="font-bold text-xs">VER PERFIL</DropdownMenuItem>
+                          <DropdownMenuItem className="font-bold text-xs">EDITAR PERMISOS</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600 font-bold text-xs">SUSPENDER ACCESO</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -164,8 +185,8 @@ export default function UsersPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    No se encontraron usuarios.
+                  <TableCell colSpan={isGlobal ? 5 : 4} className="h-32 text-center text-muted-foreground italic text-sm">
+                    No se encontraron usuarios que coincidan con la búsqueda.
                   </TableCell>
                 </TableRow>
               )}
