@@ -6,20 +6,27 @@ import RoleModel, { IRole } from '@/models/Role';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
-const ROLES = {
-  ADMIN: 'Administrador Principal',
-  MASTER: 'SUPER_ADMIN_MASTER'
-};
-
-async function getOrCreateAdminRole(storeId: mongoose.Types.ObjectId | null, session: mongoose.ClientSession, isMaster: boolean): Promise<IRole> {
-    const roleName = isMaster ? ROLES.MASTER : ROLES.ADMIN;
+/**
+ * Obtiene o crea un rol específico para una tienda.
+ */
+async function getOrCreateRole(storeId: mongoose.Types.ObjectId | null, session: mongoose.ClientSession, roleName: string, isMaster: boolean): Promise<IRole> {
     let role = await RoleModel.findOne({ store: storeId, name: roleName }).session(session);
     
     if (!role) {
+        // Permisos por defecto según el nombre del rol
+        let permissions = ['view_dashboard'];
+        if (roleName === 'Administrador Principal' || isMaster) {
+            permissions = ['all'];
+        } else if (roleName.includes('Ventas')) {
+            permissions = ['view_dashboard', 'manage_sales', 'view_reports'];
+        } else if (roleName.includes('Inventario') || roleName.includes('Almacenista')) {
+            permissions = ['view_dashboard', 'manage_inventory', 'view_reports'];
+        }
+
         role = new RoleModel({
             name: roleName,
             store: storeId,
-            permissions: ['all'],
+            permissions: permissions,
             isSystemRole: isMaster
         });
         await role.save({ session });
@@ -33,7 +40,7 @@ export async function POST(req: NextRequest) {
   session.startTransaction();
 
   try {
-    const { businessName, email, password, name, isGlobalAdmin } = await req.json();
+    const { businessName, email, password, name, isGlobalAdmin, roleName } = await req.json();
 
     if (!email || !password || !name) {
       return NextResponse.json({ message: 'Nombre, Email y Contraseña son obligatorios.' }, { status: 400 });
@@ -52,8 +59,9 @@ export async function POST(req: NextRequest) {
         storeId = newStore._id as mongoose.Types.ObjectId;
     }
 
-    // 2. Obtener o crear el rol
-    const role = await getOrCreateAdminRole(storeId, session, !!isGlobalAdmin);
+    // 2. Obtener o crear el rol seleccionado
+    const selectedRoleName = isGlobalAdmin ? 'SUPER_ADMIN_MASTER' : (roleName || 'Administrador Principal');
+    const role = await getOrCreateRole(storeId, session, selectedRoleName, !!isGlobalAdmin);
 
     // 3. Hashear la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -73,7 +81,7 @@ export async function POST(req: NextRequest) {
     await session.commitTransaction();
 
     return NextResponse.json({ 
-      message: isGlobalAdmin ? 'Super Desarrollador registrado.' : 'Tienda creada exitosamente.',
+      message: isGlobalAdmin ? 'Super Desarrollador registrado.' : 'Cuenta y tienda creadas exitosamente.',
       user: {
         id: newUser._id,
         name: newUser.name,
