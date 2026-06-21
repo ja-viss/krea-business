@@ -12,7 +12,11 @@ import {
   Sparkles,
   Users,
   Store,
-  ShieldCheck
+  ShieldCheck,
+  Zap,
+  MessageSquare,
+  CreditCard,
+  History
 } from 'lucide-react';
 
 export type NavLink = {
@@ -24,17 +28,17 @@ export type NavLink = {
 };
 
 export const navLinks: NavLink[] = [
-  // --- SECCION GLOBAL (Solo Super Desarrollador) ---
+  // --- SECCION GLOBAL (Solo Super Desarrollador / javistech) ---
   {
     href: '/dashboard',
-    label: 'Dashboard Sistema',
+    label: 'Infraestructura',
     icon: ShieldCheck,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
   },
   {
     href: '/admin/stores',
-    label: 'Empresas',
+    label: 'Empresas (Tenants)',
     icon: Store,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
@@ -46,8 +50,29 @@ export const navLinks: NavLink[] = [
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
   },
+  {
+    href: '/admin/messaging',
+    label: 'Mensajería Global',
+    icon: MessageSquare,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+  },
+  {
+    href: '/admin/saas-billing',
+    label: 'Suscripciones SaaS',
+    icon: CreditCard,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+  },
+  {
+    href: '/admin/system-logs',
+    label: 'Logs y Auditoría',
+    icon: History,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+  },
   
-  // --- SECCION OPERATIVA (Tiendas) ---
+  // --- SECCION OPERATIVA (Usuarios de Tiendas) ---
   {
     href: '/dashboard',
     label: 'Dashboard',
