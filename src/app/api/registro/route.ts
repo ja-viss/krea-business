@@ -7,15 +7,20 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 /**
- * Obtiene o crea un rol específico para una tienda.
+ * Obtiene o crea un rol específico para una tienda o para el sistema global.
  */
 async function getOrCreateRole(storeId: mongoose.Types.ObjectId | null, session: mongoose.ClientSession, roleName: string, isMaster: boolean): Promise<IRole> {
+    // Buscar rol existente para evitar duplicados
     let role = await RoleModel.findOne({ store: storeId, name: roleName }).session(session);
     
     if (!role) {
-        // Permisos por defecto según el nombre del rol
+        // Definir permisos base
         let permissions = ['view_dashboard'];
-        if (roleName === 'Administrador Principal' || isMaster) {
+        
+        // El Super Admin Master tiene poder total
+        if (isMaster || roleName === 'SUPER_ADMIN_MASTER') {
+            permissions = ['all'];
+        } else if (roleName === 'Administrador Principal') {
             permissions = ['all'];
         } else if (roleName.includes('Ventas')) {
             permissions = ['view_dashboard', 'manage_sales', 'view_reports'];
@@ -42,31 +47,38 @@ export async function POST(req: NextRequest) {
   try {
     const { businessName, email, password, name, isGlobalAdmin, roleName } = await req.json();
 
+    // Validaciones básicas
     if (!email || !password || !name) {
-      return NextResponse.json({ message: 'Nombre, Email y Contraseña son obligatorios.' }, { status: 400 });
+      return NextResponse.json({ message: 'Nombre, Email/Usuario y Contraseña son obligatorios.' }, { status: 400 });
     }
 
     let storeId = null;
 
-    // 1. Si no es admin global, crear la tienda
+    // 1. Manejo de Tienda (Solo si no es Admin Global)
     if (!isGlobalAdmin) {
-        if (!businessName) return NextResponse.json({ message: 'El nombre de la tienda es obligatorio.' }, { status: 400 });
+        if (!businessName) {
+            return NextResponse.json({ message: 'El nombre de la tienda es obligatorio para registros locales.' }, { status: 400 });
+        }
+        
         const newStore = new StoreModel({
           name: businessName,
-          address: 'Por definir',
+          address: 'Dirección por completar',
+          seniatCondition: 'Contribuyente Ordinario',
         });
+        
         await newStore.save({ session });
         storeId = newStore._id as mongoose.Types.ObjectId;
     }
 
-    // 2. Obtener o crear el rol seleccionado
-    const selectedRoleName = isGlobalAdmin ? 'SUPER_ADMIN_MASTER' : (roleName || 'Administrador Principal');
-    const role = await getOrCreateRole(storeId, session, selectedRoleName, !!isGlobalAdmin);
+    // 2. Obtener o crear el rol adecuado
+    // Si es isGlobalAdmin, forzamos el nombre de rol maestro
+    const finalRoleName = isGlobalAdmin ? 'SUPER_ADMIN_MASTER' : (roleName || 'Administrador Principal');
+    const role = await getOrCreateRole(storeId, session, finalRoleName, !!isGlobalAdmin);
 
-    // 3. Hashear la contraseña
+    // 3. Hashear contraseña de forma segura
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. Crear el usuario
+    // 4. Crear el usuario administrador
     const newUser = new UserModel({
       store: storeId,
       name,
@@ -81,23 +93,31 @@ export async function POST(req: NextRequest) {
     await session.commitTransaction();
 
     return NextResponse.json({ 
-      message: isGlobalAdmin ? 'Super Desarrollador registrado.' : 'Cuenta y tienda creadas exitosamente.',
+      message: isGlobalAdmin ? 'Super Desarrollador registrado exitosamente.' : 'Tienda y Administrador creados con éxito.',
       user: {
-        id: newUser._id,
+        id: newUser._id.toString(),
         name: newUser.name,
         email: newUser.email,
-        store: newUser.store || 'SYSTEM_MASTER',
+        store: newUser.store?.toString() || 'SYSTEM_MASTER',
         isGlobalAdmin: newUser.isGlobalAdmin
       }
      }, { status: 201 });
 
   } catch (error: any) {
-    await session.abortTransaction();
-    console.error('Error en el registro:', error);
-    if (error.code === 11000) {
-      return NextResponse.json({ message: 'El usuario/email ya está registrado.' }, { status: 409 });
+    if (session.inTransaction()) {
+        await session.abortTransaction();
     }
-    return NextResponse.json({ message: 'Error interno del servidor.', details: error.message }, { status: 500 });
+    
+    console.error('Fallo crítico en el registro:', error);
+    
+    if (error.code === 11000) {
+      return NextResponse.json({ message: 'Este nombre de usuario o email ya está en uso.' }, { status: 409 });
+    }
+    
+    return NextResponse.json({ 
+        message: 'Error interno al procesar el registro.', 
+        details: error.message 
+    }, { status: 500 });
   } finally {
     session.endSession();
   }

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, Store, Loader2, UserCircle } from 'lucide-react';
+import { ShieldCheck, Store, Loader2 } from 'lucide-react';
 
 const STORE_ROLES = [
   { value: 'Administrador Principal', label: 'Administrador Principal' },
@@ -67,6 +67,7 @@ export default function SignupPage() {
         throw new Error(data.message || 'Error al registrar.');
       }
       
+      // Guardar datos en el cliente para acceso inmediato
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
@@ -74,8 +75,11 @@ export default function SignupPage() {
 
       toast({
         title: isGlobalAdmin ? '¡Acceso Maestro Creado!' : '¡Cuenta Creada!',
-        description: 'Bienvenido al ecosistema Krea Business.',
+        description: isGlobalAdmin 
+          ? 'Has configurado el usuario administrador global del sistema.' 
+          : 'Bienvenido al ecosistema Krea Business.',
       });
+      
       router.push('/dashboard');
 
     } catch (err: any) {
@@ -92,20 +96,22 @@ export default function SignupPage() {
   return (
       <form onSubmit={handleSignup}>
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">Únete a Krea</CardTitle>
-          <CardDescription>
-            {isGlobalAdmin ? 'Registra tu cuenta de Desarrollador Maestro' : 'Crea tu tienda y empieza a vender hoy mismo'}
+          <CardTitle className="text-2xl font-black uppercase tracking-tighter">Únete a Krea</CardTitle>
+          <CardDescription className='font-medium'>
+            {isGlobalAdmin ? 'Configura el acceso maestro del desarrollador' : 'Crea tu tienda y gestiona tu negocio'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           
-          <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30 mb-4">
-            <div className="flex items-center gap-2">
-                {isGlobalAdmin ? <ShieldCheck className="h-5 w-5 text-primary" /> : <Store className="h-5 w-5 text-muted-foreground" />}
+          <div className={`flex items-center justify-between p-3 border-2 rounded-xl transition-colors ${isGlobalAdmin ? 'bg-primary/5 border-primary/20' : 'bg-muted/30 border-transparent'} mb-2`}>
+            <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${isGlobalAdmin ? 'bg-primary text-white' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
+                    {isGlobalAdmin ? <ShieldCheck className="h-5 w-5" /> : <Store className="h-5 w-5" />}
+                </div>
                 <div className="space-y-0.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider">Modo de Cuenta</Label>
-                    <p className="text-[10px] text-muted-foreground font-medium">
-                        {isGlobalAdmin ? 'Super Desarrollador (Global)' : 'Dueño de Tienda (Local)'}
+                    <Label className="text-[10px] font-black uppercase tracking-widest leading-none">Tipo de Registro</Label>
+                    <p className={`text-xs font-bold ${isGlobalAdmin ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {isGlobalAdmin ? 'SUPER DESARROLLADOR' : 'TIENDA INDEPENDIENTE'}
                     </p>
                 </div>
             </div>
@@ -115,86 +121,91 @@ export default function SignupPage() {
             />
           </div>
 
-          {!isGlobalAdmin && (
-            <>
-                <div className="space-y-2">
-                  <Label htmlFor="business-name">Nombre de la Tienda</Label>
-                  <Input
-                    id="business-name"
-                    placeholder="Ej: Mi Supermercado"
-                    required={!isGlobalAdmin}
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Tu Rol en la Tienda</Label>
-                  <Select value={role} onValueChange={setRole} disabled={loading}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Selecciona tu cargo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {STORE_ROLES.map((r) => (
-                            <SelectItem key={r.value} value={r.value}>
-                                {r.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-            </>
-          )}
-          
-          <div className="space-y-2">
-            <Label htmlFor="admin-name">Nombre Completo</Label>
-            <Input
-              id="admin-name"
-              placeholder="Juan Pérez"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="email">Usuario / Email</Label>
-            <Input
-              id="email"
-              type="text"
-              placeholder="javistech o admin@negocio.com"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
+          <div className="space-y-4 pt-2">
+              {!isGlobalAdmin && (
+                <>
+                    <div className="space-y-2">
+                      <Label htmlFor="business-name" className="text-xs font-bold uppercase">Nombre de tu Negocio</Label>
+                      <Input
+                        id="business-name"
+                        placeholder="Ej: Inversiones Javis"
+                        required={!isGlobalAdmin}
+                        value={businessName}
+                        onChange={(e) => setBusinessName(e.target.value)}
+                        disabled={loading}
+                        className="font-medium"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role" className="text-xs font-bold uppercase">Tu Cargo</Label>
+                      <Select value={role} onValueChange={setRole} disabled={loading}>
+                        <SelectTrigger className="font-bold">
+                            <SelectValue placeholder="Selecciona tu cargo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {STORE_ROLES.map((r) => (
+                                <SelectItem key={r.value} value={r.value} className="font-medium">
+                                    {r.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                </>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="admin-name" className="text-xs font-bold uppercase">Nombre del Responsable</Label>
+                <Input
+                  id="admin-name"
+                  placeholder="Ej: Javier Rodríguez"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={loading}
+                  className="font-medium"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-xs font-bold uppercase">Usuario / Email</Label>
+                <Input
+                  id="email"
+                  type="text"
+                  placeholder="javistech"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  className="font-mono"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-xs font-bold uppercase">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button className="w-full font-bold h-12" type="submit" disabled={loading}>
+        <CardFooter className="flex flex-col gap-4 mt-2">
+          <Button className="w-full font-black uppercase tracking-tight h-12 shadow-lg shadow-primary/20" type="submit" disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isGlobalAdmin ? 'Registrar como Super Dev' : 'Crear mi Cuenta'}
+            {isGlobalAdmin ? 'Registrar Super Developer' : 'Crear mi Empresa'}
           </Button>
-          <p className="text-sm text-center text-muted-foreground">
-            ¿Ya tienes una cuenta?{' '}
+          <p className="text-sm text-center text-muted-foreground font-medium">
+            ¿Ya tienes acceso?{' '}
             <Link
               href="/login"
-              className="font-semibold text-primary underline-offset-4 hover:underline"
+              className="font-bold text-primary underline-offset-4 hover:underline"
             >
-              Inicia Sesión
+              Entrar
             </Link>
           </p>
         </CardFooter>
