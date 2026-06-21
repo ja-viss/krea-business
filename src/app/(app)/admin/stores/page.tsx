@@ -5,12 +5,14 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Store, UserPlus, Loader2, Calendar, ShieldCheck } from 'lucide-react';
+import { Store, UserPlus, Loader2, Calendar, ShieldCheck, MoreHorizontal, Settings2, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
 export default function AdminStoresPage() {
     const { toast } = useToast();
@@ -66,17 +68,26 @@ export default function AdminStoresPage() {
         }
     };
 
+    const getStatusBadge = (status: string) => {
+        switch(status) {
+            case 'Active': return <Badge className="bg-green-100 text-green-800 border-green-200">ACTIVA</Badge>;
+            case 'Suspended': return <Badge variant="destructive">SUSPENDIDA</Badge>;
+            case 'Demo': return <Badge variant="outline" className="bg-blue-50">DEMO</Badge>;
+            default: return <Badge variant="secondary">{status}</Badge>;
+        }
+    }
+
     return (
         <div className="flex flex-1 flex-col">
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
                 <PageHeader 
-                    title="Gestión de Empresas" 
-                    description="Crea y administra los clientes (tiendas) de tu plataforma SaaS."
+                    title="Directorio Maestro de Empresas" 
+                    description="Supervisa y controla todos los clientes de Krea Business."
                     actions={
                         <Dialog open={isOpen} onOpenChange={setIsOpen}>
                             <DialogTrigger asChild>
-                                <Button className="font-bold shadow-lg">
-                                    <Store className="mr-2 h-4 w-4" /> Registrar Nueva Empresa
+                                <Button className="font-black shadow-lg">
+                                    <Store className="mr-2 h-4 w-4" /> Alta de Nueva Empresa
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-[425px]">
@@ -116,47 +127,63 @@ export default function AdminStoresPage() {
                     }
                 />
 
-                <Card className="border-2 shadow-sm">
+                <Card className="border-2 shadow-md">
                     <CardHeader className="bg-muted/10 border-b">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight">Directorio de Clientes</CardTitle>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">Cartera de Clientes</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-muted/50">
-                                    <TableHead className="font-bold">Empresa</TableHead>
-                                    <TableHead className="font-bold">ID Sistema</TableHead>
-                                    <TableHead className="font-bold">Fecha de Alta</TableHead>
-                                    <TableHead className="text-right font-bold pr-6">Acciones</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase pl-6">Estado</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Empresa / Razón Social</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Plan</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Vencimiento</TableHead>
+                                    <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     Array.from({ length: 3 }).map((_, i) => (
                                         <TableRow key={i}>
+                                            <TableCell className="pl-6"><div className="h-6 w-16 bg-muted animate-pulse rounded-full" /></TableCell>
                                             <TableCell><div className="h-4 w-40 bg-muted animate-pulse rounded" /></TableCell>
-                                            <TableCell><div className="h-4 w-24 bg-muted animate-pulse rounded" /></TableCell>
+                                            <TableCell><div className="h-4 w-12 bg-muted animate-pulse rounded" /></TableCell>
                                             <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
-                                            <TableCell className="text-right pr-6"><div className="h-8 w-20 bg-muted animate-pulse rounded ml-auto" /></TableCell>
+                                            <TableCell className="text-right pr-6"><div className="h-8 w-24 bg-muted animate-pulse rounded ml-auto" /></TableCell>
                                         </TableRow>
                                     ))
                                 ) : stores.length > 0 ? (
                                     stores.map((s) => (
-                                        <TableRow key={s._id}>
-                                            <TableCell className="font-black uppercase text-xs">{s.name}</TableCell>
-                                            <TableCell className="font-mono text-[10px] text-muted-foreground">{s._id}</TableCell>
-                                            <TableCell className="text-xs flex items-center gap-2">
-                                                <Calendar className="h-3 w-3 opacity-50" />
-                                                {format(new Date(s.createdAt), 'dd/MM/yyyy')}
+                                        <TableRow key={s._id} className="hover:bg-muted/30">
+                                            <TableCell className="pl-6">{getStatusBadge(s.status || 'Active')}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-black uppercase text-xs">{s.name}</span>
+                                                    <span className="font-mono text-[9px] text-muted-foreground uppercase">{s._id}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="font-bold text-[10px] uppercase text-primary">{s.plan || 'BASIC'}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2 text-xs font-medium">
+                                                    <Calendar className="h-3 w-3 opacity-50" />
+                                                    {format(new Date(s.expiryDate || s.createdAt), 'dd/MM/yyyy')}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
-                                                <Button variant="outline" size="sm" className="font-bold text-[10px]">VER DETALLES</Button>
+                                                <div className="flex justify-end gap-2">
+                                                    <Button asChild variant="outline" size="sm" className="font-bold text-[10px]">
+                                                        <Link href={`/admin/stores/${s._id}`}>
+                                                            <Settings2 className="mr-2 h-3 w-3" /> CONTROL
+                                                        </Link>
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">No hay empresas registradas aún.</TableCell>
+                                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No hay empresas registradas aún.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
