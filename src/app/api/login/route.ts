@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales obligatorias.' }, { status: 400 });
     }
 
-    const user = await UserModel.findOne({ email }).populate('role');
+    // Buscamos el usuario por su identificador, eliminando espacios accidentales
+    const user = await UserModel.findOne({ email: email.trim() }).populate('role');
 
     if (!user) {
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
 
-    // Bypass para Super Admin Global
+    // Bypass para Super Admin Global (Master Developer)
     if (user.isGlobalAdmin) {
         return NextResponse.json({ 
             message: 'Acceso Maestro Concedido.', 
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
         }, { status: 200 });
     }
 
+    // Validación de tienda para usuarios regulares
     if (!user.store) {
       return NextResponse.json({ message: 'Usuario sin tienda asociada.' }, { status: 401 });
     }
@@ -53,8 +55,8 @@ export async function POST(req: NextRequest) {
         } 
     }, { status: 200 });
 
-  } catch (error) {
-    console.error('Error Login:', error);
-    return NextResponse.json({ message: 'Error de servidor.' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error Crítico en Login:', error);
+    return NextResponse.json({ message: 'Error interno de servidor.', details: error.message }, { status: 500 });
   }
 }

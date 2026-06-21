@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 /**
  * Script de inicialización para el Super Administrador Maestro.
  * Este endpoint registra al usuario desarrollador 'javistech' con rol global.
+ * Si el usuario ya existe, actualiza su contraseña a 'jojoto123'.
  */
 export async function GET(req: NextRequest) {
     try {
@@ -25,16 +26,26 @@ export async function GET(req: NextRequest) {
             await superRole.save();
         }
 
-        // 2. Verificar si el usuario ya existe
-        const existingAdmin = await UserModel.findOne({ email: 'javistech' });
-        if (existingAdmin) {
-            return NextResponse.json({ message: 'El usuario javistech ya existe en el sistema.' }, { status: 200 });
-        }
-
-        // 3. Hashear contraseña maestra
+        // 2. Hashear contraseña maestra
         const hashedPassword = await bcrypt.hash('jojoto123', 10);
 
-        // 4. Crear el Super Admin
+        // 3. Verificar si el usuario ya existe para actualizarlo o crearlo
+        const existingAdmin = await UserModel.findOne({ email: 'javistech' });
+        
+        if (existingAdmin) {
+            existingAdmin.password = hashedPassword;
+            existingAdmin.isGlobalAdmin = true;
+            existingAdmin.role = superRole._id;
+            await existingAdmin.save();
+            
+            return NextResponse.json({ 
+                success: true, 
+                message: 'Contraseña de javistech actualizada correctamente.',
+                details: 'Usuario: javistech | Clave: jojoto123'
+            }, { status: 200 });
+        }
+
+        // 4. Crear el Super Admin si no existe
         const masterUser = new UserModel({
             name: 'Master Developer',
             email: 'javistech',
@@ -50,7 +61,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ 
             success: true,
             message: 'Super Administrador javistech registrado correctamente.',
-            details: 'Utiliza "javistech" como email y "jojoto123" como contraseña.'
+            details: 'Utiliza "javistech" como email/usuario y "jojoto123" como contraseña.'
         }, { status: 201 });
 
     } catch (error: any) {
