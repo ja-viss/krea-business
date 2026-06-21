@@ -8,27 +8,24 @@ import mongoose from 'mongoose';
 
 const ROLES = {
   ADMIN: 'Administrador Principal',
-  MANAGER: 'Gerente',
-  CASHIER: 'Cajero',
-  INVENTORY: 'Inventario',
+  MASTER: 'SUPER_ADMIN_MASTER'
 };
 
-async function getOrCreateAdminRole(storeId: mongoose.Types.ObjectId, session: mongoose.ClientSession): Promise<IRole> {
-    let adminRole = await RoleModel.findOne({ store: storeId, name: ROLES.ADMIN }).session(session);
-    if (!adminRole) {
-        // Si no existen roles, creamos el set inicial para la tienda
-        const rolesToCreate = [
-            { name: ROLES.ADMIN, store: storeId, permissions: ['all'] },
-            { name: ROLES.MANAGER, store: storeId, permissions: ['manage_inventory', 'view_reports'] },
-            { name: ROLES.CASHIER, store: storeId, permissions: ['use_pos'] },
-            { name: ROLES.INVENTORY, store: storeId, permissions: ['manage_products'] },
-        ];
-        const createdRoles = await RoleModel.insertMany(rolesToCreate, { session });
-        adminRole = createdRoles.find(role => role.name === ROLES.ADMIN)!;
+async function getOrCreateAdminRole(storeId: mongoose.Types.ObjectId | null, session: mongoose.ClientSession, isMaster: boolean): Promise<IRole> {
+    const roleName = isMaster ? ROLES.MASTER : ROLES.ADMIN;
+    let role = await RoleModel.findOne({ store: storeId, name: roleName }).session(session);
+    
+    if (!role) {
+        role = new RoleModel({
+            name: roleName,
+            store: storeId,
+            permissions: ['all'],
+            isSystemRole: isMaster
+        });
+        await role.save({ session });
     }
-    return adminRole;
+    return role;
 }
-
 
 export async function POST(req: NextRequest) {
   await dbConnect();
@@ -36,61 +33,63 @@ export async function POST(req: NextRequest) {
   session.startTransaction();
 
   try {
-    const { businessName, email, password, name } = await req.json();
+    const { businessName, email, password, name, isGlobalAdmin } = await req.json();
 
-    if (!businessName || !email || !password || !name) {
-      return NextResponse.json({ message: 'Todos los campos son obligatorios.' }, { status: 400 });
+    if (!email || !password || !name) {
+      return NextResponse.json({ message: 'Nombre, Email y Contraseña son obligatorios.' }, { status: 400 });
     }
 
-    // 1. Crear la nueva tienda (Instancia de Negocio)
-    const newStore = new StoreModel({
-      name: businessName,
-      address: 'Por definir', // Puede ser un campo opcional o llenarse después
-    });
-    await newStore.save({ session });
+    let storeId = null;
 
-    // 2. Obtener o crear el rol de administrador para la nueva tienda
-    const adminRole = await getOrCreateAdminRole(newStore._id, session);
-    if (!adminRole) {
-        throw new Error('No se pudo crear o encontrar el rol de administrador.');
+    // 1. Si no es admin global, crear la tienda
+    if (!isGlobalAdmin) {
+        if (!businessName) return NextResponse.json({ message: 'El nombre de la tienda es obligatorio.' }, { status: 400 });
+        const newStore = new StoreModel({
+          name: businessName,
+          address: 'Por definir',
+        });
+        await newStore.save({ session });
+        storeId = newStore._id as mongoose.Types.ObjectId;
     }
+
+    // 2. Obtener o crear el rol
+    const role = await getOrCreateAdminRole(storeId, session, !!isGlobalAdmin);
 
     // 3. Hashear la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. Crear el usuario administrador principal
+    // 4. Crear el usuario
     const newUser = new UserModel({
-      store: newStore._id,
+      store: storeId,
       name,
-      email,
+      email: email.trim().toLowerCase(),
       password: hashedPassword,
-      role: adminRole._id, // Asignar el rol de Administrador Principal
+      role: role._id,
       active: true,
+      isGlobalAdmin: !!isGlobalAdmin
     });
-    await newUser.save({ session });
     
-    // Si todo fue bien, se confirma la transacción
+    await newUser.save({ session });
     await session.commitTransaction();
 
     return NextResponse.json({ 
-      message: 'Tienda y administrador registrados exitosamente.',
+      message: isGlobalAdmin ? 'Super Desarrollador registrado.' : 'Tienda creada exitosamente.',
       user: {
         id: newUser._id,
-        store: newUser.store
+        name: newUser.name,
+        email: newUser.email,
+        store: newUser.store || 'SYSTEM_MASTER',
+        isGlobalAdmin: newUser.isGlobalAdmin
       }
      }, { status: 201 });
+
   } catch (error: any) {
-    // Si algo falla, se revierte la transacción
     await session.abortTransaction();
     console.error('Error en el registro:', error);
-
-    // Manejar error de email duplicado (código 11000)
     if (error.code === 11000) {
-      return NextResponse.json({ message: 'El correo electrónico ya está en uso en esta tienda.' }, { status: 409 });
+      return NextResponse.json({ message: 'El usuario/email ya está registrado.' }, { status: 409 });
     }
-    
-    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor.';
-    return NextResponse.json({ message: 'Error interno del servidor.', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Error interno del servidor.', details: error.message }, { status: 500 });
   } finally {
     session.endSession();
   }

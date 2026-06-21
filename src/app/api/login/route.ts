@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
-import RoleModel from '@/models/Role'; // Necesario para populate
+import RoleModel from '@/models/Role';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
@@ -14,52 +14,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales obligatorias.' }, { status: 400 });
     }
 
-    // Buscamos el usuario (email es el identificador) de forma insensible a mayúsculas
     const user = await UserModel.findOne({ 
         email: email.trim().toLowerCase() 
     }).populate('role');
 
     if (!user) {
-      console.log(`Login fallido: Usuario no encontrado (${email})`);
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
     
-    // Verificación de contraseña
     const isPasswordMatch = await bcrypt.compare(password, user.password);
 
     if (!isPasswordMatch) {
-      console.log(`Login fallido: Contraseña incorrecta para ${email}`);
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
 
-    // --- ACCESO MAESTRO (isGlobalAdmin) ---
-    if (user.isGlobalAdmin) {
-        console.log(`Acceso Maestro concedido a: ${user.email}`);
-        return NextResponse.json({ 
-            message: 'Acceso Maestro Concedido.', 
-            user: { 
-                id: user._id.toString(), 
-                name: user.name, 
-                email: user.email, 
-                store: 'SYSTEM_MASTER',
-                role: 'SUPER_ADMIN'
-            } 
-        }, { status: 200 });
-    }
-
-    // --- ACCESO TIENDA (Usuarios regulares) ---
-    if (!user.store) {
-      return NextResponse.json({ message: 'Usuario sin tienda asociada.' }, { status: 401 });
-    }
-
-    console.log(`Login exitoso: ${user.email} en tienda ${user.store}`);
+    // Respuesta unificada para usuarios normales y maestros
     return NextResponse.json({ 
         message: 'Inicio de sesión exitoso.', 
         user: { 
             id: user._id.toString(), 
             name: user.name, 
             email: user.email, 
-            store: user.store.toString()
+            store: user.store?.toString() || 'SYSTEM_MASTER',
+            isGlobalAdmin: !!user.isGlobalAdmin
         } 
     }, { status: 200 });
 
