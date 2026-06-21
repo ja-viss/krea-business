@@ -5,8 +5,17 @@ import SystemConfigModel from '@/models/SystemConfig';
 /**
  * Endpoint Maestro de Verificación de Segundo Nivel.
  * Valida las credenciales dinámicas de la base de datos.
- * Si es la primera vez, permite inicializarlas con lo ingresado.
  */
+
+export async function GET() {
+    try {
+        await dbConnect();
+        const config = await SystemConfigModel.findOne();
+        return NextResponse.json({ initialized: !!config });
+    } catch (e) {
+        return NextResponse.json({ initialized: false }, { status: 500 });
+    }
+}
 
 export async function POST(req: NextRequest) {
     try {
