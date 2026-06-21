@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -21,7 +22,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,9 +30,7 @@ export default function LoginPage() {
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
@@ -42,85 +40,66 @@ export default function LoginPage() {
         throw new Error(data.message || 'Error al iniciar sesión.');
       }
       
-      // Guardar datos de la sesión en localStorage
+      // Guardar datos básicos
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
       localStorage.setItem('userEmail', data.user.email);
       localStorage.setItem('isGlobalAdmin', String(data.user.isGlobalAdmin));
 
-
       toast({
-        title: '¡Bienvenido!',
-        description: 'Has iniciado sesión correctamente.',
+        title: 'Fase 1 Completada',
+        description: data.user.needsVerification ? 'Validando privilegios maestros...' : 'Bienvenido a Krea Business.',
       });
-      router.push('/dashboard');
+
+      // Redirección condicionada por seguridad
+      if (data.user.needsVerification) {
+          router.push('/secure-verify');
+      } else {
+          router.push('/dashboard');
+      }
 
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Error de autenticación',
-        description: error.message || 'Ocurrió un error inesperado.',
+        title: 'Error de acceso',
+        description: error.message,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyConnection = async () => {
-    setIsVerifying(true);
-    try {
-      const response = await fetch('/api/check-db');
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: 'Conexión Exitosa',
-          description: data.message,
-        });
-      } else {
-        throw new Error(data.message || 'Error al verificar la conexión.');
-      }
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error de Conexión',
-        description: error.message,
-      });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
   return (
     <form onSubmit={handleLogin}>
       <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold">Inicia Sesión</CardTitle>
-        <CardDescription>
-          Panel de Gestión Krea Business Suite
+        <CardTitle className="text-2xl font-black uppercase tracking-tighter">Krea Business</CardTitle>
+        <CardDescription className="font-medium">
+          Acceso al Ecosistema Empresarial
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Usuario / Email</Label>
+          <Label htmlFor="email" className="text-xs font-bold uppercase">Usuario / Email</Label>
           <Input 
             id="email" 
             type="text" 
-            placeholder="Introduce tu identificador" 
+            placeholder="Identificador de acceso" 
             required 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
+            className="font-medium"
           />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="password" text-xs font-bold uppercase>Contraseña</Label>
             <Link
               href="/forgot-password"
-              className="text-sm text-primary underline-offset-4 hover:underline"
+              className="text-[10px] font-bold text-primary underline-offset-4 hover:underline"
             >
-              ¿Olvidaste tu contraseña?
+              ¿OLVIDÓ SU CLAVE?
             </Link>
           </div>
           <Input 
@@ -134,11 +113,11 @@ export default function LoginPage() {
         </div>
       </CardContent>
       <CardFooter className="flex flex-col gap-4">
-        <Button className="w-full font-bold" type="submit" disabled={isLoading}>
-          {isLoading ? 'Accediendo...' : 'Iniciar Sesión'}
+        <Button className="w-full font-black uppercase tracking-tight shadow-lg shadow-primary/20 h-12" type="submit" disabled={isLoading}>
+          {isLoading ? 'VERIFICANDO...' : 'ENTRAR AL SISTEMA'}
         </Button>
-        <div className="text-center text-xs text-muted-foreground pt-4 border-t">
-          Soporte Técnico: support@krea.com
+        <div className="text-center text-[10px] text-muted-foreground pt-4 border-t w-full">
+            Krea Suite v2.0 • Soporte Multi-Tenant
         </div>
       </CardFooter>
     </form>

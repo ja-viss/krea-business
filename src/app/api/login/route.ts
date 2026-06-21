@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
@@ -22,6 +23,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
     
+    if (!user.active) {
+      return NextResponse.json({ message: 'Usuario suspendido. Contacte a soporte.' }, { status: 403 });
+    }
+
     const isPasswordMatch = await bcrypt.compare(password, user.password);
 
     if (!isPasswordMatch) {
@@ -36,7 +41,8 @@ export async function POST(req: NextRequest) {
             name: user.name, 
             email: user.email, 
             store: user.store?.toString() || 'SYSTEM_MASTER',
-            isGlobalAdmin: !!user.isGlobalAdmin
+            isGlobalAdmin: !!user.isGlobalAdmin,
+            needsVerification: !!user.isGlobalAdmin // Flag para disparar la pantalla de seguridad
         } 
     }, { status: 200 });
 

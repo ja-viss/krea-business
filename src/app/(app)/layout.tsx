@@ -1,9 +1,10 @@
+
 'use client';
 
 import { Logo } from '@/components/logo';
 import { type NavLink } from '@/lib/nav-links';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut, PanelLeft } from 'lucide-react';
+import { LogOut, PanelLeft, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { SideNav } from '@/components/side-nav';
@@ -30,7 +31,7 @@ interface User {
 }
 
 const DesktopSidebar = () => (
-  <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r">
+  <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r bg-card">
     <div className="flex items-center h-16 px-6 border-b">
         <Logo />
     </div>
@@ -60,44 +61,22 @@ const MobileSidebar = () => (
     </Sheet>
 );
 
-const UserMenu = ({ user }: { user: User | null }) => {
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary text-primary-foreground font-bold">
-                            {user?.name?.charAt(0).toUpperCase() ?? 'U'}
-                        </AvatarFallback>
-                    </Avatar>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                 <DropdownMenuItem asChild>
-                    <Link href="/settings">Configuración</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>Soporte</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                 <DropdownMenuItem asChild>
-                    <Link href="/login">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Cerrar Sesión</span>
-                    </Link>
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
-};
-
-
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
+
+    const isGlobal = localStorage.getItem('isGlobalAdmin') === 'true';
+    const isMasterVerified = localStorage.getItem('master_verified') === 'true';
+
+    // BLOQUEO MAESTRO: Si es admin global pero no ha pasado el segundo login
+    if (isGlobal && !isMasterVerified) {
+        router.push('/secure-verify');
+        return;
+    }
 
     const storedUser = {
         id: localStorage.getItem('userId'),
@@ -106,22 +85,63 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         store: localStorage.getItem('storeId'),
     };
     
-    if (storedUser.id && storedUser.name && storedUser.email && storedUser.store) {
+    if (storedUser.id && storedUser.name) {
         setUser(storedUser as User);
     } else {
-        setUser({ id: 'default', name: "Usuario", email: "email@ejemplo.com", store: 'default' });
+        router.push('/login');
     }
-  }, []);
+  }, [router]);
+
+  if (!isClient) return null;
 
   return (
     <div className="flex min-h-screen">
         <DesktopSidebar />
-        <div className="flex-1 flex flex-col">
-            <header className="flex h-16 items-center justify-between gap-4 border-b bg-card px-4 lg:justify-end">
-                {isClient ? <MobileSidebar /> : <Skeleton className="h-8 w-8 lg:hidden" />}
-                {isClient ? <UserMenu user={user} /> : <Skeleton className="h-8 w-8 rounded-full" />}
+        <div className="flex-1 flex flex-col bg-muted/20">
+            <header className="flex h-16 items-center justify-between gap-4 border-b bg-card px-4 lg:px-8">
+                <MobileSidebar />
+                
+                <div className="flex items-center gap-4">
+                    {localStorage.getItem('isGlobalAdmin') === 'true' && (
+                        <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full">
+                            <ShieldCheck className="h-3 w-3 text-amber-600" />
+                            <span className="text-[10px] font-black text-amber-700 uppercase">Master Verified</span>
+                        </div>
+                    )}
+                    
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="relative h-9 w-9 rounded-full border-2 border-primary/10">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback className="bg-primary text-primary-foreground font-black text-xs">
+                                        {user?.name?.charAt(0).toUpperCase() ?? 'U'}
+                                    </AvatarFallback>
+                                </Avatar>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel className="font-black text-xs uppercase tracking-tight">Mi Cuenta</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                             <DropdownMenuItem asChild className="cursor-pointer font-bold text-xs uppercase">
+                                <Link href="/settings">Configuración</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase">Centro de Soporte</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                             <DropdownMenuItem 
+                                className="cursor-pointer text-red-600 font-black text-xs uppercase"
+                                onClick={() => {
+                                    localStorage.clear();
+                                    router.push('/login');
+                                }}
+                            >
+                                <LogOut className="mr-2 h-4 w-4" />
+                                <span>Cerrar Sesión</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </header>
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 flex flex-col">{children}</main>
         </div>
     </div>
   );
