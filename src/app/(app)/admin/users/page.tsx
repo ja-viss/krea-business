@@ -22,7 +22,9 @@ import {
     Loader2, 
     CheckCircle2, 
     Ban, 
-    ShieldCheck 
+    ShieldCheck,
+    Database,
+    Zap
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -39,10 +41,20 @@ export default function GlobalUsersManagementPage() {
     const [search, setSearch] = useState('');
     const [updating, setUpdating] = useState(false);
     
-    // Modal State
+    // Modal State - Edición
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+
+    // Modal State - Provisionamiento
+    const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+    const [provisionForm, setProvisionForm] = useState({
+        storeName: '',
+        adminName: '',
+        adminUser: '',
+        adminPassword: '',
+        tenantDbUri: ''
+    });
 
     const fetchUsers = async () => {
         try {
@@ -88,6 +100,30 @@ export default function GlobalUsersManagementPage() {
         }
     };
 
+    const handleProvisionClient = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setUpdating(true);
+        try {
+            const res = await fetch('/api/admin/stores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(provisionForm)
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.message);
+
+            toast({ title: "Cliente Provisionado", description: "Empresa y base de datos aislada configuradas con éxito." });
+            setIsProvisionModalOpen(false);
+            setProvisionForm({ storeName: '', adminName: '', adminUser: '', adminPassword: '', tenantDbUri: '' });
+            fetchUsers();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: "Fallo de Provisionamiento", description: err.message });
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     const filteredUsers = users.filter(u => 
         u.name.toLowerCase().includes(search.toLowerCase()) || 
         u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -99,7 +135,12 @@ export default function GlobalUsersManagementPage() {
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
                 <PageHeader 
                     title="Control Maestro de Usuarios" 
-                    description="Supervisa y gestiona los accesos de todos los administradores y empleados de la red Krea."
+                    description="Supervisa y gestiona los accesos de todos los administradores de la red Krea."
+                    actions={
+                        <Button onClick={() => setIsProvisionModalOpen(true)} className="font-black uppercase tracking-tight shadow-lg shadow-primary/20">
+                            <Zap className="mr-2 h-4 w-4" /> Provisionar Nuevo Cliente
+                        </Button>
+                    }
                 />
 
                 <div className="flex items-center gap-4 flex-wrap">
@@ -112,8 +153,8 @@ export default function GlobalUsersManagementPage() {
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
-                    <Badge variant="outline" className="h-10 px-4 font-black bg-primary/5 border-primary/20">
-                        {users.length} USUARIOS REGISTRADOS
+                    <Badge variant="outline" className="h-10 px-4 font-black bg-primary/5 border-primary/20 uppercase">
+                        {users.length} Cuentas Registradas
                     </Badge>
                 </div>
 
@@ -222,6 +263,82 @@ export default function GlobalUsersManagementPage() {
                     </CardContent>
                 </Card>
 
+                {/* MODAL DE PROVISIONAMIENTO (ALTA DE EMPRESA + ADMIN + DB) */}
+                <Dialog open={isProvisionModalOpen} onOpenChange={setIsProvisionModalOpen}>
+                    <DialogContent className="sm:max-w-[500px] border-4 border-primary">
+                        <DialogHeader>
+                            <DialogTitle className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
+                                <Database className="h-6 w-6 text-primary" />
+                                Provisionar Infraestructura
+                            </DialogTitle>
+                            <DialogDescription className="font-bold">
+                                Configura un nuevo Tenant con su propia base de datos aislada.
+                            </DialogDescription>
+                        </DialogHeader>
+                        
+                        <form onSubmit={handleProvisionClient} className="space-y-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                    <Label className="text-[10px] font-black uppercase">Nombre del Negocio (Razón Social)</Label>
+                                    <Input 
+                                        placeholder="Ej: Inversiones Globales C.A." 
+                                        value={provisionForm.storeName}
+                                        onChange={e => setProvisionForm({...provisionForm, storeName: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase">Nombre del Administrador</Label>
+                                    <Input 
+                                        placeholder="Ej: Juan Pérez" 
+                                        value={provisionForm.adminName}
+                                        onChange={e => setProvisionForm({...provisionForm, adminName: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase">Usuario / Login</Label>
+                                    <Input 
+                                        placeholder="juanperez" 
+                                        value={provisionForm.adminUser}
+                                        onChange={e => setProvisionForm({...provisionForm, adminUser: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label className="text-[10px] font-black uppercase">Contraseña de Acceso</Label>
+                                    <Input 
+                                        type="password"
+                                        placeholder="••••••••" 
+                                        value={provisionForm.adminPassword}
+                                        onChange={e => setProvisionForm({...provisionForm, adminPassword: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label className="text-[10px] font-black uppercase text-primary">Cadena de Conexión MongoDB (URI)</Label>
+                                    <Input 
+                                        placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname" 
+                                        value={provisionForm.tenantDbUri}
+                                        onChange={e => setProvisionForm({...provisionForm, tenantDbUri: e.target.value})}
+                                        required
+                                        className="font-mono text-xs border-primary/40 bg-primary/5"
+                                    />
+                                    <p className="text-[9px] text-muted-foreground italic">Esta URI será cifrada automáticamente antes de guardarse.</p>
+                                </div>
+                            </div>
+
+                            <DialogFooter className="pt-4 border-t">
+                                <Button type="button" variant="outline" onClick={() => setIsProvisionModalOpen(false)} className="font-bold">CANCELAR</Button>
+                                <Button type="submit" disabled={updating} className="font-black uppercase shadow-xl">
+                                    {updating ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Zap className="mr-2 h-4 w-4" />}
+                                    ACTIVAR INFRAESTRUCTURA
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
                 {/* MODAL DE EDICIÓN Y SEGURIDAD */}
                 <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                     <DialogContent className="sm:max-w-[400px] border-4 border-primary/20">
@@ -259,7 +376,6 @@ export default function GlobalUsersManagementPage() {
                                     onChange={(e) => setNewPassword(e.target.value)}
                                     className="font-mono text-center font-bold"
                                 />
-                                <p className="text-[9px] text-muted-foreground italic">Deja en blanco si no deseas cambiarla.</p>
                             </div>
                         </div>
 

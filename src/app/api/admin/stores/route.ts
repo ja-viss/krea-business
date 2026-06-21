@@ -5,6 +5,7 @@ import UserModel from '@/models/User';
 import RoleModel from '@/models/Role';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
+import { encrypt } from '@/lib/encryption';
 
 export async function GET(req: NextRequest) {
     try {
@@ -22,14 +23,23 @@ export async function POST(req: NextRequest) {
     session.startTransaction();
 
     try {
-        const { storeName, adminName, adminUser, adminPassword } = await req.json();
+        const body = await req.json();
+        const { storeName, adminName, adminUser, adminPassword, tenantDbUri } = body;
 
-        // 1. Crear la Tienda
-        const newStore = new StoreModel({
+        // 1. Crear la Tienda (Tenant) con su URI de DB cifrada
+        const storeData: any = {
             name: storeName,
             address: 'Dirección pendiente por configurar',
             seniatCondition: 'Contribuyente Ordinario',
-        });
+            status: tenantDbUri ? 'Active' : 'Demo',
+        };
+
+        // Si se provee una URI, se cifra antes de guardar
+        if (tenantDbUri && tenantDbUri.trim() !== '') {
+            storeData.tenantDbUri = encrypt(tenantDbUri.trim());
+        }
+
+        const newStore = new StoreModel(storeData);
         await newStore.save({ session });
 
         // 2. Crear el Rol de Administrador para esa tienda
@@ -41,7 +51,7 @@ export async function POST(req: NextRequest) {
         });
         await adminRole.save({ session });
 
-        // 3. Crear el Usuario Administrador
+        // 3. Crear el Usuario Administrador vinculado a la tienda
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
         const newUser = new UserModel({
             store: newStore._id,
@@ -55,14 +65,24 @@ export async function POST(req: NextRequest) {
         await newUser.save({ session });
 
         await session.commitTransaction();
-        return NextResponse.json({ message: 'Empresa y Administrador creados con éxito.' }, { status: 201 });
+        return NextResponse.json({ 
+            message: 'Empresa provisionada con éxito.',
+            storeId: newStore._id,
+            userId: newUser._id
+        }, { status: 201 });
 
     } catch (error: any) {
         await session.abortTransaction();
-        console.error('Error al crear tienda:', error);
-        return NextResponse.json({ 
-            message: error.code === 11000 ? 'El nombre de usuario ya está ocupado.' : error.message 
-        }, { status: 500 });
+        console.error('Error al provisionar tienda:', error);
+        
+        let message = 'Error interno al provisionar la infraestructura.';
+        if (error.code === 11000) {
+            message = 'El nombre de usuario o la empresa ya existen.';
+        } else if (error.message) {
+            message = error.message;
+        }
+
+        return NextResponse.json({ message }, { status: 500 });
     } finally {
         session.endSession();
     }
