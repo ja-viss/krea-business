@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SaleModel from '@/models/Sale';
-// Importamos CustomerModel para registrar el esquema en Mongoose y evitar el error "Schema hasn't been registered"
 import CustomerModel from '@/models/Customer'; 
 import mongoose from 'mongoose';
 
@@ -11,12 +10,19 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     const storeId = req.nextUrl.searchParams.get('storeId');
-    if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
-      return NextResponse.json({ message: 'El ID de la tienda es inválido o no se proporcionó.' }, { status: 400 });
+    if (!storeId) {
+      return NextResponse.json({ message: 'El ID de la tienda no se proporcionó.' }, { status: 400 });
     }
     
-    const storeObjectId = new mongoose.Types.ObjectId(storeId);
-    let query: any = { store: storeObjectId };
+    let query: any = {};
+    
+    // Si no es el administrador maestro, filtramos por tienda específica
+    if (storeId !== 'SYSTEM_MASTER') {
+        if (!mongoose.Types.ObjectId.isValid(storeId)) {
+            return NextResponse.json({ message: 'El ID de la tienda es inválido o no se proporcionó.' }, { status: 400 });
+        }
+        query.store = new mongoose.Types.ObjectId(storeId);
+    }
 
     // Filtros opcionales
     const productId = req.nextUrl.searchParams.get('productId');
@@ -37,8 +43,6 @@ export async function GET(req: NextRequest) {
         query['items.product'] = new mongoose.Types.ObjectId(productId);
     }
 
-    // Usamos lean() para rendimiento y populate para traer datos del cliente
-    // Mongoose ahora encontrará el modelo "Customer" porque lo importamos arriba
     const sales = await SaleModel.find(query)
       .sort({ createdAt: -1 })
       .populate({

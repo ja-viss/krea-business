@@ -56,7 +56,7 @@ export default function SalesPage() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.details || data.message || 'Error desconocido al obtener ventas.');
+        throw new Error(data.message || 'Error desconocido al obtener ventas.');
       }
       
       setSales(data);

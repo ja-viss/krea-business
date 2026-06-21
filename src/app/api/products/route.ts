@@ -11,12 +11,18 @@ export async function GET(req: NextRequest) {
     const storeId = req.nextUrl.searchParams.get('storeId');
     const searchQuery = req.nextUrl.searchParams.get('search');
     
-    if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
-      return NextResponse.json({ message: 'El ID de la tienda es inválido o falta.' }, { status: 400 });
+    if (!storeId) {
+      return NextResponse.json({ message: 'El ID de la tienda falta.' }, { status: 400 });
     }
     
-    const storeObjectId = new mongoose.Types.ObjectId(storeId);
-    let query: any = { store: storeObjectId };
+    let query: any = {};
+    
+    if (storeId !== 'SYSTEM_MASTER') {
+        if (!mongoose.Types.ObjectId.isValid(storeId)) {
+            return NextResponse.json({ message: 'El ID de la tienda es inválido.' }, { status: 400 });
+        }
+        query.store = new mongoose.Types.ObjectId(storeId);
+    }
 
     if (searchQuery) {
         query.$or = [
