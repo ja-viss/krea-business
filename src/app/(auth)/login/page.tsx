@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -39,7 +40,6 @@ export default function LoginPage() {
         throw new Error(data.message || 'Error al iniciar sesión.');
       }
       
-      // Guardar datos básicos
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
@@ -51,7 +51,6 @@ export default function LoginPage() {
         description: data.user.needsVerification ? 'Validando privilegios maestros...' : 'Bienvenido a Krea Business.',
       });
 
-      // Redirección condicionada por seguridad
       if (data.user.needsVerification) {
           router.push('/secure-verify');
       } else {

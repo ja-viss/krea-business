@@ -8,9 +8,10 @@ export interface ISystemConfig extends Document {
 }
 
 const SystemConfigSchema: Schema = new Schema({
-  masterUser: { type: String, default: 'javistech' },
-  masterKeyAlpha: { type: String, default: 'krea2026' },
-  masterKeyBeta: { type: String, default: 'adminmaster' },
+  // Eliminamos los defaults para forzar la configuración inicial por parte del usuario real
+  masterUser: { type: String, required: true },
+  masterKeyAlpha: { type: String, required: true },
+  masterKeyBeta: { type: String, required: true },
 }, { 
   timestamps: true 
 });

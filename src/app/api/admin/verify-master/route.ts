@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SystemConfigModel from '@/models/SystemConfig';
@@ -10,6 +11,7 @@ import SystemConfigModel from '@/models/SystemConfig';
 export async function GET() {
     try {
         await dbConnect();
+        // Verificamos si existe al menos un registro de configuración
         const config = await SystemConfigModel.findOne();
         return NextResponse.json({ initialized: !!config });
     } catch (e) {
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
         // Recuperar configuración de seguridad de la DB
         let config = await SystemConfigModel.findOne();
         
-        // MODO AUTODETECT: Si no existe configuración, la creamos con los datos que el admin acaba de ingresar
+        // MODO CONFIGURACIÓN: Si no existe configuración, la creamos con los datos que el admin acaba de ingresar
         if (!config) {
             config = await SystemConfigModel.create({
                 masterUser: user,

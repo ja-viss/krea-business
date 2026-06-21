@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -67,7 +68,6 @@ export default function SignupPage() {
         throw new Error(data.message || 'Error al registrar.');
       }
       
-      // Guardar datos en el cliente para acceso inmediato
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
