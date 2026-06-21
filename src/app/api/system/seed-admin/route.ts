@@ -5,67 +5,85 @@ import RoleModel from '@/models/Role';
 import bcrypt from 'bcryptjs';
 
 /**
- * Script de inicialización para el Super Administrador Maestro.
- * Este endpoint registra al usuario desarrollador 'javistech' con rol global.
- * Si el usuario ya existe, actualiza su contraseña a 'jojoto123'.
+ * Script de inicialización definitivo para el Super Administrador Maestro.
+ * Endpoint: /api/system/seed-admin
  */
 export async function GET(req: NextRequest) {
     try {
+        console.log('Iniciando proceso de seeding maestro...');
         await dbConnect();
 
-        // 1. Crear o recuperar el Rol de Super Administrador Global
+        // 1. Asegurar la existencia del Rol Maestro
         let superRole = await RoleModel.findOne({ name: 'SUPER_ADMIN_MASTER', isSystemRole: true });
         
         if (!superRole) {
+            console.log('Creando rol SUPER_ADMIN_MASTER...');
             superRole = new RoleModel({
                 name: 'SUPER_ADMIN_MASTER',
                 permissions: ['all_access', 'manage_all_stores', 'bypass_billing'],
                 isSystemRole: true,
-                store: null // No pertenece a ninguna tienda específica
+                store: null
             });
             await superRole.save();
         }
 
-        // 2. Hashear contraseña maestra
-        const hashedPassword = await bcrypt.hash('jojoto123', 10);
+        // 2. Preparar credenciales
+        const masterUsername = 'javistech';
+        const masterPassword = 'jojoto123';
+        const hashedPassword = await bcrypt.hash(masterPassword, 10);
 
-        // 3. Verificar si el usuario ya existe para actualizarlo o crearlo
-        const existingAdmin = await UserModel.findOne({ email: 'javistech' });
+        // 3. Buscar y actualizar o crear al usuario
+        // Usamos una búsqueda insensible a mayúsculas para mayor seguridad
+        let masterUser = await UserModel.findOne({ email: masterUsername.toLowerCase() });
         
-        if (existingAdmin) {
-            existingAdmin.password = hashedPassword;
-            existingAdmin.isGlobalAdmin = true;
-            existingAdmin.role = superRole._id;
-            await existingAdmin.save();
+        if (masterUser) {
+            console.log('Actualizando usuario javistech existente...');
+            masterUser.password = hashedPassword;
+            masterUser.isGlobalAdmin = true;
+            masterUser.role = superRole._id;
+            masterUser.name = 'Master Developer';
+            masterUser.active = true;
+            await masterUser.save();
             
             return NextResponse.json({ 
                 success: true, 
-                message: 'Contraseña de javistech actualizada correctamente.',
-                details: 'Usuario: javistech | Clave: jojoto123'
+                message: '¡USUARIO MAESTRO ACTUALIZADO!',
+                credentials: {
+                    usuario: masterUsername,
+                    clave: masterPassword,
+                    estado: 'Password reseteado con éxito'
+                }
             }, { status: 200 });
         }
 
-        // 4. Crear el Super Admin si no existe
-        const masterUser = new UserModel({
+        console.log('Creando nuevo usuario javistech...');
+        const newUser = new UserModel({
             name: 'Master Developer',
-            email: 'javistech',
+            email: masterUsername.toLowerCase(),
             password: hashedPassword,
             role: superRole._id,
             active: true,
             isGlobalAdmin: true,
-            store: null // Acceso global
+            store: null
         });
 
-        await masterUser.save();
+        await newUser.save();
 
         return NextResponse.json({ 
             success: true,
-            message: 'Super Administrador javistech registrado correctamente.',
-            details: 'Utiliza "javistech" como email/usuario y "jojoto123" como contraseña.'
+            message: '¡SUPER ADMINISTRADOR REGISTRADO EXITOSAMENTE!',
+            credentials: {
+                usuario: masterUsername,
+                clave: masterPassword
+            }
         }, { status: 201 });
 
     } catch (error: any) {
-        console.error('Error en Seeding:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error('Error crítico en Seeding:', error);
+        return NextResponse.json({ 
+            success: false, 
+            error: error.message,
+            tip: 'Verifica la conexión a MongoDB Atlas en tus variables de entorno.'
+        }, { status: 500 });
     }
 }
