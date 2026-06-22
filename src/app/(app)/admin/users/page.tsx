@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -24,7 +25,8 @@ import {
     Ban, 
     ShieldCheck,
     Database,
-    Zap
+    Zap,
+    Crown
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -189,67 +191,77 @@ export default function GlobalUsersManagementPage() {
                                             </TableRow>
                                         ))
                                     ) : filteredUsers.length > 0 ? (
-                                        filteredUsers.map((u) => (
-                                            <TableRow key={u._id} className="hover:bg-muted/30 group">
-                                                <TableCell className="pl-6">
-                                                    {u.active ? (
-                                                        <Badge className="bg-green-100 text-green-800 border-green-200">ACTIVO</Badge>
-                                                    ) : (
-                                                        <Badge variant="destructive">BLOQUEADO</Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-8 w-8 border-2 border-primary/10">
-                                                            <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black uppercase">
-                                                                {u.name.slice(0, 2)}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-black uppercase text-xs">{u.name}</span>
-                                                            <span className="font-mono text-[10px] text-muted-foreground">{u.email}</span>
+                                        filteredUsers.map((u) => {
+                                            const isOwner = u.role?.name === 'Administrador Principal';
+                                            return (
+                                                <TableRow key={u._id} className={`hover:bg-muted/30 group ${isOwner ? 'bg-primary/[0.02]' : ''}`}>
+                                                    <TableCell className="pl-6">
+                                                        {u.active ? (
+                                                            <Badge className="bg-green-100 text-green-800 border-green-200">ACTIVO</Badge>
+                                                        ) : (
+                                                            <Badge variant="destructive">BLOQUEADO</Badge>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="relative">
+                                                                <Avatar className="h-8 w-8 border-2 border-primary/10">
+                                                                    <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black uppercase">
+                                                                        {u.name.slice(0, 2)}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                                {isOwner && <Crown className="absolute -top-1 -right-1 h-3 w-3 text-amber-500 fill-amber-500 drop-shadow-sm" />}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-black uppercase text-xs flex items-center gap-1">
+                                                                    {u.name}
+                                                                </span>
+                                                                <span className="font-mono text-[10px] text-muted-foreground">{u.email}</span>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2 font-bold text-[11px] text-muted-foreground uppercase">
-                                                        <Store className="h-3 w-3 opacity-50 text-primary" />
-                                                        {u.store?.name || 'SOPORTE MAESTRO'}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 bg-primary/5">
-                                                        {u.role?.name || 'SIN ROL'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-48">
-                                                            <DropdownMenuItem onClick={() => {
-                                                                setSelectedUser(u);
-                                                                setIsEditModalOpen(true);
-                                                            }} className="font-bold text-xs uppercase cursor-pointer">
-                                                                <UserCog className="mr-2 h-4 w-4" /> Gestionar Acceso
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem className="text-red-600 font-bold text-xs uppercase cursor-pointer" onClick={() => {
-                                                                setSelectedUser({...u, active: !u.active});
-                                                                // Trigger quick toggle
-                                                                setTimeout(() => handleUpdateUser(), 100);
-                                                            }}>
-                                                                {u.active ? <Ban className="mr-2 h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                                                                {u.active ? 'Suspender Usuario' : 'Activar Usuario'}
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2 font-bold text-[11px] text-muted-foreground uppercase">
+                                                                <Store className="h-3 w-3 opacity-50 text-primary" />
+                                                                {u.store?.name || 'SOPORTE MAESTRO'}
+                                                            </div>
+                                                            <span className="text-[8px] font-mono opacity-40">{u.store?._id || 'SYSTEM'}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={isOwner ? "default" : "outline"} className={`text-[9px] font-black uppercase ${isOwner ? 'bg-primary shadow-sm' : 'border-primary/20 bg-primary/5'}`}>
+                                                            {u.role?.name || 'SIN ROL'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right pr-6">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-48">
+                                                                <DropdownMenuItem onClick={() => {
+                                                                    setSelectedUser(u);
+                                                                    setIsEditModalOpen(true);
+                                                                }} className="font-bold text-xs uppercase cursor-pointer">
+                                                                    <UserCog className="mr-2 h-4 w-4" /> Gestionar Acceso
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem className="text-red-600 font-bold text-xs uppercase cursor-pointer" onClick={() => {
+                                                                    setSelectedUser({...u, active: !u.active});
+                                                                    setTimeout(() => handleUpdateUser(), 100);
+                                                                }}>
+                                                                    {u.active ? <Ban className="mr-2 h-4 w-4" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                                                                    {u.active ? 'Suspender Usuario' : 'Activar Usuario'}
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">
@@ -263,7 +275,7 @@ export default function GlobalUsersManagementPage() {
                     </CardContent>
                 </Card>
 
-                {/* MODAL DE PROVISIONAMIENTO (ALTA DE EMPRESA + ADMIN + DB) */}
+                {/* MODAL DE PROVISIONAMIENTO */}
                 <Dialog open={isProvisionModalOpen} onOpenChange={setIsProvisionModalOpen}>
                     <DialogContent className="sm:max-w-[500px] border-4 border-primary">
                         <DialogHeader>
