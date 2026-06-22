@@ -5,13 +5,12 @@ import SystemConfigModel from '@/models/SystemConfig';
 
 /**
  * Endpoint Maestro de Verificación de Segundo Nivel.
- * Valida las credenciales dinámicas de la base de datos o permite su inicialización.
+ * Soporta validación de acceso y configuración/sobrescritura del núcleo.
  */
 
 export async function GET() {
     try {
         await dbConnect();
-        // Verificamos si existe al menos un registro de configuración
         const config = await SystemConfigModel.findOne();
         return NextResponse.json({ initialized: !!config });
     } catch (e) {
@@ -22,30 +21,39 @@ export async function GET() {
 export async function POST(req: NextRequest) {
     try {
         await dbConnect();
-        const { user, key1, key2 } = await req.json();
+        const { user, key1, key2, mode } = await req.json();
 
         if (!user || !key1 || !key2) {
             return NextResponse.json({ message: 'Todos los campos de seguridad son obligatorios.' }, { status: 400 });
         }
 
-        // Recuperar configuración de seguridad de la DB
-        let config = await SystemConfigModel.findOne();
-        
-        // MODO CONFIGURACIÓN INICIAL: Si no existe configuración, la creamos ahora mismo.
-        if (!config) {
-            config = await SystemConfigModel.create({
-                masterUser: user,
-                masterKeyAlpha: key1,
-                masterKeyBeta: key2
-            });
+        // MODO CONFIGURACIÓN: Sobrescribe o crea el núcleo (Permitido para el Admin logueado)
+        if (mode === 'setup') {
+            await SystemConfigModel.findOneAndUpdate(
+                {}, 
+                { 
+                    masterUser: user, 
+                    masterKeyAlpha: key1, 
+                    masterKeyBeta: key2 
+                }, 
+                { upsert: true, new: true }
+            );
             
             return NextResponse.json({ 
                 success: true, 
-                message: 'Núcleo de seguridad inicializado y llaves maestras establecidas.' 
+                message: 'Núcleo de seguridad actualizado y llaves maestras establecidas.' 
             });
         }
 
-        // VERIFICACIÓN ESTÁNDAR: Comprobar contra las llaves guardadas
+        // MODO VALIDACIÓN: Comprobar contra las llaves guardadas
+        const config = await SystemConfigModel.findOne();
+        
+        if (!config) {
+            return NextResponse.json({ 
+                message: 'El sistema no ha sido inicializado. Por favor, use la pestaña de Configurar.' 
+            }, { status: 400 });
+        }
+
         const isValidUser = user === config.masterUser;
         const isValidAlpha = key1 === config.masterKeyAlpha;
         const isValidBeta = key2 === config.masterKeyBeta;

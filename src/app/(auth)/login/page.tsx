@@ -78,7 +78,9 @@ export default function LoginPage() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest">Usuario / Email</Label>
+          <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest">
+            Usuario / Email
+          </Label>
           <Input 
             id="email" 
             type="text" 
@@ -92,7 +94,9 @@ export default function LoginPage() {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest">Contraseña</Label>
+            <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest">
+                Contraseña
+            </Label>
             <Link
               href="/forgot-password"
               className="text-[10px] font-bold text-primary underline-offset-4 hover:underline"

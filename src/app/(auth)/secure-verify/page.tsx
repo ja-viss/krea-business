@@ -17,7 +17,6 @@ export default function SecureVerifyPage() {
     const { toast } = useToast();
     const [timeLeft, setTimeLeft] = useState(40);
     const [loading, setLoading] = useState(false);
-    const [isInitialized, setIsInitialized] = useState(false);
     const [activeTab, setActiveTab] = useState('verify');
     
     const [form, setForm] = useState({
@@ -25,23 +24,6 @@ export default function SecureVerifyPage() {
         key1: '',
         key2: ''
     });
-
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                const res = await fetch('/api/admin/verify-master');
-                const data = await res.json();
-                setIsInitialized(data.initialized);
-                // Si no está inicializado, forzamos la pestaña de configuración
-                if (!data.initialized) {
-                    setActiveTab('setup');
-                }
-            } catch (e) {
-                console.error("Error checking master status");
-            }
-        };
-        checkStatus();
-    }, []);
 
     useEffect(() => {
         // El temporizador solo corre si estamos en modo verificación
@@ -69,28 +51,26 @@ export default function SecureVerifyPage() {
             const res = await fetch('/api/admin/verify-master', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
+                body: JSON.stringify({ ...form, mode: activeTab })
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data.message || 'Claves incorrectas');
+                throw new Error(data.message || 'Error en la secuencia');
             }
 
             localStorage.setItem('master_verified', 'true');
             toast({ 
-                title: activeTab === 'setup' ? "Núcleo Activado" : "Acceso Concedido", 
-                description: activeTab === 'setup' 
-                    ? "Tus llaves maestras han sido guardadas con éxito." 
-                    : "Identidad verificada. Entrando al sistema global." 
+                title: activeTab === 'setup' ? "Núcleo Configurado" : "Acceso Concedido", 
+                description: data.message
             });
             router.push('/dashboard');
         } catch (err: any) {
             if (activeTab === 'verify') {
                 handleSecurityFailure(err.message);
             } else {
-                toast({ variant: 'destructive', title: "Error", description: err.message });
+                toast({ variant: 'destructive', title: "Error de Configuración", description: err.message });
                 setLoading(false);
             }
         } finally {
@@ -107,7 +87,7 @@ export default function SecureVerifyPage() {
                     {activeTab === 'setup' ? <Sparkles className="text-white h-8 w-8" /> : <ShieldAlert className="text-white h-8 w-8" />}
                 </div>
                 <CardTitle className="text-2xl font-black uppercase tracking-tighter italic">
-                    Nivel de Seguridad 2
+                    Seguridad Nivel 2
                 </CardTitle>
                 <CardDescription className="font-bold text-muted-foreground uppercase text-[10px] tracking-widest">
                     The Master Challenge • Protocolo Krea
@@ -128,7 +108,7 @@ export default function SecureVerifyPage() {
                     <TabsContent value="verify" className="space-y-6 pt-4">
                         <div className="space-y-2">
                             <div className="flex justify-between text-[10px] font-black uppercase">
-                                <span className="text-muted-foreground italic">Cierre de sesión inminente en:</span>
+                                <span className="text-muted-foreground italic">Expira en:</span>
                                 <span className={timeLeft < 10 ? "text-red-500 animate-bounce font-mono text-xs" : "font-mono text-xs"}>{timeLeft}s</span>
                             </div>
                             <Progress value={progressValue} className={`h-2 transition-all ${timeLeft < 10 ? 'bg-red-100' : ''}`} />
@@ -136,11 +116,11 @@ export default function SecureVerifyPage() {
 
                         <form onSubmit={handleAction} className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Identificador Maestro</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Identificador</Label>
                                 <Input 
                                     value={form.user} 
                                     onChange={e => setForm({...form, user: e.target.value})} 
-                                    placeholder="javistech" 
+                                    placeholder="Usuario Maestro" 
                                     className="bg-muted/30 border-2 font-mono h-11 text-center font-bold" 
                                     required 
                                 />
@@ -152,7 +132,7 @@ export default function SecureVerifyPage() {
                                         type="password" 
                                         value={form.key1} 
                                         onChange={e => setForm({...form, key1: e.target.value})} 
-                                        placeholder="••••••••"
+                                        placeholder="••••"
                                         className="bg-muted/30 border-2 text-center" 
                                         required 
                                     />
@@ -163,13 +143,13 @@ export default function SecureVerifyPage() {
                                         type="password" 
                                         value={form.key2} 
                                         onChange={e => setForm({...form, key2: e.target.value})} 
-                                        placeholder="••••••••"
+                                        placeholder="••••"
                                         className="bg-muted/30 border-2 text-center" 
                                         required 
                                     />
                                 </div>
                             </div>
-                            <Button type="submit" disabled={loading} className="w-full h-12 font-black uppercase tracking-widest shadow-xl shadow-amber-500/20 bg-amber-500 hover:bg-amber-600">
+                            <Button type="submit" disabled={loading} className="w-full h-12 font-black uppercase tracking-widest shadow-xl bg-amber-500 hover:bg-amber-600 text-white">
                                 {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
                                 Validar Acceso
                             </Button>
@@ -177,49 +157,47 @@ export default function SecureVerifyPage() {
                     </TabsContent>
 
                     <TabsContent value="setup" className="space-y-6 pt-4">
-                        <div className="p-4 bg-primary/5 border-2 border-primary/20 border-dashed rounded-xl space-y-2">
-                            <p className="text-[11px] font-black text-primary uppercase flex items-center gap-2">
-                                <KeyRound className="h-4 w-4" /> Inicialización de Seguridad
+                        <div className="p-4 bg-primary/5 border-2 border-primary/20 border-dashed rounded-xl">
+                            <p className="text-[11px] font-black text-primary uppercase flex items-center gap-2 mb-1">
+                                <KeyRound className="h-4 w-4" /> Inicialización Forzada
                             </p>
                             <p className="text-[10px] font-medium text-muted-foreground leading-tight italic">
-                                Define ahora tus credenciales de segundo nivel. Estos datos NO son tu contraseña de login, son llaves de infraestructura.
+                                Define o sobrescribe tus credenciales maestras. Estas se guardarán directamente en el núcleo.
                             </p>
                         </div>
 
                         <form onSubmit={handleAction} className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-primary">Nuevo Usuario Maestro</Label>
+                                <Label className="text-[10px] font-black uppercase text-primary">Usuario Maestro</Label>
                                 <Input 
                                     value={form.user} 
                                     onChange={e => setForm({...form, user: e.target.value})} 
-                                    placeholder="Ej: javistech_master" 
+                                    placeholder="Ej: admin_master" 
                                     className="border-2 border-primary/20 h-11" 
                                     required 
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-primary">Master Key Alpha (Principal)</Label>
+                                <Label className="text-[10px] font-black uppercase text-primary">Master Key Alpha</Label>
                                 <Input 
                                     type="password" 
                                     value={form.key1} 
                                     onChange={e => setForm({...form, key1: e.target.value})} 
-                                    placeholder="Crea tu primera llave"
                                     className="border-2 border-primary/20 h-11" 
                                     required 
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-primary">Master Key Beta (Respaldo)</Label>
+                                <Label className="text-[10px] font-black uppercase text-primary">Master Key Beta</Label>
                                 <Input 
                                     type="password" 
                                     value={form.key2} 
                                     onChange={e => setForm({...form, key2: e.target.value})} 
-                                    placeholder="Crea tu segunda llave"
                                     className="border-2 border-primary/20 h-11" 
                                     required 
                                 />
                             </div>
-                            <Button type="submit" disabled={loading} className="w-full h-14 font-black uppercase tracking-tight shadow-2xl bg-primary hover:bg-primary/90 text-lg">
+                            <Button type="submit" disabled={loading} className="w-full h-14 font-black uppercase tracking-tight shadow-2xl bg-primary hover:bg-primary/90 text-white">
                                 {loading ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Zap className="mr-2 h-5 w-5" />}
                                 Activar Seguridad Maestra
                             </Button>
@@ -230,10 +208,7 @@ export default function SecureVerifyPage() {
             
             <CardFooter className="flex flex-col gap-2">
                 <p className="text-[9px] text-center text-muted-foreground italic leading-tight w-full max-w-[280px] mx-auto">
-                    {activeTab === 'setup' 
-                        ? "⚠️ Al activar, estas llaves serán obligatorias en cada inicio de sesión para el rol de desarrollador."
-                        : "* El fallo en la validación o el agotamiento del tiempo resultará en la invalidación de la sesión actual."
-                    }
+                    * La configuración sobrescribirá cualquier llave previa en la base de datos.
                 </p>
             </CardFooter>
         </div>
