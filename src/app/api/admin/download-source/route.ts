@@ -5,8 +5,8 @@ import fs from 'fs/promises';
 import path from 'path';
 
 /**
- * Motor Real de Extracción de Código Fuente.
- * Recorre recursivamente el proyecto y genera un paquete ZIP comprimido.
+ * Motor de Extracción de Código Fuente Reforzado.
+ * Genera un binario ZIP real escaneando el sistema de archivos del proyecto.
  */
 
 async function addFilesRecursively(zip: JSZip, dirPath: string, rootDir: string) {
@@ -16,14 +16,16 @@ async function addFilesRecursively(zip: JSZip, dirPath: string, rootDir: string)
         const fullPath = path.join(dirPath, item);
         const relPath = path.relative(rootDir, fullPath);
         
-        // Filtros de seguridad y optimización
+        // Filtros de exclusión estrictos para evitar archivos basura o pesados
         if (
             item === 'node_modules' || 
             item === '.next' || 
             item === '.git' || 
             item === '.env' || 
             item === '.DS_Store' ||
-            item === '.turbo'
+            item === '.turbo' ||
+            item === 'dist' ||
+            item === 'build'
         ) continue;
         
         const stat = await fs.stat(fullPath);
@@ -42,27 +44,29 @@ export async function GET(req: NextRequest) {
         const zip = new JSZip();
         const rootDir = process.cwd();
         
-        // Agregar Nota Técnica
-        zip.file("LEEME_PRIMERO.txt", `
-KREA BUSINESS v2.0 - DISTRIBUCIÓN OFFLINE
-------------------------------------------
-Instrucciones de Despliegue en Servidor Local:
+        // Agregar Nota Técnica de Despliegue
+        zip.file("INSTRUCCIONES_OFFLINE.txt", `
+KREA BUSINESS v2.0 - PROTOCOLO DE DESPLIEGUE LOCAL
+-------------------------------------------------
+Este paquete contiene el código fuente real del sistema preparado para
+entornos de ejecución Node.js v20+.
 
-1. Requisitos: Node.js v20+ y MongoDB Local o Atlas.
-2. Instalación:
-   $ unzip krea-business.zip
-   $ npm install
-   $ npm run build
-   $ npm start
-3. Activación:
-   Acceda a /login y siga el protocolo de Handshake con el token generado 
-   en el Panel Maestro de Krea Business Cloud.
-        `);
+PASOS PARA LA INSTALACIÓN:
+1. Descomprimir el archivo en el servidor local.
+2. Ejecutar: npm install --production
+3. Ejecutar: npm run build
+4. Iniciar: npm start
+5. Activación: Acceda a la URL local (puerto 3000) e ingrese el 
+   TOKEN DE ACTIVACIÓN generado desde su panel central de Krea Cloud.
 
-        // Ejecutar escaneo real
+SEGURIDAD:
+Este código requiere Handshake con el servidor maestro para funcionar.
+`);
+
+        // Escaneo real del proyecto
         await addFilesRecursively(zip, rootDir, rootDir);
         
-        // Generar buffer binario
+        // Generación del binario ZIP con compresión máxima
         const zipBuffer = await zip.generateAsync({ 
             type: 'nodebuffer',
             compression: 'DEFLATE',
@@ -78,9 +82,9 @@ Instrucciones de Despliegue en Servidor Local:
         });
 
     } catch (e: any) {
-        console.error('Fallo Crítico en Extracción:', e);
+        console.error('Error Crítico en Extracción de Código:', e);
         return NextResponse.json({ 
-            message: 'No se pudo generar el paquete de código fuente real.',
+            message: 'No se pudo generar el paquete de código fuente.',
             error: e.message 
         }, { status: 500 });
     }

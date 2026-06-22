@@ -26,7 +26,6 @@ export default function SecureVerifyPage() {
     });
 
     useEffect(() => {
-        // El temporizador solo corre si estamos en modo verificación
         if (activeTab !== 'verify') return;
 
         if (timeLeft <= 0) {
