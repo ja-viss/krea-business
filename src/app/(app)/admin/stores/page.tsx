@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Store, UserPlus, Loader2, Calendar, ShieldCheck, MoreHorizontal, Settings2, ExternalLink } from 'lucide-react';
+import { Store, UserPlus, Loader2, Calendar, ShieldCheck, MoreHorizontal, Settings2, ExternalLink, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function AdminStoresPage() {
     const { toast } = useToast();
@@ -25,7 +27,8 @@ export default function AdminStoresPage() {
         storeName: '',
         adminName: '',
         adminUser: '',
-        adminPassword: ''
+        adminPassword: '',
+        plan: 'Basic'
     });
 
     const fetchStores = async () => {
@@ -57,9 +60,9 @@ export default function AdminStoresPage() {
             const result = await res.json();
             if (!res.ok) throw new Error(result.message);
 
-            toast({ title: "Empresa Creada", description: "Se ha registrado la empresa y su administrador." });
+            toast({ title: "Empresa Creada", description: "Se ha registrado la empresa bajo el plan " + form.plan });
             setIsOpen(false);
-            setForm({ storeName: '', adminName: '', adminUser: '', adminPassword: '' });
+            setForm({ storeName: '', adminName: '', adminUser: '', adminPassword: '', plan: 'Basic' });
             fetchStores();
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error", description: e.message });
@@ -93,15 +96,32 @@ export default function AdminStoresPage() {
                             <DialogContent className="sm:max-w-[425px]">
                                 <DialogHeader>
                                     <DialogTitle>Nueva Empresa + Administrador</DialogTitle>
-                                    <DialogDescription>Completa los datos para dar de alta una nueva empresa en el sistema.</DialogDescription>
+                                    <DialogDescription>Configura los datos base y selecciona el nivel de suscripción.</DialogDescription>
                                 </DialogHeader>
                                 <form onSubmit={handleCreate} className="space-y-4 pt-4">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase">Nombre del Negocio</Label>
                                         <Input value={form.storeName} onChange={e => setForm({...form, storeName: e.target.value})} placeholder="Ej: Inversiones ABC" required />
                                     </div>
+                                    
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase">Plan Inicial</Label>
+                                        <Select value={form.plan} onValueChange={v => setForm({...form, plan: v})}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Basic">BÁSICO (Abastos / 500 docs)</SelectItem>
+                                                <SelectItem value="Pro">PROFESIONAL (Super / 2k docs)</SelectItem>
+                                                <SelectItem value="Premium">PREMIUM (Mayorista / 10k docs)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     <div className="border-t pt-4 space-y-3">
-                                        <p className="text-[10px] font-black uppercase text-primary">Datos del Administrador Principal</p>
+                                        <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2">
+                                            <UserPlus className="h-3 w-3" /> Datos del Administrador Principal
+                                        </p>
                                         <div className="space-y-2">
                                             <Label className="text-xs">Nombre Completo</Label>
                                             <Input value={form.adminName} onChange={e => setForm({...form, adminName: e.target.value})} placeholder="Ej: Juan Pérez" required />
@@ -137,7 +157,7 @@ export default function AdminStoresPage() {
                                 <TableRow className="bg-muted/50">
                                     <TableHead className="font-black text-[10px] uppercase pl-6">Estado</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase">Empresa / Razón Social</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase">Plan</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Plan Activo</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase">Vencimiento</TableHead>
                                     <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acciones</TableHead>
                                 </TableRow>
@@ -163,7 +183,11 @@ export default function AdminStoresPage() {
                                                     <span className="font-mono text-[9px] text-muted-foreground uppercase">{s._id}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="font-bold text-[10px] uppercase text-primary">{s.plan || 'BASIC'}</TableCell>
+                                            <TableCell>
+                                                <Badge variant="outline" className="font-black text-[9px] uppercase border-primary/30 text-primary bg-primary/5">
+                                                    {s.plan || 'BASIC'}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2 text-xs font-medium">
                                                     <Calendar className="h-3 w-3 opacity-50" />

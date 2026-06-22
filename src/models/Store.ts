@@ -15,6 +15,7 @@ export interface IStore extends Document {
   expiryDate: Date;
   maxUsers: number;
   maxInvoicesPerMonth: number;
+  storageLimitMB: number;
   // Multi-Tenant Infrastructure (Encrypted)
   tenantDbUri?: string;
   createdAt: Date;
@@ -33,7 +34,8 @@ const StoreSchema: Schema = new Schema({
   plan: { type: String, enum: ['Basic', 'Pro', 'Premium'], default: 'Basic' },
   expiryDate: { type: Date, default: () => new Date(+new Date() + 15*24*60*60*1000) },
   maxUsers: { type: Number, default: 3 },
-  maxInvoicesPerMonth: { type: Number, default: 100 },
+  maxInvoicesPerMonth: { type: Number, default: 500 }, // Basado en Abasto/Pequeño
+  storageLimitMB: { type: Number, default: 500 },
   // Campo para almacenar la URI de MongoDB Atlas cifrada
   tenantDbUri: { type: String },
 }, {

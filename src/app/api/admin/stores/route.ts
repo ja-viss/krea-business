@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import StoreModel from '@/models/Store';
@@ -24,7 +25,19 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { storeName, adminName, adminUser, adminPassword, tenantDbUri } = body;
+        const { storeName, adminName, adminUser, adminPassword, tenantDbUri, plan = 'Basic' } = body;
+
+        // Definir límites basados en el plan
+        let maxInvoices = 500;
+        let maxUsers = 3;
+
+        if (plan === 'Pro') {
+            maxInvoices = 2000;
+            maxUsers = 10;
+        } else if (plan === 'Premium') {
+            maxInvoices = 10000;
+            maxUsers = 99;
+        }
 
         // 1. Crear la Tienda (Tenant) con su URI de DB cifrada
         const storeData: any = {
@@ -32,6 +45,10 @@ export async function POST(req: NextRequest) {
             address: 'Dirección pendiente por configurar',
             seniatCondition: 'Contribuyente Ordinario',
             status: tenantDbUri ? 'Active' : 'Demo',
+            plan,
+            maxInvoicesPerMonth: maxInvoices,
+            maxUsers: maxUsers,
+            storageLimitMB: 500
         };
 
         // Si se provee una URI, se cifra antes de guardar
@@ -66,7 +83,7 @@ export async function POST(req: NextRequest) {
 
         await session.commitTransaction();
         return NextResponse.json({ 
-            message: 'Empresa provisionada con éxito.',
+            message: 'Empresa provisionada con éxito bajo el Plan ' + plan,
             storeId: newStore._id,
             userId: newUser._id
         }, { status: 201 });

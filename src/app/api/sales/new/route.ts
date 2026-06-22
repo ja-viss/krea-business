@@ -4,7 +4,9 @@ import dbConnect from '@/lib/dbConnect';
 import SaleModel, { SaleCounterV2Model } from '@/models/Sale';
 import ProductModel from '@/models/Product';
 import AccountReceivableModel from '@/models/AccountReceivable';
+import StoreModel from '@/models/Store';
 import mongoose from 'mongoose';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 export async function POST(req: NextRequest) {
   await dbConnect();
@@ -16,6 +18,24 @@ export async function POST(req: NextRequest) {
     const { storeId, customerId, customerName, items, paymentMethod, paymentReference } = body;
 
     if (!storeId) throw new Error("El ID de la tienda es obligatorio.");
+
+    // 0. VALIDACIÓN DE LÍMITES SAAS (PLAN)
+    const store = await StoreModel.findById(storeId).session(session);
+    if (!store) throw new Error("Tienda no encontrada.");
+
+    // Contar facturas emitidas este mes
+    const monthStart = startOfMonth(new Date());
+    const monthEnd = endOfMonth(new Date());
+
+    const invoicesThisMonth = await SaleModel.countDocuments({
+        store: storeId,
+        createdAt: { $gte: monthStart, $lte: monthEnd }
+    }).session(session);
+
+    if (invoicesThisMonth >= store.maxInvoicesPerMonth) {
+        throw new Error(`Límite de plan alcanzado (${store.maxInvoicesPerMonth} facturas/mes). Por favor, contacte a soporte para un Upgrade de Plan.`);
+    }
+
     if (!customerName) throw new Error("El nombre del cliente es obligatorio.");
     if (!Array.isArray(items) || items.length === 0) throw new Error("La lista de productos está vacía.");
     
@@ -70,7 +90,6 @@ export async function POST(req: NextRequest) {
     const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
 
     // 3. Crear el documento de venta
-    // Validamos que el customerId sea un ObjectId válido para evitar errores de casteo en el futuro
     const validCustomerId = (customerId && mongoose.Types.ObjectId.isValid(customerId)) ? customerId : null;
 
     const newSale = new SaleModel({
