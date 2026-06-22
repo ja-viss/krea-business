@@ -17,11 +17,12 @@ import {
     RefreshCcw,
     Terminal,
     Loader2,
-    Package,
+    Code2,
     Download,
     Cpu,
     Lock,
-    FileArchive
+    FileArchive,
+    Box
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
@@ -77,13 +78,29 @@ export default function OfflineDeploymentsPage() {
         setTimeout(() => {
             setPreparingPackage(false);
             setPackageReady(true);
-            toast({ title: "Paquete Compilado", description: "El instalador 'krea-runtime-v2.exe' está listo para descarga." });
-        }, 2500);
+            toast({ title: "Bundle Preparado", description: "El paquete de código fuente 'krea-source-v2.zip' está listo." });
+        }, 2000);
     };
 
-    const handleDownload = () => {
-        toast({ title: "Descarga Iniciada", description: "El paquete maestro se está transfiriendo..." });
-        // Simulación de descarga de binario
+    const handleDownload = async () => {
+        try {
+            const response = await fetch('/api/admin/download-source');
+            if (!response.ok) throw new Error('Error al generar descarga');
+            
+            // Simulación de descarga de archivo ZIP de código fuente
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'krea-business-source-v2.zip';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            
+            toast({ title: "Descarga Iniciada", description: "El paquete de código fuente se está transfiriendo..." });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Error de Extracción", description: "No se pudo generar el paquete." });
+        }
     };
 
     const copyToClipboard = (text: string) => {
@@ -96,7 +113,7 @@ export default function OfflineDeploymentsPage() {
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
                 <PageHeader 
                     title="Control de Despliegues Offline" 
-                    description="Genera licencias y paquetes para instalaciones locales blindadas."
+                    description="Genera licencias y extrae paquetes de código fuente para instalaciones locales."
                     actions={
                         <Button variant="outline" onClick={fetchOfflineStores} disabled={loading}>
                             <RefreshCcw className="mr-2 h-4 w-4" /> Refrescar
@@ -108,23 +125,23 @@ export default function OfflineDeploymentsPage() {
                     <Card className={`border-2 transition-all ${packageReady ? 'border-green-500 bg-green-50/10 shadow-green-100' : 'border-primary/20 bg-primary/5 shadow-primary/5'}`}>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                <Package className="h-3 w-3" /> Instalador Maestro
+                                <Code2 className="h-3 w-3" /> Paquete de Código Fuente
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="text-2xl font-black">Krea Runtime v2.0</div>
+                            <div className="text-2xl font-black">Krea Source v2.0</div>
                             <p className="text-[10px] font-bold text-muted-foreground leading-tight italic">
-                                Entorno de ejecución pre-configurado con Backend de Gestión y base de datos aislada local.
+                                Bundle completo del sistema (Next.js + Mongoose) preparado para ejecución local sobre Node.js.
                             </p>
                             
                             {!packageReady ? (
                                 <Button className="w-full font-black uppercase text-xs" onClick={handlePreparePackage} disabled={preparingPackage}>
-                                    {preparingPackage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                                    {preparingPackage ? 'Compilando...' : 'Compilar Nuevo Paquete'}
+                                    {preparingPackage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Box className="mr-2 h-4 w-4" />}
+                                    {preparingPackage ? 'Preparando Bundle...' : 'Empaquetar Código'}
                                 </Button>
                             ) : (
                                 <Button className="w-full font-black uppercase text-xs bg-green-600 hover:bg-green-700 animate-in fade-in zoom-in duration-300" onClick={handleDownload}>
-                                    <Download className="mr-2 h-4 w-4" /> Descargar Paquete (.exe)
+                                    <Download className="mr-2 h-4 w-4" /> Descargar Código (.zip)
                                 </Button>
                             )}
                         </CardContent>
@@ -132,7 +149,7 @@ export default function OfflineDeploymentsPage() {
 
                     <Card className="bg-muted/50 border-2">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase text-muted-foreground">Instalaciones Activas</CardTitle>
+                            <CardTitle className="text-[10px] font-black uppercase text-muted-foreground">Nodos Locales Activos</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-3xl font-black">{stores.filter(s => s.offlineHardwareId).length}</div>
@@ -146,7 +163,7 @@ export default function OfflineDeploymentsPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-3xl font-black text-amber-800">{stores.filter(s => s.activationToken && !s.offlineHardwareId).length}</div>
-                            <p className="text-[10px] font-bold text-amber-600 mt-1 uppercase">Esperando Handshake</p>
+                            <p className="text-[10px] font-bold text-amber-600 mt-1 uppercase">Esperando Activación</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -236,25 +253,31 @@ export default function OfflineDeploymentsPage() {
                     <Card className="border-4 border-black bg-black text-white shadow-2xl">
                         <CardHeader>
                             <CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary">
-                                <Terminal className="h-4 w-4" /> Protocolo de Activación Local
+                                <Terminal className="h-4 w-4" /> Guía de Instalación Manual (Node.js)
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 text-[11px] font-medium leading-relaxed">
-                            <p>Sigue esta secuencia en la máquina destino para establecer el vínculo seguro:</p>
+                            <p>Sigue esta secuencia para desplegar el código en el servidor local del cliente:</p>
                             <div className="space-y-4 pt-2">
                                 <div className="space-y-2">
-                                    <span className="text-primary font-black">1. INSTALACIÓN DE RUNTIME</span>
-                                    <p className="opacity-70 italic font-bold">Descarga el paquete .EXE o .DMG y ejecútalo como administrador.</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <span className="text-primary font-black">2. COMANDO DE HANDSHAKE</span>
-                                    <div className="p-3 bg-white/10 rounded border border-white/20 font-mono text-[10px] text-primary-foreground">
-                                        $ krea-cli activate --token <span className="text-white">[TU_TOKEN_GENERADO]</span>
+                                    <span className="text-primary font-black">1. DESCOMPRESIÓN Y DEPENDENCIAS</span>
+                                    <div className="p-3 bg-white/10 rounded border border-white/20 font-mono text-[9px] text-primary-foreground">
+                                        $ unzip krea-source.zip && cd krea-source<br/>
+                                        $ npm install --production
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <span className="text-primary font-black">3. CIFRADO DE NÚCLEO</span>
-                                    <p className="opacity-70 italic font-bold">El sistema detectará el Hardware ID, cifrará la DB local y bloqueará la máquina.</p>
+                                    <span className="text-primary font-black">2. PROTOCOLO DE ACTIVACIÓN</span>
+                                    <div className="p-3 bg-white/10 rounded border border-white/20 font-mono text-[9px] text-primary-foreground">
+                                        $ npm run activate -- --token [TU_TOKEN_GENERADO]
+                                    </div>
+                                    <p className="opacity-70 italic font-bold">Esto descargará la configuración cifrada de la infraestructura.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <span className="text-primary font-black">3. INICIO DEL SERVICIO</span>
+                                    <div className="p-3 bg-white/10 rounded border border-white/20 font-mono text-[9px] text-primary-foreground">
+                                        $ npm run build && npm start
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
@@ -267,16 +290,15 @@ export default function OfflineDeploymentsPage() {
                     <Card className="border-2 border-red-200 bg-red-50/30">
                         <CardHeader>
                             <CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-red-700">
-                                <ShieldAlert className="h-4 w-4" /> Mecanismos de Revocación
+                                <ShieldAlert className="h-4 w-4" /> Auditoría y Revocación
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 text-xs font-medium text-red-800">
-                            <p>En caso de impago o brecha de seguridad:</p>
+                            <p>Control de licencias distribuidas:</p>
                             <ul className="list-disc pl-4 space-y-2 font-bold italic text-[10px]">
-                                <li>Cambia el estado de la empresa a <strong>'Suspendido'</strong> en el panel de control.</li>
-                                <li>El cliente local detectará el cambio mediante el <strong>Ping de Seguridad (Heartbeat)</strong>.</li>
-                                <li>Se activará el <strong>Kill Switch</strong>: el software se bloqueará inmediatamente y las llaves de descifrado en memoria serán purgadas.</li>
-                                <li>La base de datos local quedará inaccesible sin el reporte positivo del servidor central.</li>
+                                <li><strong>Identidad de Máquina:</strong> El Hardware ID es inmutable una vez vinculado.</li>
+                                <li><strong>Heartbeat Obligatorio:</strong> El servicio local requiere conexión ocasional para validar el token contra la nube.</li>
+                                <li><strong>Kill Switch:</strong> Si el sistema detecta manipulación del código fuente o impago, el núcleo de encriptación local se autodestruye.</li>
                             </ul>
                         </CardContent>
                     </Card>
