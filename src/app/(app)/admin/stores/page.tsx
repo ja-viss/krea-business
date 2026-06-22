@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Store, UserPlus, Loader2, Calendar, ShieldCheck, MoreHorizontal, Settings2, ExternalLink, Tag } from 'lucide-react';
+import { Store, UserPlus, Loader2, Calendar, ShieldCheck, Settings2, Package, ShoppingCart, Receipt, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 export default function AdminStoresPage() {
     const { toast } = useToast();
@@ -28,7 +29,13 @@ export default function AdminStoresPage() {
         adminName: '',
         adminUser: '',
         adminPassword: '',
-        plan: 'Basic'
+        plan: 'Basic',
+        enabledModules: {
+            inventory: true,
+            sales: true,
+            expenses: true,
+            reports: true
+        }
     });
 
     const fetchStores = async () => {
@@ -60,15 +67,28 @@ export default function AdminStoresPage() {
             const result = await res.json();
             if (!res.ok) throw new Error(result.message);
 
-            toast({ title: "Empresa Creada", description: "Se ha registrado la empresa bajo el plan " + form.plan });
+            toast({ title: "Empresa Creada", description: "Configurada con los módulos seleccionados." });
             setIsOpen(false);
-            setForm({ storeName: '', adminName: '', adminUser: '', adminPassword: '', plan: 'Basic' });
+            setForm({ 
+                storeName: '', adminName: '', adminUser: '', adminPassword: '', plan: 'Basic',
+                enabledModules: { inventory: true, sales: true, expenses: true, reports: true } 
+            });
             fetchStores();
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error", description: e.message });
         } finally {
             setCreating(false);
         }
+    };
+
+    const toggleModule = (module: keyof typeof form.enabledModules) => {
+        setForm({
+            ...form,
+            enabledModules: {
+                ...form.enabledModules,
+                [module]: !form.enabledModules[module]
+            }
+        });
     };
 
     const getStatusBadge = (status: string) => {
@@ -93,42 +113,78 @@ export default function AdminStoresPage() {
                                     <Store className="mr-2 h-4 w-4" /> Alta de Nueva Empresa
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
+                            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle>Nueva Empresa + Administrador</DialogTitle>
-                                    <DialogDescription>Configura los datos base y selecciona el nivel de suscripción.</DialogDescription>
+                                    <DialogTitle>Nueva Empresa + Módulos SaaS</DialogTitle>
+                                    <DialogDescription>Configura los datos base y selecciona qué herramientas habilitar.</DialogDescription>
                                 </DialogHeader>
                                 <form onSubmit={handleCreate} className="space-y-4 pt-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase">Nombre del Negocio</Label>
-                                        <Input value={form.storeName} onChange={e => setForm({...form, storeName: e.target.value})} placeholder="Ej: Inversiones ABC" required />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2 col-span-2 sm:col-span-1">
+                                            <Label className="text-[10px] font-black uppercase">Nombre del Negocio</Label>
+                                            <Input value={form.storeName} onChange={e => setForm({...form, storeName: e.target.value})} required />
+                                        </div>
+                                        <div className="space-y-2 col-span-2 sm:col-span-1">
+                                            <Label className="text-[10px] font-black uppercase">Plan Inicial</Label>
+                                            <Select value={form.plan} onValueChange={v => setForm({...form, plan: v})}>
+                                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Basic">BÁSICO (500 docs)</SelectItem>
+                                                    <SelectItem value="Pro">PROFESIONAL (2k docs)</SelectItem>
+                                                    <SelectItem value="Premium">PREMIUM (10k docs)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
-                                    
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase">Plan Inicial</Label>
-                                        <Select value={form.plan} onValueChange={v => setForm({...form, plan: v})}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Basic">BÁSICO (Abastos / 500 docs)</SelectItem>
-                                                <SelectItem value="Pro">PROFESIONAL (Super / 2k docs)</SelectItem>
-                                                <SelectItem value="Premium">PREMIUM (Mayorista / 10k docs)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+
+                                    {/* SECCIÓN DE MÓDULOS MODULARES */}
+                                    <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed space-y-3">
+                                        <p className="text-[10px] font-black uppercase text-primary">Módulos del Sistema (Feature Flags)</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex items-center justify-between p-2 bg-background rounded-lg border">
+                                                <div className="flex items-center gap-2">
+                                                    <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <span className="text-xs font-bold">Inventario</span>
+                                                </div>
+                                                <Switch checked={form.enabledModules.inventory} onCheckedChange={() => toggleModule('inventory')} />
+                                            </div>
+                                            <div className="flex items-center justify-between p-2 bg-background rounded-lg border">
+                                                <div className="flex items-center gap-2">
+                                                    <ShoppingCart className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <span className="text-xs font-bold">Ventas</span>
+                                                </div>
+                                                <Switch checked={form.enabledModules.sales} onCheckedChange={() => toggleModule('sales')} />
+                                            </div>
+                                            <div className="flex items-center justify-between p-2 bg-background rounded-lg border">
+                                                <div className="flex items-center gap-2">
+                                                    <Receipt className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <span className="text-xs font-bold">Gastos</span>
+                                                </div>
+                                                <Switch checked={form.enabledModules.expenses} onCheckedChange={() => toggleModule('expenses')} />
+                                            </div>
+                                            <div className="flex items-center justify-between p-2 bg-background rounded-lg border">
+                                                <div className="flex items-center gap-2">
+                                                    <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <span className="text-xs font-bold">Reportes</span>
+                                                </div>
+                                                <Switch checked={form.enabledModules.reports} onCheckedChange={() => toggleModule('reports')} />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="border-t pt-4 space-y-3">
                                         <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2">
                                             <UserPlus className="h-3 w-3" /> Datos del Administrador Principal
                                         </p>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs">Nombre Completo</Label>
-                                            <Input value={form.adminName} onChange={e => setForm({...form, adminName: e.target.value})} placeholder="Ej: Juan Pérez" required />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs">Usuario / Email de Acceso</Label>
-                                            <Input value={form.adminUser} onChange={e => setForm({...form, adminUser: e.target.value})} placeholder="juanperez" required />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Nombre Completo</Label>
+                                                <Input value={form.adminName} onChange={e => setForm({...form, adminName: e.target.value})} required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Usuario / Email</Label>
+                                                <Input value={form.adminUser} onChange={e => setForm({...form, adminUser: e.target.value})} required />
+                                            </div>
                                         </div>
                                         <div className="space-y-2">
                                             <Label className="text-xs">Contraseña Inicial</Label>
@@ -165,13 +221,7 @@ export default function AdminStoresPage() {
                             <TableBody>
                                 {loading ? (
                                     Array.from({ length: 3 }).map((_, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell className="pl-6"><div className="h-6 w-16 bg-muted animate-pulse rounded-full" /></TableCell>
-                                            <TableCell><div className="h-4 w-40 bg-muted animate-pulse rounded" /></TableCell>
-                                            <TableCell><div className="h-4 w-12 bg-muted animate-pulse rounded" /></TableCell>
-                                            <TableCell><div className="h-4 w-32 bg-muted animate-pulse rounded" /></TableCell>
-                                            <TableCell className="text-right pr-6"><div className="h-8 w-24 bg-muted animate-pulse rounded ml-auto" /></TableCell>
-                                        </TableRow>
+                                        <TableRow key={i}><TableCell colSpan={5}><div className="h-12 bg-muted animate-pulse rounded m-2" /></TableCell></TableRow>
                                     ))
                                 ) : stores.length > 0 ? (
                                     stores.map((s) => (
@@ -195,13 +245,11 @@ export default function AdminStoresPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button asChild variant="outline" size="sm" className="font-bold text-[10px]">
-                                                        <Link href={`/admin/stores/${s._id}`}>
-                                                            <Settings2 className="mr-2 h-3 w-3" /> CONTROL
-                                                        </Link>
-                                                    </Button>
-                                                </div>
+                                                <Button asChild variant="outline" size="sm" className="font-bold text-[10px]">
+                                                    <Link href={`/admin/stores/${s._id}`}>
+                                                        <Settings2 className="mr-2 h-3 w-3" /> CONTROL
+                                                    </Link>
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))

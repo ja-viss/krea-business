@@ -16,11 +16,18 @@ export interface IStore extends Document {
   maxUsers: number;
   maxInvoicesPerMonth: number;
   storageLimitMB: number;
+  // Feature Flags (Módulos Modulares)
+  enabledModules: {
+    inventory: boolean;
+    sales: boolean;
+    expenses: boolean;
+    reports: boolean;
+  };
   // Hybrid Security Fields
   deploymentMode: 'Online' | 'Offline';
-  offlineHardwareId?: string; // ID único de la máquina local
-  activationToken?: string;   // Token firmado para el handshake
-  secretKey?: string;         // Llave única de cifrado local
+  offlineHardwareId?: string;
+  activationToken?: string;
+  secretKey?: string;
   // Multi-Tenant Infrastructure (Encrypted)
   tenantDbUri?: string;
   createdAt: Date;
@@ -41,12 +48,17 @@ const StoreSchema: Schema = new Schema({
   maxUsers: { type: Number, default: 3 },
   maxInvoicesPerMonth: { type: Number, default: 500 },
   storageLimitMB: { type: Number, default: 500 },
-  // Hybrid Config
+  // Flags iniciales por defecto
+  enabledModules: {
+    inventory: { type: Boolean, default: true },
+    sales: { type: Boolean, default: true },
+    expenses: { type: Boolean, default: true },
+    reports: { type: Boolean, default: true },
+  },
   deploymentMode: { type: String, enum: ['Online', 'Offline'], default: 'Online' },
   offlineHardwareId: { type: String },
   activationToken: { type: String },
   secretKey: { type: String },
-  // URI Cifrada de DB
   tenantDbUri: { type: String },
 }, {
   timestamps: true

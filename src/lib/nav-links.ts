@@ -33,6 +33,7 @@ export type NavLink = {
   roles: string[];
   isGlobal?: boolean;
   category?: string;
+  moduleKey?: 'inventory' | 'sales' | 'expenses' | 'reports'; // El enlace depende de este módulo
 };
 
 export const navLinks: NavLink[] = [
@@ -93,14 +94,6 @@ export const navLinks: NavLink[] = [
     isGlobal: true,
     category: 'Herramientas Dev',
   },
-  {
-    href: '/admin/system-logs',
-    label: 'Logs y Auditoría',
-    icon: History,
-    roles: ['SUPER_ADMIN_MASTER'],
-    isGlobal: true,
-    category: 'Herramientas Dev',
-  },
   
   // --- SECCION OPERATIVA (Usuarios de Tiendas) ---
   {
@@ -116,6 +109,7 @@ export const navLinks: NavLink[] = [
     icon: ShoppingCart,
     roles: ['Administrador Principal', 'Gerente de Ventas', 'Vendedor'],
     category: 'Operaciones',
+    moduleKey: 'sales',
   },
   {
     href: '/inventory',
@@ -123,6 +117,7 @@ export const navLinks: NavLink[] = [
     icon: Boxes,
     roles: ['Administrador Principal', 'Gerente de Inventario', 'Almacenista'],
     category: 'Inventario',
+    moduleKey: 'inventory',
   },
   {
     href: '/expenses',
@@ -130,6 +125,7 @@ export const navLinks: NavLink[] = [
     icon: Receipt,
     roles: ['Administrador Principal', 'Gerente de Ventas'],
     category: 'Finanzas',
+    moduleKey: 'expenses',
   },
   {
     href: '/accounts',
@@ -137,6 +133,7 @@ export const navLinks: NavLink[] = [
     icon: BookUser,
     roles: ['Administrador Principal', 'Gerente de Ventas'],
     category: 'Finanzas',
+    moduleKey: 'expenses',
   },
   {
     href: '/reports',
@@ -144,6 +141,7 @@ export const navLinks: NavLink[] = [
     icon: BarChart3,
     roles: ['Administrador Principal', 'Gerente de Ventas', 'Gerente de Inventario'],
     category: 'Administración',
+    moduleKey: 'reports',
   },
   {
     href: '/ai-insights',
@@ -151,6 +149,7 @@ export const navLinks: NavLink[] = [
     icon: Sparkles,
     roles: ['Administrador Principal'],
     category: 'Administración',
+    moduleKey: 'reports',
   },
   {
     href: '/settings',

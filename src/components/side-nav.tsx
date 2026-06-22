@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -28,6 +29,7 @@ export function SideNav() {
   const pathname = usePathname();
   const { toast } = useToast();
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const [enabledModules, setEnabledModules] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
   const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
@@ -35,28 +37,36 @@ export function SideNav() {
 
   useEffect(() => {
     setIsGlobalAdmin(localStorage.getItem('isGlobalAdmin') === 'true');
+    const modulesRaw = localStorage.getItem('enabledModules');
+    if (modulesRaw) {
+        setEnabledModules(JSON.parse(modulesRaw));
+    }
     setMounted(true);
   }, []);
 
   if (!mounted) return null;
 
   const filteredLinks = navLinks.filter(link => {
+    // 1. Si es Admin Global, solo ve links de Global
     if (isGlobalAdmin) {
       return link.isGlobal === true;
     }
-    return link.isGlobal !== true;
+    
+    // 2. Si es usuario de tienda, filtrar por roles y MODULE FLAGS
+    if (link.isGlobal) return false;
+
+    // Validación de Feature Flag (Banderas de Módulo)
+    if (link.moduleKey && enabledModules) {
+        if (enabledModules[link.moduleKey] === false) return false;
+    }
+
+    return true;
   });
 
-  // Agrupar links por categoría para el renderizado scannable
   const categories = Array.from(new Set(filteredLinks.map(l => l.category || 'General')));
-
-  const handleMaintenanceToggle = () => {
-    setIsMaintenanceDialogOpen(true);
-  };
 
   const confirmMaintenance = async () => {
     setIsTogglingMaintenance(true);
-    // Simulación de acción técnica global
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsMaintenanceActive(!isMaintenanceActive);
     setIsTogglingMaintenance(false);
@@ -65,8 +75,8 @@ export function SideNav() {
     toast({
         title: !isMaintenanceActive ? "SISTEMA PAUSADO" : "SISTEMA ONLINE",
         description: !isMaintenanceActive 
-            ? "El modo mantenimiento global ha sido activado. Todos los clientes verán el banner de pausa."
-            : "La plataforma Krea Business vuelve a estar operativa para todos los tenants.",
+            ? "El modo mantenimiento global ha sido activado."
+            : "La plataforma Krea Business vuelve a estar operativa.",
         variant: !isMaintenanceActive ? "destructive" : "default"
     });
   };
@@ -110,11 +120,10 @@ export function SideNav() {
             ))}
         </nav>
 
-        {/* Sección de herramientas críticas para el Desarrollador */}
         {isGlobalAdmin && (
             <div className="px-4 mt-8 pt-4 border-t">
                 <button
-                    onClick={handleMaintenanceToggle}
+                    onClick={() => setIsMaintenanceDialogOpen(true)}
                     disabled={isTogglingMaintenance}
                     className={cn(
                         "w-full flex items-center justify-between gap-3 rounded-xl p-3 transition-all border-2 border-dashed",
@@ -126,7 +135,7 @@ export function SideNav() {
                     <div className="flex items-center gap-2">
                         <Zap className={cn("h-4 w-4", isMaintenanceActive ? "fill-white" : "fill-amber-500")} />
                         <div className="text-left">
-                            <p className="text-[10px] font-black uppercase leading-none">Modo Mantenimiento</p>
+                            <p className="text-[10px] font-black uppercase leading-none">Mantenimiento</p>
                             <p className="text-[9px] font-bold opacity-80">{isMaintenanceActive ? 'SISTEMA PAUSADO' : 'SISTEMA ONLINE'}</p>
                         </div>
                     </div>
@@ -142,8 +151,8 @@ export function SideNav() {
                             </div>
                             <AlertDialogDescription className="text-base font-bold text-foreground">
                                 {isMaintenanceActive 
-                                    ? "¿Deseas reactivar el acceso global para todos los clientes de Krea Business?" 
-                                    : "Estás a punto de activar el MODO MANTENIMIENTO GLOBAL. Esto cerrará el acceso a todos los usuarios de todas las empresas para mantenimiento de base de datos o actualizaciones críticas."
+                                    ? "¿Deseas reactivar el acceso global?" 
+                                    : "Estás a punto de activar el MODO MANTENIMIENTO GLOBAL. Esto cerrará el acceso a todos los usuarios."
                                 }
                             </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -153,7 +162,7 @@ export function SideNav() {
                                 onClick={confirmMaintenance} 
                                 className={cn("font-black uppercase", isMaintenanceActive ? "bg-green-600" : "bg-red-600")}
                             >
-                                {isMaintenanceActive ? "Restaurar Sistema" : "Pausar Plataforma"}
+                                {isMaintenanceActive ? "Restaurar" : "Pausar"}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>

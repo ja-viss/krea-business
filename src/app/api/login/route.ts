@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
-import RoleModel from '@/models/Role';
+import StoreModel from '@/models/Store';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
@@ -33,7 +33,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
 
-    // Respuesta unificada para usuarios normales y maestros
+    // Obtener los módulos habilitados de la tienda
+    let enabledModules = { inventory: true, sales: true, expenses: true, reports: true };
+    if (user.store) {
+        const store = await StoreModel.findById(user.store);
+        if (store) {
+            enabledModules = store.enabledModules || enabledModules;
+        }
+    }
+
     return NextResponse.json({ 
         message: 'Inicio de sesión exitoso.', 
         user: { 
@@ -42,15 +50,13 @@ export async function POST(req: NextRequest) {
             email: user.email, 
             store: user.store?.toString() || 'SYSTEM_MASTER',
             isGlobalAdmin: !!user.isGlobalAdmin,
-            needsVerification: !!user.isGlobalAdmin // Flag para disparar la pantalla de seguridad
+            needsVerification: !!user.isGlobalAdmin,
+            enabledModules: enabledModules
         } 
     }, { status: 200 });
 
   } catch (error: any) {
     console.error('Error Crítico en Login API:', error);
-    return NextResponse.json({ 
-        message: 'Error interno de servidor.', 
-        details: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ message: 'Error interno de servidor.' }, { status: 500 });
   }
 }
