@@ -6,7 +6,8 @@ import UserModel from '@/models/User';
 import RoleModel from '@/models/Role';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
-import { encrypt } from '@/lib/encryption';
+import { encrypt, generateActivationToken } from '@/lib/encryption';
+import crypto from 'crypto';
 
 export async function GET(req: NextRequest) {
     try {
@@ -25,7 +26,15 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { storeName, adminName, adminUser, adminPassword, tenantDbUri, plan = 'Basic' } = body;
+        const { 
+            storeName, 
+            adminName, 
+            adminUser, 
+            adminPassword, 
+            tenantDbUri, 
+            plan = 'Basic', 
+            deploymentMode = 'Online' 
+        } = body;
 
         // Definir límites basados en el plan
         let maxInvoices = 500;
@@ -39,25 +48,41 @@ export async function POST(req: NextRequest) {
             maxUsers = 99;
         }
 
-        // 1. Crear la Tienda (Tenant) con su URI de DB cifrada
+        // 1. Configuración de la Tienda (Tenant)
         const storeData: any = {
             name: storeName,
             address: 'Dirección pendiente por configurar',
             seniatCondition: 'Contribuyente Ordinario',
-            status: tenantDbUri ? 'Active' : 'Demo',
+            status: (tenantDbUri || deploymentMode === 'Offline') ? 'Active' : 'Demo',
             plan,
             maxInvoicesPerMonth: maxInvoices,
             maxUsers: maxUsers,
-            storageLimitMB: 500
+            storageLimitMB: 500,
+            deploymentMode
         };
 
-        // Si se provee una URI, se cifra antes de guardar
-        if (tenantDbUri && tenantDbUri.trim() !== '') {
+        // Si es Online y se provee una URI, se cifra antes de guardar
+        if (deploymentMode === 'Online' && tenantDbUri && tenantDbUri.trim() !== '') {
             storeData.tenantDbUri = encrypt(tenantDbUri.trim());
+        }
+
+        // Si es Offline, generamos credenciales de activación iniciales
+        if (deploymentMode === 'Offline') {
+            const secretKey = crypto.randomBytes(32).toString('hex');
+            storeData.secretKey = secretKey;
+            // Generamos un token temporal que podrá ser usado durante el handshake inicial
+            // Usamos un placeholder ya que el storeId real se generará al guardar
+            storeData.activationToken = generateActivationToken('PENDING_INSTALL', secretKey);
         }
 
         const newStore = new StoreModel(storeData);
         await newStore.save({ session });
+
+        // Si era offline, actualizamos el token con el ID real
+        if (deploymentMode === 'Offline') {
+            newStore.activationToken = generateActivationToken(String(newStore._id), storeData.secretKey);
+            await newStore.save({ session });
+        }
 
         // 2. Crear el Rol de Administrador para esa tienda
         const adminRole = new RoleModel({
@@ -83,9 +108,12 @@ export async function POST(req: NextRequest) {
 
         await session.commitTransaction();
         return NextResponse.json({ 
-            message: 'Empresa provisionada con éxito bajo el Plan ' + plan,
+            message: deploymentMode === 'Online' 
+                ? 'Empresa provisionada con éxito en la nube.' 
+                : 'Empresa preparada para despliegue offline con éxito.',
             storeId: newStore._id,
-            userId: newUser._id
+            userId: newUser._id,
+            activationToken: newStore.activationToken
         }, { status: 201 });
 
     } catch (error: any) {

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
     Search, 
     MoreHorizontal, 
@@ -26,7 +27,9 @@ import {
     ShieldCheck,
     Database,
     Zap,
-    Crown
+    Crown,
+    Globe,
+    HardDrive
 } from 'lucide-react';
 import { 
     DropdownMenu, 
@@ -55,7 +58,8 @@ export default function GlobalUsersManagementPage() {
         adminName: '',
         adminUser: '',
         adminPassword: '',
-        tenantDbUri: ''
+        tenantDbUri: '',
+        deploymentMode: 'Online'
     });
 
     const fetchUsers = async () => {
@@ -115,9 +119,15 @@ export default function GlobalUsersManagementPage() {
             
             if (!res.ok) throw new Error(data.message);
 
-            toast({ title: "Cliente Provisionado", description: "Empresa y base de datos aislada configuradas con éxito." });
+            toast({ 
+                title: provisionForm.deploymentMode === 'Online' ? "Cliente Online Provisionado" : "Cliente Offline Preparado", 
+                description: provisionForm.deploymentMode === 'Online' 
+                    ? "Empresa y base de datos aislada configuradas con éxito."
+                    : "Empresa creada. Dirígete a Despliegue Offline para generar su token de activación."
+            });
+            
             setIsProvisionModalOpen(false);
-            setProvisionForm({ storeName: '', adminName: '', adminUser: '', adminPassword: '', tenantDbUri: '' });
+            setProvisionForm({ storeName: '', adminName: '', adminUser: '', adminPassword: '', tenantDbUri: '', deploymentMode: 'Online' });
             fetchUsers();
         } catch (err: any) {
             toast({ variant: 'destructive', title: "Fallo de Provisionamiento", description: err.message });
@@ -275,23 +285,23 @@ export default function GlobalUsersManagementPage() {
                     </CardContent>
                 </Card>
 
-                {/* MODAL DE PROVISIONAMIENTO */}
+                {/* MODAL DE PROVISIONAMIENTO ACTUALIZADO */}
                 <Dialog open={isProvisionModalOpen} onOpenChange={setIsProvisionModalOpen}>
-                    <DialogContent className="sm:max-w-[500px] border-4 border-primary">
+                    <DialogContent className="sm:max-w-[500px] border-4 border-primary max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-black uppercase tracking-tighter flex items-center gap-2">
                                 <Database className="h-6 w-6 text-primary" />
                                 Provisionar Infraestructura
                             </DialogTitle>
                             <DialogDescription className="font-bold">
-                                Configura un nuevo Tenant con su propia base de datos aislada.
+                                Configura un nuevo Tenant y define su modalidad de despliegue.
                             </DialogDescription>
                         </DialogHeader>
                         
                         <form onSubmit={handleProvisionClient} className="space-y-4 py-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2 col-span-2">
-                                    <Label className="text-[10px] font-black uppercase">Nombre del Negocio (Razón Social)</Label>
+                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Nombre del Negocio (Razón Social)</Label>
                                     <Input 
                                         placeholder="Ej: Inversiones Globales C.A." 
                                         value={provisionForm.storeName}
@@ -299,8 +309,31 @@ export default function GlobalUsersManagementPage() {
                                         required
                                     />
                                 </div>
+                                
+                                <div className="space-y-2 col-span-2">
+                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Modalidad de Despliegue</Label>
+                                    <RadioGroup 
+                                        value={provisionForm.deploymentMode} 
+                                        onValueChange={v => setProvisionForm({...provisionForm, deploymentMode: v})}
+                                        className="grid grid-cols-2 gap-3 p-3 border-2 border-dashed rounded-xl bg-muted/20"
+                                    >
+                                        <div className={`flex items-center space-x-2 rounded-lg p-2 border-2 transition-all ${provisionForm.deploymentMode === 'Online' ? 'bg-primary/5 border-primary' : 'border-transparent'}`}>
+                                            <RadioGroupItem value="Online" id="mode-online" />
+                                            <Label htmlFor="mode-online" className="font-bold flex items-center gap-2 cursor-pointer">
+                                                <Globe className="h-4 w-4 text-primary" /> Online
+                                            </Label>
+                                        </div>
+                                        <div className={`flex items-center space-x-2 rounded-lg p-2 border-2 transition-all ${provisionForm.deploymentMode === 'Offline' ? 'bg-amber-50 border-amber-500' : 'border-transparent'}`}>
+                                            <RadioGroupItem value="Offline" id="mode-offline" />
+                                            <Label htmlFor="mode-offline" className="font-bold flex items-center gap-2 cursor-pointer">
+                                                <HardDrive className="h-4 w-4 text-amber-600" /> Offline
+                                            </Label>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Nombre del Administrador</Label>
+                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Administrador</Label>
                                     <Input 
                                         placeholder="Ej: Juan Pérez" 
                                         value={provisionForm.adminName}
@@ -309,7 +342,7 @@ export default function GlobalUsersManagementPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase">Usuario / Login</Label>
+                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Usuario / Login</Label>
                                     <Input 
                                         placeholder="juanperez" 
                                         value={provisionForm.adminUser}
@@ -318,7 +351,7 @@ export default function GlobalUsersManagementPage() {
                                     />
                                 </div>
                                 <div className="space-y-2 col-span-2">
-                                    <Label className="text-[10px] font-black uppercase">Contraseña de Acceso</Label>
+                                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Contraseña de Acceso</Label>
                                     <Input 
                                         type="password"
                                         placeholder="••••••••" 
@@ -327,17 +360,27 @@ export default function GlobalUsersManagementPage() {
                                         required
                                     />
                                 </div>
-                                <div className="space-y-2 col-span-2">
-                                    <Label className="text-[10px] font-black uppercase text-primary">Cadena de Conexión MongoDB (URI)</Label>
-                                    <Input 
-                                        placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname" 
-                                        value={provisionForm.tenantDbUri}
-                                        onChange={e => setProvisionForm({...provisionForm, tenantDbUri: e.target.value})}
-                                        required
-                                        className="font-mono text-xs border-primary/40 bg-primary/5"
-                                    />
-                                    <p className="text-[9px] text-muted-foreground italic">Esta URI será cifrada automáticamente antes de guardarse.</p>
-                                </div>
+
+                                {provisionForm.deploymentMode === 'Online' ? (
+                                    <div className="space-y-2 col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <Label className="text-[10px] font-black uppercase text-primary">Cadena de Conexión MongoDB (URI)</Label>
+                                        <Input 
+                                            placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname" 
+                                            value={provisionForm.tenantDbUri}
+                                            onChange={e => setProvisionForm({...provisionForm, tenantDbUri: e.target.value})}
+                                            required
+                                            className="font-mono text-xs border-primary/40 bg-primary/5"
+                                        />
+                                        <p className="text-[9px] text-muted-foreground italic">Esta URI será cifrada automáticamente antes de guardarse.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2 col-span-2 p-4 bg-amber-50 border-2 border-amber-200 border-dashed rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <Zap className="h-5 w-5 text-amber-600 shrink-0 mt-1" />
+                                        <p className="text-[10px] font-bold text-amber-800 leading-tight">
+                                            MODO OFFLINE DETECTADO: El sistema generará credenciales maestras y un token de activación único. Deberás descargar el código fuente y usar el token en la instalación local.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             <DialogFooter className="pt-4 border-t">
