@@ -72,13 +72,13 @@ export default function LoginPage() {
     <form onSubmit={handleLogin}>
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-2xl font-black uppercase tracking-tighter">Krea Business</CardTitle>
-        <CardDescription className="font-medium">
+        <CardDescription className="font-medium text-sm">
           Acceso al Ecosistema Empresarial
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-xs font-bold uppercase">Usuario / Email</Label>
+          <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest">Usuario / Email</Label>
           <Input 
             id="email" 
             type="text" 
@@ -92,7 +92,7 @@ export default function LoginPage() {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-xs font-bold uppercase">Contraseña</Label>
+            <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest">Contraseña</Label>
             <Link
               href="/forgot-password"
               className="text-[10px] font-bold text-primary underline-offset-4 hover:underline"

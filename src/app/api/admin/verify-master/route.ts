@@ -5,7 +5,7 @@ import SystemConfigModel from '@/models/SystemConfig';
 
 /**
  * Endpoint Maestro de Verificación de Segundo Nivel.
- * Valida las credenciales dinámicas de la base de datos.
+ * Valida las credenciales dinámicas de la base de datos o permite su inicialización.
  */
 
 export async function GET() {
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         // Recuperar configuración de seguridad de la DB
         let config = await SystemConfigModel.findOne();
         
-        // MODO CONFIGURACIÓN: Si no existe configuración, la creamos con los datos que el admin acaba de ingresar
+        // MODO CONFIGURACIÓN INICIAL: Si no existe configuración, la creamos ahora mismo.
         if (!config) {
             config = await SystemConfigModel.create({
                 masterUser: user,
@@ -41,25 +41,29 @@ export async function POST(req: NextRequest) {
             
             return NextResponse.json({ 
                 success: true, 
-                message: 'Núcleo de seguridad inicializado con éxito.' 
+                message: 'Núcleo de seguridad inicializado y llaves maestras establecidas.' 
             });
         }
 
-        // Verificación estándar si ya existe config
-        if (user === config.masterUser && key1 === config.masterKeyAlpha && key2 === config.masterKeyBeta) {
+        // VERIFICACIÓN ESTÁNDAR: Comprobar contra las llaves guardadas
+        const isValidUser = user === config.masterUser;
+        const isValidAlpha = key1 === config.masterKeyAlpha;
+        const isValidBeta = key2 === config.masterKeyBeta;
+
+        if (isValidUser && isValidAlpha && isValidBeta) {
             return NextResponse.json({ 
                 success: true, 
-                message: 'Verificación de núcleo exitosa.' 
+                message: 'Verificación de núcleo nivel 2 exitosa.' 
             });
         }
 
         return NextResponse.json({ 
             success: false, 
-            message: 'Error en la secuencia de seguridad. Identidad no confirmada.' 
+            message: 'Secuencia de seguridad incorrecta. Acceso denegado.' 
         }, { status: 401 });
 
     } catch (e: any) {
-        console.error('Master Verify Error:', e);
-        return NextResponse.json({ message: 'Fallo de sistema de seguridad.' }, { status: 500 });
+        console.error('Master Verify Critical Error:', e);
+        return NextResponse.json({ message: 'Fallo catastrófico en el sistema de seguridad de infraestructura.' }, { status: 500 });
     }
 }
