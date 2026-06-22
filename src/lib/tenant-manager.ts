@@ -1,6 +1,8 @@
 
 import mongoose, { Connection, Model } from 'mongoose';
 import { ProductSchema } from '@/models/schemas/ProductSchema';
+import { SaleSchema } from '@/models/Sale';
+import { ExpenseSchema } from '@/models/Expense';
 import { decrypt } from './encryption';
 
 /**
@@ -10,7 +12,8 @@ import { decrypt } from './encryption';
 
 interface TenantModels {
   Product: Model<any>;
-  // Añadir más modelos aquí (Sale, Expense, etc.)
+  Sale: Model<any>;
+  Expense: Model<any>;
 }
 
 const connectionPool: Map<string, Connection> = new Map();
@@ -54,6 +57,7 @@ export async function getTenantDb(tenantId: string, encryptedUri: string): Promi
 function getModels(conn: Connection): TenantModels {
   return {
     Product: conn.models.Product || conn.model('Product', ProductSchema),
-    // Registrar aquí el resto de modelos corporativos
+    Sale: conn.models.Sale || conn.model('Sale', SaleSchema),
+    Expense: conn.models.Expense || conn.model('Expense', ExpenseSchema),
   };
 }

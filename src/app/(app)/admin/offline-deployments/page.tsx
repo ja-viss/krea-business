@@ -20,7 +20,8 @@ import {
     Package,
     Download,
     Cpu,
-    Lock
+    Lock,
+    FileArchive
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
@@ -30,6 +31,7 @@ export default function OfflineDeploymentsPage() {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState<string | null>(null);
     const [preparingPackage, setPreparingPackage] = useState(false);
+    const [packageReady, setPackageReady] = useState(false);
 
     const fetchOfflineStores = async () => {
         try {
@@ -71,10 +73,17 @@ export default function OfflineDeploymentsPage() {
 
     const handlePreparePackage = () => {
         setPreparingPackage(true);
+        setPackageReady(false);
         setTimeout(() => {
             setPreparingPackage(false);
-            toast({ title: "Paquete Listo", description: "El instalador 'krea-runtime-v2.exe' ha sido preparado para descarga." });
-        }, 2000);
+            setPackageReady(true);
+            toast({ title: "Paquete Compilado", description: "El instalador 'krea-runtime-v2.exe' está listo para descarga." });
+        }, 2500);
+    };
+
+    const handleDownload = () => {
+        toast({ title: "Descarga Iniciada", description: "El paquete maestro se está transfiriendo..." });
+        // Simulación de descarga de binario
     };
 
     const copyToClipboard = (text: string) => {
@@ -96,7 +105,7 @@ export default function OfflineDeploymentsPage() {
                 />
 
                 <div className="grid gap-6 md:grid-cols-3">
-                    <Card className="border-2 border-primary/20 bg-primary/5 shadow-xl shadow-primary/5">
+                    <Card className={`border-2 transition-all ${packageReady ? 'border-green-500 bg-green-50/10 shadow-green-100' : 'border-primary/20 bg-primary/5 shadow-primary/5'}`}>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                                 <Package className="h-3 w-3" /> Instalador Maestro
@@ -107,10 +116,17 @@ export default function OfflineDeploymentsPage() {
                             <p className="text-[10px] font-bold text-muted-foreground leading-tight italic">
                                 Entorno de ejecución pre-configurado con Backend de Gestión y base de datos aislada local.
                             </p>
-                            <Button className="w-full font-black uppercase text-xs" onClick={handlePreparePackage} disabled={preparingPackage}>
-                                {preparingPackage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                {preparingPackage ? 'Compilando...' : 'Descargar Paquete'}
-                            </Button>
+                            
+                            {!packageReady ? (
+                                <Button className="w-full font-black uppercase text-xs" onClick={handlePreparePackage} disabled={preparingPackage}>
+                                    {preparingPackage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                                    {preparingPackage ? 'Compilando...' : 'Compilar Nuevo Paquete'}
+                                </Button>
+                            ) : (
+                                <Button className="w-full font-black uppercase text-xs bg-green-600 hover:bg-green-700 animate-in fade-in zoom-in duration-300" onClick={handleDownload}>
+                                    <Download className="mr-2 h-4 w-4" /> Descargar Paquete (.exe)
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
 
