@@ -40,11 +40,15 @@ export default function LoginPage() {
         throw new Error(data.message || 'Error al iniciar sesión.');
       }
       
+      // Persistencia de sesión y preferencias
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
       localStorage.setItem('userEmail', data.user.email);
       localStorage.setItem('isGlobalAdmin', String(data.user.isGlobalAdmin));
+      
+      // Guardar banderas de módulos habilitados (Feature Flags)
+      localStorage.setItem('enabledModules', JSON.stringify(data.user.enabledModules));
 
       toast({
         title: 'Fase 1 Completada',

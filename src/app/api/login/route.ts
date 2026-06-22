@@ -4,6 +4,7 @@ import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import StoreModel from '@/models/Store';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,7 +36,9 @@ export async function POST(req: NextRequest) {
 
     // Obtener los módulos habilitados de la tienda
     let enabledModules = { inventory: true, sales: true, expenses: true, reports: true };
-    if (user.store) {
+    
+    // VALIDACIÓN CRÍTICA: Solo buscar tienda si el storeId es un ObjectId válido
+    if (user.store && mongoose.Types.ObjectId.isValid(user.store.toString())) {
         const store = await StoreModel.findById(user.store);
         if (store) {
             enabledModules = store.enabledModules || enabledModules;
@@ -57,6 +60,9 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('Error Crítico en Login API:', error);
-    return NextResponse.json({ message: 'Error interno de servidor.' }, { status: 500 });
+    return NextResponse.json({ 
+        message: 'Error interno de servidor.',
+        details: error.message 
+    }, { status: 500 });
   }
 }
