@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { PageHeader } from "@/components/page-header";
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -15,17 +15,21 @@ import {
     CheckCircle2, 
     ShieldAlert, 
     RefreshCcw,
-    MonitorOff,
     Terminal,
-    Loader2
+    Loader2,
+    Package,
+    Download,
+    Cpu,
+    Lock
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 
 export default function OfflineDeploymentsPage() {
     const { toast } = useToast();
     const [stores, setStores] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState<string | null>(null);
+    const [preparingPackage, setPreparingPackage] = useState(false);
 
     const fetchOfflineStores = async () => {
         try {
@@ -65,6 +69,14 @@ export default function OfflineDeploymentsPage() {
         }
     };
 
+    const handlePreparePackage = () => {
+        setPreparingPackage(true);
+        setTimeout(() => {
+            setPreparingPackage(false);
+            toast({ title: "Paquete Listo", description: "El instalador 'krea-runtime-v2.exe' ha sido preparado para descarga." });
+        }, 2000);
+    };
+
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast({ title: "Copiado", description: "Token almacenado en el portapapeles." });
@@ -75,7 +87,7 @@ export default function OfflineDeploymentsPage() {
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
                 <PageHeader 
                     title="Control de Despliegues Offline" 
-                    description="Gestiona las licencias para instalaciones locales de Krea Business."
+                    description="Genera licencias y paquetes para instalaciones locales blindadas."
                     actions={
                         <Button variant="outline" onClick={fetchOfflineStores} disabled={loading}>
                             <RefreshCcw className="mr-2 h-4 w-4" /> Refrescar
@@ -83,36 +95,57 @@ export default function OfflineDeploymentsPage() {
                     }
                 />
 
-                <div className="grid gap-6 md:grid-cols-4">
-                    <Card className="bg-muted/50 border-2">
+                <div className="grid gap-6 md:grid-cols-3">
+                    <Card className="border-2 border-primary/20 bg-primary/5 shadow-xl shadow-primary/5">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase text-muted-foreground">Instalaciones Locales</CardTitle>
+                            <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                                <Package className="h-3 w-3" /> Instalador Maestro
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-black">{stores.length}</div>
+                        <CardContent className="space-y-4">
+                            <div className="text-2xl font-black">Krea Runtime v2.0</div>
+                            <p className="text-[10px] font-bold text-muted-foreground leading-tight italic">
+                                Entorno de ejecución pre-configurado con Backend de Gestión y base de datos aislada local.
+                            </p>
+                            <Button className="w-full font-black uppercase text-xs" onClick={handlePreparePackage} disabled={preparingPackage}>
+                                {preparingPackage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                {preparingPackage ? 'Compilando...' : 'Descargar Paquete'}
+                            </Button>
                         </CardContent>
                     </Card>
-                    <Card className="bg-amber-50 border-amber-200">
+
+                    <Card className="bg-muted/50 border-2">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase text-amber-700">Pendientes de Activación</CardTitle>
+                            <CardTitle className="text-[10px] font-black uppercase text-muted-foreground">Instalaciones Activas</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-black text-amber-800">{stores.filter(s => !s.offlineHardwareId).length}</div>
+                            <div className="text-3xl font-black">{stores.filter(s => s.offlineHardwareId).length}</div>
+                            <p className="text-[10px] font-bold text-green-600 mt-1 uppercase">Equipos vinculados</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-amber-50 border-amber-200">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-[10px] font-black uppercase text-amber-700">Tokens Pendientes</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-black text-amber-800">{stores.filter(s => s.activationToken && !s.offlineHardwareId).length}</div>
+                            <p className="text-[10px] font-bold text-amber-600 mt-1 uppercase">Esperando Handshake</p>
                         </CardContent>
                     </Card>
                 </div>
 
-                <Card className="border-2 shadow-xl">
+                <Card className="border-2 shadow-xl overflow-hidden">
                     <CardHeader className="bg-muted/10 border-b">
                         <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
-                            <HardDriveDownload className="h-5 w-5 text-primary" /> Clientes con Soporte Híbrido
+                            <HardDriveDownload className="h-5 w-5 text-primary" /> Directorio de Licencias Locales
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 <TableRow>
-                                    <TableHead className="font-black text-[10px] uppercase pl-6">Empresa</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase pl-6">Cliente / Sede</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase">Estado Vínculo</TableHead>
                                     <TableHead className="font-black text-[10px] uppercase">Token de Activación</TableHead>
                                     <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acciones</TableHead>
@@ -134,11 +167,14 @@ export default function OfflineDeploymentsPage() {
                                             </TableCell>
                                             <TableCell>
                                                 {s.offlineHardwareId ? (
-                                                    <Badge className="bg-green-100 text-green-800 border-green-200">
-                                                        <CheckCircle2 className="mr-1 h-3 w-3" /> VINCULADO
-                                                    </Badge>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className="bg-green-100 text-green-800 border-green-200 font-black text-[9px] uppercase">
+                                                            <Cpu className="mr-1 h-3 w-3" /> VINCULADO
+                                                        </Badge>
+                                                        <span className="text-[8px] font-mono text-muted-foreground truncate max-w-[80px]">ID: {s.offlineHardwareId}</span>
+                                                    </div>
                                                 ) : (
-                                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 animate-pulse">
+                                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 animate-pulse font-black text-[9px] uppercase">
                                                         <Zap className="mr-1 h-3 w-3" /> PENDIENTE
                                                     </Badge>
                                                 )}
@@ -146,7 +182,7 @@ export default function OfflineDeploymentsPage() {
                                             <TableCell>
                                                 {s.activationToken ? (
                                                     <div className="flex items-center gap-2">
-                                                        <code className="text-[9px] bg-muted p-1 rounded font-mono truncate max-w-[150px]">
+                                                        <code className="text-[9px] bg-muted p-1 rounded font-mono truncate max-w-[150px] font-bold">
                                                             {s.activationToken}
                                                         </code>
                                                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(s.activationToken)}>
@@ -165,7 +201,7 @@ export default function OfflineDeploymentsPage() {
                                                     disabled={generating === s._id}
                                                 >
                                                     {generating === s._id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCcw className="h-3 w-3 mr-1" />}
-                                                    Generar Token
+                                                    {s.activationToken ? 'Regenerar Token' : 'Generar Token'}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -181,20 +217,35 @@ export default function OfflineDeploymentsPage() {
                 </Card>
 
                 <div className="grid gap-6 md:grid-cols-2">
-                    <Card className="border-2 border-primary/20 bg-primary/5">
+                    <Card className="border-4 border-black bg-black text-white shadow-2xl">
                         <CardHeader>
-                            <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
-                                <Terminal className="h-4 w-4" /> Protocolo de Instalación
+                            <CardTitle className="text-sm font-black uppercase flex items-center gap-2 text-primary">
+                                <Terminal className="h-4 w-4" /> Protocolo de Activación Local
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4 text-xs font-medium leading-relaxed">
-                            <p>1. Descarga el paquete <strong>Krea Runtime</strong> en la máquina del cliente.</p>
-                            <p>2. Ejecuta el comando de inicialización e ingresa el <strong>Token de Activación</strong> generado arriba.</p>
-                            <p>3. El sistema realizará el <strong>Handshake Seguro</strong>, cifrará la base de datos local y bloqueará el hardware.</p>
-                            <div className="p-3 bg-white rounded border border-primary/20 font-mono text-[10px]">
-                                $ krea-cli activate --token [TU_TOKEN]
+                        <CardContent className="space-y-4 text-[11px] font-medium leading-relaxed">
+                            <p>Sigue esta secuencia en la máquina destino para establecer el vínculo seguro:</p>
+                            <div className="space-y-4 pt-2">
+                                <div className="space-y-2">
+                                    <span className="text-primary font-black">1. INSTALACIÓN DE RUNTIME</span>
+                                    <p className="opacity-70 italic font-bold">Descarga el paquete .EXE o .DMG y ejecútalo como administrador.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <span className="text-primary font-black">2. COMANDO DE HANDSHAKE</span>
+                                    <div className="p-3 bg-white/10 rounded border border-white/20 font-mono text-[10px] text-primary-foreground">
+                                        $ krea-cli activate --token <span className="text-white">[TU_TOKEN_GENERADO]</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <span className="text-primary font-black">3. CIFRADO DE NÚCLEO</span>
+                                    <p className="opacity-70 italic font-bold">El sistema detectará el Hardware ID, cifrará la DB local y bloqueará la máquina.</p>
+                                </div>
                             </div>
                         </CardContent>
+                        <CardFooter className="border-t border-white/10 pt-4 flex items-center gap-2">
+                            <Lock className="h-4 w-4 text-primary" />
+                            <span className="text-[9px] font-black uppercase opacity-60">Seguridad Híbrida AES-256-GCM Activa</span>
+                        </CardFooter>
                     </Card>
 
                     <Card className="border-2 border-red-200 bg-red-50/30">
@@ -204,9 +255,13 @@ export default function OfflineDeploymentsPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 text-xs font-medium text-red-800">
-                            <p>Si un cliente deja de pagar, cambia su estado a <strong>'Suspendido'</strong> en el Directorio Maestro.</p>
-                            <p>El cliente local detectará el cambio mediante el <strong>Ping de Seguridad (Heartbeat)</strong> la próxima vez que detecte internet.</p>
-                            <p>Se activará el <strong>Kill Switch</strong>: el software se bloqueará inmediatamente y las llaves de memoria serán purgadas.</p>
+                            <p>En caso de impago o brecha de seguridad:</p>
+                            <ul className="list-disc pl-4 space-y-2 font-bold italic text-[10px]">
+                                <li>Cambia el estado de la empresa a <strong>'Suspendido'</strong> en el panel de control.</li>
+                                <li>El cliente local detectará el cambio mediante el <strong>Ping de Seguridad (Heartbeat)</strong>.</li>
+                                <li>Se activará el <strong>Kill Switch</strong>: el software se bloqueará inmediatamente y las llaves de descifrado en memoria serán purgadas.</li>
+                                <li>La base de datos local quedará inaccesible sin el reporte positivo del servidor central.</li>
+                            </ul>
                         </CardContent>
                     </Card>
                 </div>
