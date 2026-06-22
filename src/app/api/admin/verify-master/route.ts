@@ -41,16 +41,16 @@ export async function POST(req: NextRequest) {
             
             return NextResponse.json({ 
                 success: true, 
-                message: 'Núcleo de seguridad actualizado y llaves maestras establecidas.' 
+                message: 'Núcleo de seguridad configurado. Se han establecido sus nuevas llaves maestras.' 
             });
         }
 
-        // MODO VALIDACIÓN: Comprobar contra las llaves guardadas
+        // MODO VALIDACIÓN: Comprobar contra las llaves guardadas en DB
         const config = await SystemConfigModel.findOne();
         
         if (!config) {
             return NextResponse.json({ 
-                message: 'El sistema no ha sido inicializado. Por favor, use la pestaña de Configurar.' 
+                message: 'El sistema no ha sido inicializado. Por favor, utilice la pestaña de Configurar.' 
             }, { status: 400 });
         }
 

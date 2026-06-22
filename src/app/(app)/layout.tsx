@@ -20,8 +20,6 @@ import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { SideNav } from '@/components/side-nav';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { Skeleton } from '@/components/ui/skeleton';
-
 
 interface User {
   id: string;
@@ -72,7 +70,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const isGlobal = localStorage.getItem('isGlobalAdmin') === 'true';
     const isMasterVerified = localStorage.getItem('master_verified') === 'true';
 
-    // BLOQUEO MAESTRO: Si es admin global pero no ha pasado el segundo login
+    // BLOQUEO MAESTRO: Si es admin global pero no ha pasado el segundo login, forzar verificación
     if (isGlobal && !isMasterVerified) {
         router.push('/secure-verify');
         return;

@@ -5,35 +5,32 @@ import fs from 'fs/promises';
 import path from 'path';
 
 /**
- * Endpoint de Extracción de Código Fuente Real.
- * Genera un archivo ZIP recorriendo el sistema de archivos del proyecto, 
- * omitiendo dependencias instaladas y archivos sensibles.
+ * Motor Real de Extracción de Código Fuente.
+ * Recorre recursivamente el proyecto y genera un paquete ZIP comprimido.
  */
 
-async function addDirectoryToZip(zip: JSZip, dirPath: string, rootDir: string) {
-    const files = await fs.readdir(dirPath);
+async function addFilesRecursively(zip: JSZip, dirPath: string, rootDir: string) {
+    const items = await fs.readdir(dirPath);
     
-    for (const file of files) {
-        const fullPath = path.join(dirPath, file);
+    for (const item of items) {
+        const fullPath = path.join(dirPath, item);
         const relPath = path.relative(rootDir, fullPath);
         
-        // Criterios de Exclusión (Seguridad y Rendimiento)
+        // Filtros de seguridad y optimización
         if (
-            file === 'node_modules' || 
-            file === '.next' || 
-            file === '.git' || 
-            file === '.env' || 
-            file === '.DS_Store'
+            item === 'node_modules' || 
+            item === '.next' || 
+            item === '.git' || 
+            item === '.env' || 
+            item === '.DS_Store' ||
+            item === '.turbo'
         ) continue;
         
         const stat = await fs.stat(fullPath);
         
         if (stat.isDirectory()) {
-            // Recursión para carpetas
-            const folder = zip.folder(relPath);
-            if (folder) await addDirectoryToZip(zip, fullPath, rootDir);
+            await addFilesRecursively(zip, fullPath, rootDir);
         } else {
-            // Lectura de archivo binario o texto
             const content = await fs.readFile(fullPath);
             zip.file(relPath, content);
         }
@@ -45,21 +42,27 @@ export async function GET(req: NextRequest) {
         const zip = new JSZip();
         const rootDir = process.cwd();
         
-        // Añadir una nota de README específica para la versión offline
-        zip.file("README_OFFLINE.txt", `
-            KREA BUSINESS v2.0 - PAQUETE FUENTE OFFLINE
-            -------------------------------------------
-            Instrucciones de Despliegue Local:
-            1. Instale Node.js v20 o superior.
-            2. Ejecute 'npm install' en esta carpeta.
-            3. Inicie el sistema con 'npm run dev' o 'npm run build && npm start'.
-            4. Realice el Handshake de activación con su token maestro.
+        // Agregar Nota Técnica
+        zip.file("LEEME_PRIMERO.txt", `
+KREA BUSINESS v2.0 - DISTRIBUCIÓN OFFLINE
+------------------------------------------
+Instrucciones de Despliegue en Servidor Local:
+
+1. Requisitos: Node.js v20+ y MongoDB Local o Atlas.
+2. Instalación:
+   $ unzip krea-business.zip
+   $ npm install
+   $ npm run build
+   $ npm start
+3. Activación:
+   Acceda a /login y siga el protocolo de Handshake con el token generado 
+   en el Panel Maestro de Krea Business Cloud.
         `);
 
-        // Generar el paquete recorriendo el proyecto
-        await addDirectoryToZip(zip, rootDir, rootDir);
+        // Ejecutar escaneo real
+        await addFilesRecursively(zip, rootDir, rootDir);
         
-        // Generar el binario final
+        // Generar buffer binario
         const zipBuffer = await zip.generateAsync({ 
             type: 'nodebuffer',
             compression: 'DEFLATE',
@@ -75,9 +78,9 @@ export async function GET(req: NextRequest) {
         });
 
     } catch (e: any) {
-        console.error('Error al empaquetar código:', e);
+        console.error('Fallo Crítico en Extracción:', e);
         return NextResponse.json({ 
-            message: 'Fallo al generar el paquete de código fuente real.',
+            message: 'No se pudo generar el paquete de código fuente real.',
             error: e.message 
         }, { status: 500 });
     }
