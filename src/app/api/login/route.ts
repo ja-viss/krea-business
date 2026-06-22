@@ -3,9 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import StoreModel from '@/models/Store';
+import RoleModel from '@/models/Role'; // Importación necesaria para el populate
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
+/**
+ * API de Login Robusta.
+ * Maneja autenticación para Administradores Globales (Sin tienda) 
+ * y Usuarios de Inquilinos (Multi-tenant).
+ */
 export async function POST(req: NextRequest) {
   try {
     await dbConnect();
@@ -16,9 +22,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales obligatorias.' }, { status: 400 });
     }
 
+    // Buscamos al usuario y poblamos su rol para conocer sus permisos
     const user = await UserModel.findOne({ 
         email: email.trim().toLowerCase() 
-    }).populate('role');
+    }).populate({ path: 'role', model: RoleModel });
 
     if (!user) {
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
@@ -34,14 +41,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales inválidas.' }, { status: 401 });
     }
 
-    // Obtener los módulos habilitados de la tienda
+    // Configuración de módulos por defecto
     let enabledModules = { inventory: true, sales: true, expenses: true, reports: true };
     
-    // VALIDACIÓN CRÍTICA: Solo buscar tienda si el storeId es un ObjectId válido
+    // Si el usuario pertenece a una tienda real, cargamos sus banderas de módulos (Feature Flags)
     if (user.store && mongoose.Types.ObjectId.isValid(user.store.toString())) {
         const store = await StoreModel.findById(user.store);
-        if (store) {
-            enabledModules = store.enabledModules || enabledModules;
+        if (store && store.enabledModules) {
+            enabledModules = {
+                inventory: store.enabledModules.inventory !== false,
+                sales: store.enabledModules.sales !== false,
+                expenses: store.enabledModules.expenses !== false,
+                reports: store.enabledModules.reports !== false
+            };
         }
     }
 
