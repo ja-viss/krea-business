@@ -1,3 +1,4 @@
+
 import {
   BarChart3,
   BookUser,
@@ -20,7 +21,9 @@ import {
   Tag,
   Mail,
   ShieldAlert,
-  Monitor
+  Monitor,
+  Package2,
+  HardDriveDownload
 } from 'lucide-react';
 
 export type NavLink = {
@@ -33,7 +36,7 @@ export type NavLink = {
 };
 
 export const navLinks: NavLink[] = [
-  // --- SECCION GLOBAL (Krea Admin / javistech) ---
+  // --- SECCION GLOBAL (Krea Admin) ---
   {
     href: '/dashboard',
     label: 'Dashboard / Inicio',
@@ -46,6 +49,14 @@ export const navLinks: NavLink[] = [
     href: '/admin/stores',
     label: 'Empresas (Tenants)',
     icon: Store,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+    category: 'Gestión de Clientes',
+  },
+  {
+    href: '/admin/offline-deployments',
+    label: 'Despliegue Offline',
+    icon: HardDriveDownload,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
     category: 'Gestión de Clientes',
@@ -73,22 +84,6 @@ export const navLinks: NavLink[] = [
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
     category: 'Control Comercial',
-  },
-  {
-    href: '/admin/messaging/in-app',
-    label: 'Notificaciones In-App',
-    icon: MessageSquare,
-    roles: ['SUPER_ADMIN_MASTER'],
-    isGlobal: true,
-    category: 'Comunicaciones',
-  },
-  {
-    href: '/admin/messaging/campaigns',
-    label: 'Campañas Masivas',
-    icon: Mail,
-    roles: ['SUPER_ADMIN_MASTER'],
-    isGlobal: true,
-    category: 'Comunicaciones',
   },
   {
     href: '/admin/settings',
@@ -144,31 +139,10 @@ export const navLinks: NavLink[] = [
     category: 'Finanzas',
   },
   {
-    href: '/billing',
-    label: 'Historial Facturación',
-    icon: FileText,
-    roles: ['Administrador Principal', 'Gerente de Ventas'],
-    category: 'Finanzas',
-  },
-  {
     href: '/reports',
     label: 'Reportes y Kardex',
     icon: BarChart3,
     roles: ['Administrador Principal', 'Gerente de Ventas', 'Gerente de Inventario'],
-    category: 'Administración',
-  },
-  {
-    href: '/exchange-rates',
-    label: 'Tasas de Cambio',
-    icon: DollarSign,
-    roles: ['Administrador Principal', 'Gerente de Ventas', 'Gerente de Inventario', 'Vendedor', 'Almacenista'],
-    category: 'Administración',
-  },
-  {
-    href: '/users',
-    label: 'Personal',
-    icon: Users,
-    roles: ['Administrador Principal'],
     category: 'Administración',
   },
   {

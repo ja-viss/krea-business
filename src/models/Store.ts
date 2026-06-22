@@ -16,6 +16,11 @@ export interface IStore extends Document {
   maxUsers: number;
   maxInvoicesPerMonth: number;
   storageLimitMB: number;
+  // Hybrid Security Fields
+  deploymentMode: 'Online' | 'Offline';
+  offlineHardwareId?: string; // ID único de la máquina local
+  activationToken?: string;   // Token firmado para el handshake
+  secretKey?: string;         // Llave única de cifrado local
   // Multi-Tenant Infrastructure (Encrypted)
   tenantDbUri?: string;
   createdAt: Date;
@@ -34,9 +39,14 @@ const StoreSchema: Schema = new Schema({
   plan: { type: String, enum: ['Basic', 'Pro', 'Premium'], default: 'Basic' },
   expiryDate: { type: Date, default: () => new Date(+new Date() + 15*24*60*60*1000) },
   maxUsers: { type: Number, default: 3 },
-  maxInvoicesPerMonth: { type: Number, default: 500 }, // Basado en Abasto/Pequeño
+  maxInvoicesPerMonth: { type: Number, default: 500 },
   storageLimitMB: { type: Number, default: 500 },
-  // Campo para almacenar la URI de MongoDB Atlas cifrada
+  // Hybrid Config
+  deploymentMode: { type: String, enum: ['Online', 'Offline'], default: 'Online' },
+  offlineHardwareId: { type: String },
+  activationToken: { type: String },
+  secretKey: { type: String },
+  // URI Cifrada de DB
   tenantDbUri: { type: String },
 }, {
   timestamps: true
