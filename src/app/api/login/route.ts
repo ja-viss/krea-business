@@ -3,14 +3,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import StoreModel from '@/models/Store';
-import RoleModel from '@/models/Role'; // Importación necesaria para el populate
+import RoleModel from '@/models/Role';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 /**
  * API de Login Robusta.
- * Maneja autenticación para Administradores Globales (Sin tienda) 
- * y Usuarios de Inquilinos (Multi-tenant).
+ * Maneja autenticación para Administradores Globales y Usuarios de Inquilinos.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +21,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Credenciales obligatorias.' }, { status: 400 });
     }
 
-    // Buscamos al usuario y poblamos su rol para conocer sus permisos
+    // Registro preventivo de modelos para evitar errores de populate
+    if (!mongoose.models.Role) mongoose.model('Role', (RoleModel as any).schema);
+    if (!mongoose.models.Store) mongoose.model('Store', (StoreModel as any).schema);
+
     const user = await UserModel.findOne({ 
         email: email.trim().toLowerCase() 
     }).populate({ path: 'role', model: RoleModel });
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
     
     if (!user.active) {
-      return NextResponse.json({ message: 'Usuario suspendido. Contacte a soporte.' }, { status: 403 });
+      return NextResponse.json({ message: 'Usuario suspendido.' }, { status: 403 });
     }
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
@@ -44,7 +46,6 @@ export async function POST(req: NextRequest) {
     // Configuración de módulos por defecto
     let enabledModules = { inventory: true, sales: true, expenses: true, reports: true };
     
-    // Si el usuario pertenece a una tienda real, cargamos sus banderas de módulos (Feature Flags)
     if (user.store && mongoose.Types.ObjectId.isValid(user.store.toString())) {
         const store = await StoreModel.findById(user.store);
         if (store && store.enabledModules) {
@@ -58,23 +59,20 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ 
-        message: 'Inicio de sesión exitoso.', 
+        message: 'Acceso concedido.', 
         user: { 
             id: user._id.toString(), 
             name: user.name, 
             email: user.email, 
             store: user.store?.toString() || 'SYSTEM_MASTER',
             isGlobalAdmin: !!user.isGlobalAdmin,
-            needsVerification: !!user.isGlobalAdmin,
+            needsVerification: false, // 2FA desactivado temporalmente para Super Developer
             enabledModules: enabledModules
         } 
     }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Error Crítico en Login API:', error);
-    return NextResponse.json({ 
-        message: 'Error interno de servidor.',
-        details: error.message 
-    }, { status: 500 });
+    console.error('Login Error:', error);
+    return NextResponse.json({ message: 'Error interno.', error: error.message }, { status: 500 });
   }
 }

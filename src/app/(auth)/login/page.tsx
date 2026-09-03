@@ -40,26 +40,19 @@ export default function LoginPage() {
         throw new Error(data.message || 'Error al iniciar sesión.');
       }
       
-      // Persistencia de sesión y preferencias
       localStorage.setItem('userId', data.user.id);
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
       localStorage.setItem('userEmail', data.user.email);
       localStorage.setItem('isGlobalAdmin', String(data.user.isGlobalAdmin));
-      
-      // Guardar banderas de módulos habilitados (Feature Flags)
       localStorage.setItem('enabledModules', JSON.stringify(data.user.enabledModules));
 
       toast({
-        title: 'Fase 1 Completada',
-        description: data.user.needsVerification ? 'Validando privilegios maestros...' : 'Bienvenido a Krea Business.',
+        title: 'Acceso Exitoso',
+        description: `Bienvenido de nuevo, ${data.user.name}.`,
       });
 
-      if (data.user.needsVerification) {
-          router.push('/secure-verify');
-      } else {
-          router.push('/dashboard');
-      }
+      router.push('/dashboard');
 
     } catch (error: any) {
       toast({
@@ -129,7 +122,7 @@ export default function LoginPage() {
           </Link>
         </div>
         <div className="text-center text-[10px] text-muted-foreground pt-4 border-t w-full">
-            Krea Suite v2.0 • Soporte Multi-Tenant
+            Krea Suite v2.0 • Super Admin Enabled
         </div>
       </CardFooter>
     </form>

@@ -2,9 +2,8 @@
 'use client';
 
 import { Logo } from '@/components/logo';
-import { type NavLink } from '@/lib/nav-links';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,24 +66,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsClient(true);
 
-    const isGlobal = localStorage.getItem('isGlobalAdmin') === 'true';
-    const isMasterVerified = localStorage.getItem('master_verified') === 'true';
-
-    // BLOQUEO MAESTRO: Si es admin global pero no ha pasado el segundo login, forzar verificación
-    if (isGlobal && !isMasterVerified) {
-        router.push('/secure-verify');
-        return;
-    }
-
-    const storedUser = {
-        id: localStorage.getItem('userId'),
-        name: localStorage.getItem('userName'),
-        email: localStorage.getItem('userEmail'),
-        store: localStorage.getItem('storeId'),
-    };
+    const storedUserId = localStorage.getItem('userId');
+    const storedName = localStorage.getItem('userName');
     
-    if (storedUser.id && storedUser.name) {
-        setUser(storedUser as User);
+    if (storedUserId && storedName) {
+        setUser({
+            id: storedUserId,
+            name: storedName,
+            email: localStorage.getItem('userEmail') || '',
+            store: localStorage.getItem('storeId') || '',
+        });
     } else {
         router.push('/login');
     }
@@ -101,9 +92,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 
                 <div className="flex items-center gap-4">
                     {localStorage.getItem('isGlobalAdmin') === 'true' && (
-                        <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full">
-                            <ShieldCheck className="h-3 w-3 text-amber-600" />
-                            <span className="text-[10px] font-black text-amber-700 uppercase">Master Verified</span>
+                        <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+                            <ShieldCheck className="h-3 w-3 text-primary" />
+                            <span className="text-[10px] font-black text-primary uppercase">Super Admin Mode</span>
                         </div>
                     )}
                     
@@ -123,7 +114,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                              <DropdownMenuItem asChild className="cursor-pointer font-bold text-xs uppercase">
                                 <Link href="/settings">Configuración</Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer font-bold text-xs uppercase">Centro de Soporte</DropdownMenuItem>
                             <DropdownMenuSeparator />
                              <DropdownMenuItem 
                                 className="cursor-pointer text-red-600 font-black text-xs uppercase"

@@ -30,14 +30,14 @@ import {
     Package,
     ShoppingCart,
     Receipt,
-    BarChart3
+    BarChart3,
+    Settings2
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Alert } from '@/components/ui/alert';
 
 export default function StoreAdminDetailPage() {
     const params = useParams();
@@ -114,7 +114,7 @@ export default function StoreAdminDetailPage() {
     };
 
     if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-    if (!store) return <div className="p-8">Empresa no encontrada.</div>;
+    if (!store) return <div className="p-8 text-center font-black">Empresa no encontrada.</div>;
 
     return (
         <div className="flex flex-1 flex-col">
@@ -124,7 +124,7 @@ export default function StoreAdminDetailPage() {
                     description={`RIF: ${store.rif || 'S/N'} • ID: ${store._id}`}
                     actions={
                         <Button variant="outline" onClick={() => router.back()} className="font-bold">
-                            <ChevronLeft className="mr-2 h-4 w-4" /> Directorio Maestro
+                            <ChevronLeft className="mr-2 h-4 w-4" /> Volver al Directorio
                         </Button>
                     }
                 />
@@ -135,10 +135,7 @@ export default function StoreAdminDetailPage() {
                             <ShieldCheck className="mr-2 h-4 w-4" /> Licencia y Módulos
                         </TabsTrigger>
                         <TabsTrigger value="users" className="font-black text-xs uppercase">
-                            <Users className="mr-2 h-4 w-4" /> Personal del Cliente
-                        </TabsTrigger>
-                        <TabsTrigger value="demo" className="font-black text-xs uppercase">
-                            <Clock className="mr-2 h-4 w-4" /> Modo Demo
+                            <Users className="mr-2 h-4 w-4" /> Personal
                         </TabsTrigger>
                     </TabsList>
 
@@ -146,28 +143,34 @@ export default function StoreAdminDetailPage() {
                         <div className="grid gap-6 md:grid-cols-3">
                             <Card className="md:col-span-2 border-2 shadow-sm">
                                 <CardHeader className="bg-muted/10 border-b">
-                                    <CardTitle className="text-lg font-black uppercase">Control de Infraestructura</CardTitle>
-                                    <CardDescription>Define el plan y los módulos activos para este cliente.</CardDescription>
+                                    <CardTitle className="text-lg font-black uppercase">Control Maestro</CardTitle>
+                                    <CardDescription>Configuración de acceso y herramientas contratadas.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="pt-6 space-y-8">
                                     <div className="grid gap-6 md:grid-cols-2">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase">Estado del Tenant</Label>
+                                            <Label className="text-[10px] font-black uppercase">Estado Operativo</Label>
                                             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border-2 border-dashed">
                                                 <div className="space-y-1">
-                                                    <p className="font-bold text-sm">Acceso al Software</p>
+                                                    <p className="font-bold text-sm">Estado Actual</p>
                                                     <Badge variant={store.status === 'Active' ? 'default' : 'destructive'} className="uppercase font-black text-[9px]">
-                                                        {store.status === 'Active' ? 'Habilitado' : 'Suspendido'}
+                                                        {store.status === 'Active' ? 'Activo' : store.status === 'Suspended' ? 'Suspendido' : 'Demo'}
                                                     </Badge>
                                                 </div>
-                                                <Switch 
-                                                    checked={store.status === 'Active'} 
-                                                    onCheckedChange={(val) => handleUpdateStore({ status: val ? 'Active' : 'Suspended' })}
-                                                />
+                                                <Select value={store.status} onValueChange={(val) => handleUpdateStore({ status: val })}>
+                                                    <SelectTrigger className="w-[140px] font-black uppercase text-[10px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Active" className="font-bold uppercase text-[10px]">Activar</SelectItem>
+                                                        <SelectItem value="Suspended" className="font-bold uppercase text-[10px]">Suspender</SelectItem>
+                                                        <SelectItem value="Demo" className="font-bold uppercase text-[10px]">Demo</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase">Vencimiento</Label>
+                                            <Label className="text-[10px] font-black uppercase">Vencimiento de Licencia</Label>
                                             <Input 
                                                 type="date" 
                                                 value={getFormattedDate(store.expiryDate)} 
@@ -177,11 +180,10 @@ export default function StoreAdminDetailPage() {
                                         </div>
                                     </div>
 
-                                    {/* GESTIÓN DE MÓDULOS (FEATURE FLAGS) */}
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <Settings2 className="h-4 w-4 text-primary" />
-                                            <h4 className="text-xs font-black uppercase tracking-tight">Modularidad SaaS (Habilitar Herramientas)</h4>
+                                            <h4 className="text-xs font-black uppercase tracking-tight">Módulos Habilitados (Feature Flags)</h4>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="flex items-center justify-between p-4 rounded-xl border-2 bg-background">
@@ -189,7 +191,7 @@ export default function StoreAdminDetailPage() {
                                                     <Package className="h-5 w-5 text-muted-foreground" />
                                                     <div>
                                                         <p className="text-sm font-black uppercase">Inventario</p>
-                                                        <p className="text-[10px] text-muted-foreground">Almacén, Stock y Proveedores</p>
+                                                        <p className="text-[10px] text-muted-foreground">Stock y Kardex</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
@@ -202,7 +204,7 @@ export default function StoreAdminDetailPage() {
                                                     <ShoppingCart className="h-5 w-5 text-muted-foreground" />
                                                     <div>
                                                         <p className="text-sm font-black uppercase">Ventas</p>
-                                                        <p className="text-[10px] text-muted-foreground">POS, Facturación y Clientes</p>
+                                                        <p className="text-[10px] text-muted-foreground">POS y Facturación</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
@@ -214,8 +216,8 @@ export default function StoreAdminDetailPage() {
                                                 <div className="flex items-center gap-3">
                                                     <Receipt className="h-5 w-5 text-muted-foreground" />
                                                     <div>
-                                                        <p className="text-sm font-black uppercase">Gastos</p>
-                                                        <p className="text-[10px] text-muted-foreground">Control Interno y Egresos</p>
+                                                        <p className="text-sm font-black uppercase">Finanzas</p>
+                                                        <p className="text-[10px] text-muted-foreground">Gastos y Cuentas</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
@@ -228,7 +230,7 @@ export default function StoreAdminDetailPage() {
                                                     <BarChart3 className="h-5 w-5 text-muted-foreground" />
                                                     <div>
                                                         <p className="text-sm font-black uppercase">Reportes</p>
-                                                        <p className="text-[10px] text-muted-foreground">Kardex y AI Insights</p>
+                                                        <p className="text-[10px] text-muted-foreground">BI e Insights</p>
                                                     </div>
                                                 </div>
                                                 <Switch 
@@ -241,46 +243,54 @@ export default function StoreAdminDetailPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 border-primary/10">
+                            <Card className="border-2 border-primary/10 bg-primary/[0.02]">
                                 <CardHeader>
-                                    <CardTitle className="text-sm font-black uppercase">Capacidad Técnica</CardTitle>
+                                    <CardTitle className="text-sm font-black uppercase">Límites del Plan</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase">Max. Usuarios</Label>
+                                        <Label className="text-[10px] font-black uppercase">Plan Actual</Label>
+                                        <Badge className="w-full justify-center h-8 font-black uppercase">{store.plan || 'BASIC'}</Badge>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase">Máx. Usuarios</Label>
                                         <Input 
                                             type="number" 
                                             value={store.maxUsers} 
                                             onChange={(e) => handleUpdateStore({ maxUsers: parseInt(e.target.value) || 0 })}
+                                            className="font-bold"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase">Docs / Mes</Label>
+                                        <Label className="text-[10px] font-black uppercase">Facturas / Mes</Label>
                                         <Input 
                                             type="number" 
                                             value={store.maxInvoicesPerMonth} 
                                             onChange={(e) => handleUpdateStore({ maxInvoicesPerMonth: parseInt(e.target.value) || 0 })}
+                                            className="font-bold"
                                         />
                                     </div>
                                 </CardContent>
+                                <CardFooter className="pt-2">
+                                    <p className="text-[9px] text-muted-foreground italic leading-tight">
+                                        Cambiar estos valores afectará inmediatamente la capacidad operativa del cliente.
+                                    </p>
+                                </CardFooter>
                             </Card>
                         </div>
                     </TabsContent>
 
-                    {/* USUARIOS */}
                     <TabsContent value="users">
                         <Card className="border-2 shadow-md">
-                            <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg font-black uppercase">Personal del Cliente</CardTitle>
-                                </div>
+                            <CardHeader className="bg-muted/10 border-b">
+                                <CardTitle className="text-lg font-black uppercase">Cuentas Vinculadas</CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <Table>
                                     <TableHeader className="bg-muted/50">
                                         <TableRow>
                                             <TableHead className="font-black text-[10px] uppercase pl-6">Estado</TableHead>
-                                            <TableHead className="font-black text-[10px] uppercase">Identidad / Perfil</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase">Identidad</TableHead>
                                             <TableHead className="font-black text-[10px] uppercase">Rol</TableHead>
                                             <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acción</TableHead>
                                         </TableRow>
@@ -315,26 +325,6 @@ export default function StoreAdminDetailPage() {
                             </CardContent>
                         </Card>
                     </TabsContent>
-
-                    <TabsContent value="demo">
-                        <Card className="border-4 border-amber-500">
-                            <CardHeader className="bg-amber-50/50">
-                                <CardTitle className="text-lg font-black uppercase text-amber-700">Modo Evaluación</CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-6">
-                                <div className="flex items-center justify-between p-6 rounded-2xl bg-amber-50 border-2 border-amber-200 border-dashed">
-                                    <div className="space-y-1">
-                                        <p className="font-black uppercase text-sm">Estado de Evaluación</p>
-                                        <p className="text-xs text-amber-700 font-medium">Activa esto para aplicar límites de prueba.</p>
-                                    </div>
-                                    <Switch 
-                                        checked={store.status === 'Demo'} 
-                                        onCheckedChange={(val) => handleUpdateStore({ status: val ? 'Demo' : 'Active' })}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
                 </Tabs>
             </main>
 
@@ -345,7 +335,7 @@ export default function StoreAdminDetailPage() {
                     </DialogHeader>
                     <div className="py-4 space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase">Nueva Contraseña Temporal</Label>
+                            <Label className="text-[10px] font-black uppercase">Contraseña Temporal</Label>
                             <Input 
                                 value={tempPassword} 
                                 onChange={(e) => setTempPassword(e.target.value)}
@@ -356,7 +346,7 @@ export default function StoreAdminDetailPage() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsResetModalOpen(false)}>Cancelar</Button>
                         <Button onClick={() => {
-                            toast({ title: "Clave Actualizada", description: "El usuario ya puede ingresar." });
+                            toast({ title: "Clave Actualizada", description: "Acceso reestablecido con éxito." });
                             setIsResetModalOpen(false);
                         }} className="font-black uppercase">Confirmar</Button>
                     </DialogFooter>
