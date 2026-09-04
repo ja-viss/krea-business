@@ -7,24 +7,20 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 /**
- * Obtiene o crea un rol específico para una tienda o para el sistema global.
+ * Inicializador de Roles Estratégicos.
  */
 async function getOrCreateRole(storeId: mongoose.Types.ObjectId | null, session: mongoose.ClientSession, roleName: string, isMaster: boolean): Promise<IRole> {
-    // Buscar rol existente para evitar duplicados
     let role = await RoleModel.findOne({ store: storeId, name: roleName }).session(session);
     
     if (!role) {
-        // Definir permisos base
         let permissions = ['view_dashboard'];
         
-        // El Super Admin Master tiene poder total
-        if (isMaster || roleName === 'SUPER_ADMIN_MASTER') {
-            permissions = ['all'];
-        } else if (roleName === 'Administrador Principal') {
+        // Asignación de permisos por jerarquía
+        if (isMaster || roleName === 'SUPER_ADMIN_MASTER' || roleName === 'Administrador Principal') {
             permissions = ['all'];
         } else if (roleName.includes('Ventas')) {
             permissions = ['view_dashboard', 'manage_sales', 'view_reports'];
-        } else if (roleName.includes('Inventario') || roleName.includes('Almacenista')) {
+        } else if (roleName.includes('Inventario')) {
             permissions = ['view_dashboard', 'manage_inventory', 'view_reports'];
         }
 
@@ -47,38 +43,37 @@ export async function POST(req: NextRequest) {
   try {
     const { businessName, email, password, name, isGlobalAdmin, roleName } = await req.json();
 
-    // Validaciones básicas
     if (!email || !password || !name) {
-      return NextResponse.json({ message: 'Nombre, Email/Usuario y Contraseña son obligatorios.' }, { status: 400 });
+      return NextResponse.json({ message: 'Todos los campos de identidad son obligatorios.' }, { status: 400 });
     }
 
     let storeId = null;
 
-    // 1. Manejo de Tienda (Solo si no es Admin Global)
+    // 1. Gestión de Empresa (Tenants)
     if (!isGlobalAdmin) {
         if (!businessName) {
-            return NextResponse.json({ message: 'El nombre de la tienda es obligatorio para registros locales.' }, { status: 400 });
+            return NextResponse.json({ message: 'El nombre del negocio es obligatorio.' }, { status: 400 });
         }
         
         const newStore = new StoreModel({
           name: businessName,
-          address: 'Dirección por completar',
+          address: 'Ubicación por definir',
           seniatCondition: 'Contribuyente Ordinario',
+          status: 'Demo'
         });
         
         await newStore.save({ session });
         storeId = newStore._id as mongoose.Types.ObjectId;
     }
 
-    // 2. Obtener o crear el rol adecuado
-    // Si es isGlobalAdmin, forzamos el nombre de rol maestro
+    // 2. Creación de Rol
     const finalRoleName = isGlobalAdmin ? 'SUPER_ADMIN_MASTER' : (roleName || 'Administrador Principal');
     const role = await getOrCreateRole(storeId, session, finalRoleName, !!isGlobalAdmin);
 
-    // 3. Hashear contraseña de forma segura
+    // 3. Seguridad de Acceso
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. Crear el usuario administrador
+    // 4. Registro de Usuario
     const newUser = new UserModel({
       store: storeId,
       name,
@@ -93,7 +88,7 @@ export async function POST(req: NextRequest) {
     await session.commitTransaction();
 
     return NextResponse.json({ 
-      message: isGlobalAdmin ? 'Super Desarrollador registrado exitosamente.' : 'Tienda y Administrador creados con éxito.',
+      message: isGlobalAdmin ? 'Perfil de Desarrollador Maestro activado.' : 'Empresa y administrador registrados exitosamente.',
       user: {
         id: newUser._id.toString(),
         name: newUser.name,
@@ -104,20 +99,14 @@ export async function POST(req: NextRequest) {
      }, { status: 201 });
 
   } catch (error: any) {
-    if (session.inTransaction()) {
-        await session.abortTransaction();
-    }
-    
-    console.error('Fallo crítico en el registro:', error);
+    if (session.inTransaction()) await session.abortTransaction();
+    console.error('REGISTRATION FAILURE:', error);
     
     if (error.code === 11000) {
-      return NextResponse.json({ message: 'Este nombre de usuario o email ya está en uso.' }, { status: 409 });
+      return NextResponse.json({ message: 'El nombre de usuario o email ya existe en el sistema.' }, { status: 409 });
     }
     
-    return NextResponse.json({ 
-        message: 'Error interno al procesar el registro.', 
-        details: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ message: 'Fallo en la creación de cuenta.' }, { status: 500 });
   } finally {
     session.endSession();
   }
