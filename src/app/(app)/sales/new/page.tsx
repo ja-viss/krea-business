@@ -111,15 +111,18 @@ export default function NewSalePage() {
   }, []);
 
   const totals = useMemo(() => {
-    let general = 0;
-    let exempt = 0;
+    let totalVES = 0;
     watchItems.forEach(i => {
         const sub = i.price * i.quantity;
-        if (i.taxRate === 0) exempt += sub; else general += sub;
+        const tax = sub * (i.taxRate || 0);
+        totalVES += (sub + tax);
     });
-    const ves = Math.round(((general * 1.16) + exempt) * 100) / 100;
+    
+    // Redondeo bancario a 2 decimales
+    const ves = Math.round(totalVES * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
+    
     return { ves, usd, cop };
   }, [watchItems, rates]);
 
@@ -146,8 +149,8 @@ export default function NewSalePage() {
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
     const existing = fields.findIndex(item => item.productId === String(product._id));
     if (existing > -1) {
-      const newQty = (parseFloat(watchItems[existing].quantity.toString()) || 0) + quantity;
-      update(existing, { ...fields[existing], quantity: newQty });
+      const currentQty = parseFloat(watchItems[existing].quantity.toString()) || 0;
+      update(existing, { ...fields[existing], quantity: currentQty + quantity });
     } else {
         append({
             productId: String(product._id),
@@ -161,8 +164,11 @@ export default function NewSalePage() {
   };
 
   const handleAdjustQuantity = (index: number, delta: number) => {
-    const currentQty = parseFloat(watchItems[index].quantity.toString()) || 0;
-    const nextQty = currentQty + delta;
+    const currentItem = watchItems[index];
+    if (!currentItem) return;
+
+    const currentQty = parseFloat(currentItem.quantity.toString()) || 0;
+    const nextQty = Math.max(0, currentQty + delta);
     
     if (nextQty <= 0) {
         remove(index);
@@ -202,8 +208,9 @@ export default function NewSalePage() {
   };
 
   const qrString = useMemo(() => {
-    if (!storeConfig?.pagoMovil?.phone) return '';
+    if (!storeConfig?.pagoMovil?.phone || !storeConfig?.pagoMovil?.bankCode) return '';
     const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
+    // Estándar Suiche 7B: PM:BANCO:TELEFONO:ID:MONTO
     return `PM:${bankCode}:${phone.replace(/[^0-9]/g, '')}:${idNumber.replace(/[^0-9VJEG]/g, '')}:${totals.ves.toFixed(2)}`;
   }, [storeConfig, totals]);
 
@@ -293,7 +300,7 @@ export default function NewSalePage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6 font-black text-sm text-slate-800">
-                                                    {currentItem ? formatCurrency(currentItem.price * currentItem.quantity) : '0,00'}
+                                                    {currentItem ? formatCurrency(currentItem.price * currentItem.quantity * (1 + (currentItem.taxRate || 0))) : '0,00'}
                                                 </TableCell>
                                                 <TableCell className="pr-4">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => remove(index)}>
@@ -398,11 +405,15 @@ export default function NewSalePage() {
                             <div className="flex-1 bg-muted/20 rounded-2xl p-4 border-2 border-dashed border-border/50">
                                 {watchMethod === 'Pago Móvil' ? (
                                     <div className="flex gap-4 animate-in slide-in-from-right-4">
-                                        <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0">
-                                             <img 
-                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
-                                                alt="QR" className="w-[120px] h-[120px]"
-                                            />
+                                        <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0 flex items-center justify-center w-[130px] h-[130px]">
+                                             {qrString ? (
+                                                <img 
+                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
+                                                    alt="QR" className="w-[120px] h-[120px]"
+                                                />
+                                             ) : (
+                                                <div className="text-[8px] font-black text-center text-muted-foreground p-2 uppercase">Configuración pendiente en ajustes</div>
+                                             )}
                                         </div>
                                         <div className="flex-1 space-y-2">
                                             <div className="bg-primary/10 p-2 rounded-lg">
@@ -418,8 +429,8 @@ export default function NewSalePage() {
                                                         {...form.register('referenceNumber')}
                                                     />
                                                 </div>
-                                                <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5">
-                                                    {storeConfig?.pagoMovil?.phone || 'Sin cuenta'}
+                                                <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5 truncate">
+                                                    {storeConfig?.pagoMovil?.phone || 'SIN CUENTA'}
                                                 </div>
                                             </div>
                                         </div>
@@ -454,7 +465,7 @@ export default function NewSalePage() {
                                             <div className={cn("rounded-xl p-3 flex flex-col justify-center", change > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground/40")}>
                                                 <span className="text-[8px] font-black uppercase">Vuelto</span>
                                                 <span className="text-xl font-black leading-none">
-                                                    {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(change)}
+                                                    {watchCurrency === 'USD' ? '$' : watchCurrency === 'COP' ? '' : 'Bs.'} {formatCurrency(change)}
                                                 </span>
                                             </div>
                                         </div>
