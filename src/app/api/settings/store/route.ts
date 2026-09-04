@@ -35,26 +35,32 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'ID de tienda inválido.' }, { status: 400 });
     }
 
-    const oldConfig = await StoreModel.findById(storeId);
-    if (!oldConfig) return NextResponse.json({ message: 'No encontrada' }, { status: 404 });
+    // Actualización con $set para asegurar que los objetos anidados (pagoMovil) se guarden correctamente
+    const updatedStore = await StoreModel.findByIdAndUpdate(
+        storeId, 
+        { $set: updateData }, 
+        { new: true, runValidators: true }
+    );
 
-    const updatedStore = await StoreModel.findByIdAndUpdate(storeId, updateData, { new: true });
+    if (!updatedStore) {
+      return NextResponse.json({ message: 'Tienda no encontrada en la base de datos.' }, { status: 404 });
+    }
 
-    // AUDITORÍA: Registrar cambio en configuración fiscal
+    // AUDITORÍA: Registrar cambio en configuración
     await createLog({
         store: storeId,
         user: userId || 'SISTEMA',
         userName: userName || 'Admin',
-        action: 'CONFIG_FISCAL_ACTUALIZADA',
+        action: 'CONFIG_SISTEMA_ACTUALIZADA',
         module: 'Configuración',
-        details: `Actualización de datos maestros de la empresa (RIF/Dirección/Nombre).`,
+        details: `Actualización de parámetros generales y datos de recaudación Pago Móvil.`,
         targetId: storeId,
-        previousState: { name: oldConfig.name, rif: oldConfig.rif, address: oldConfig.address },
-        newState: { name: updatedStore.name, rif: updatedStore.rif, address: updatedStore.address }
+        newState: updateData
     });
 
     return NextResponse.json(updatedStore, { status: 200 });
   } catch (error: any) {
+    console.error('Error Crítico Settings PUT:', error);
     return NextResponse.json({ message: 'Error al actualizar configuración.', error: error.message }, { status: 500 });
   }
 }

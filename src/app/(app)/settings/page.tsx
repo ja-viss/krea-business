@@ -64,7 +64,10 @@ export default function SettingsPage() {
         const isMaster = localStorage.getItem('isGlobalAdmin') === 'true';
         setIsGlobal(isMaster);
 
-        if (!storeId) return;
+        if (!storeId || storeId === 'SYSTEM_MASTER') {
+            setLoading(false);
+            return;
+        }
 
         const storeRes = await fetch(`/api/settings/store?storeId=${storeId}`);
         if (storeRes.ok) {
@@ -93,15 +96,23 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const storeId = localStorage.getItem('storeId');
+      const userId = localStorage.getItem('userId');
+      const userName = localStorage.getItem('userName');
+
       const response = await fetch('/api/settings/store', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeId, ...storeData }),
+        body: JSON.stringify({ 
+            storeId, 
+            userId, 
+            userName, 
+            ...storeData 
+        }),
       });
 
       if (!response.ok) throw new Error('No se pudo guardar la configuración fiscal.');
 
-      toast({ title: "Configuración Guardada", description: "Datos fiscales y de Pago Móvil actualizados." });
+      toast({ title: "Configuración Guardada", description: "Datos fiscales y de Pago Móvil actualizados correctamente." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
