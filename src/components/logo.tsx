@@ -8,7 +8,7 @@ export function Logo({ className }: { className?: string }) {
     <div className={cn('flex items-center justify-center', className)}>
       <div className="relative h-12 w-32">
         <Image
-          src="/img/krealogo.png"
+          src="/img/logo-krea.png"
           alt="Krea Logo"
           fill
           className="object-contain"
