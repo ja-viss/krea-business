@@ -2,8 +2,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICashSession extends Document {
-  store: string; // Cambiado a string para soportar 'SYSTEM_MASTER'
+  store: string;
   user: string;
+  userName: string;
   openingBalances: {
     currency: 'USD' | 'VES' | 'COP';
     amount: number;
@@ -13,6 +14,17 @@ export interface ICashSession extends Document {
     method: string;
     amount: number;
     denominations?: Record<string, number>;
+    batchNumber?: string;
+  }[];
+  theoreticalBalances: {
+    currency: 'USD' | 'VES' | 'COP';
+    method: string;
+    amount: number;
+  }[];
+  discrepancies: {
+    currency: 'USD' | 'VES' | 'COP';
+    method: string;
+    difference: number;
   }[];
   adjustments: {
     type: 'IN' | 'OUT';
@@ -25,12 +37,13 @@ export interface ICashSession extends Document {
   openedAt: Date;
   closedAt?: Date;
   notes?: string;
+  authorizedBy?: string;
 }
 
 const CashSessionSchema: Schema = new Schema({
-  // Usamos String en lugar de ObjectId para permitir identificadores virtuales como 'SYSTEM_MASTER'
   store: { type: String, required: true, index: true },
   user: { type: String, required: true },
+  userName: { type: String, required: true },
   openingBalances: [{
     currency: { type: String, enum: ['USD', 'VES', 'COP'], required: true },
     amount: { type: Number, required: true }
@@ -39,7 +52,18 @@ const CashSessionSchema: Schema = new Schema({
     currency: { type: String, enum: ['USD', 'VES', 'COP'] },
     method: { type: String },
     amount: { type: Number },
+    batchNumber: { type: String },
     denominations: { type: Map, of: Number }
+  }],
+  theoreticalBalances: [{
+    currency: { type: String, enum: ['USD', 'VES', 'COP'] },
+    method: { type: String },
+    amount: { type: Number }
+  }],
+  discrepancies: [{
+    currency: { type: String, enum: ['USD', 'VES', 'COP'] },
+    method: { type: String },
+    difference: { type: Number }
   }],
   adjustments: [{
     type: { type: String, enum: ['IN', 'OUT'] },
@@ -52,6 +76,7 @@ const CashSessionSchema: Schema = new Schema({
   openedAt: { type: Date, default: Date.now },
   closedAt: { type: Date },
   notes: { type: String },
+  authorizedBy: { type: String },
 }, { timestamps: true });
 
 const CashSessionModel = mongoose.models.CashSession || mongoose.model<ICashSession>('CashSession', CashSessionSchema);
