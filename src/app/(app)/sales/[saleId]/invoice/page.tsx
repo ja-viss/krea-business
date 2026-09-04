@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Printer, ArrowLeft, Download } from 'lucide-react';
+import { AlertTriangle, Printer, ArrowLeft, Download, QrCode } from 'lucide-react';
 import { ISalePopulated } from '@/models/Sale';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
+import Image from 'next/image';
 
 export default function InvoicePage() {
     const params = useParams();
@@ -23,6 +24,7 @@ export default function InvoicePage() {
     const [store, setStore] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [qrUrl, setQrUrl] = useState('');
     const { rates } = useExchangeRates();
 
     useEffect(() => {
@@ -49,6 +51,12 @@ export default function InvoicePage() {
                         const storeData = await storeRes.json();
                         setStore(storeData);
                     }
+
+                    // Generar URL para QR (En producción usaría el dominio real)
+                    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+                    const invoiceLink = `${currentOrigin}/sales/${saleId}/invoice`;
+                    setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(invoiceLink)}`);
+
                 } catch (err: any) {
                     setError(err.message);
                 } finally {
@@ -64,7 +72,7 @@ export default function InvoicePage() {
         if (!loading && sale && autoPrint) {
             const timer = setTimeout(() => {
                 window.print();
-            }, 800);
+            }, 1000);
             return () => clearTimeout(timer);
         }
     }, [loading, sale, autoPrint]);
@@ -105,11 +113,11 @@ export default function InvoicePage() {
                     <Button variant="ghost" size="sm" asChild><Link href="/sales"><ArrowLeft className="mr-1 h-4 w-4" />Ventas</Link></Button>
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => window.print()} className="font-bold"><Printer className="mr-1 h-4 w-4" />Imprimir</Button>
-                        <Button size="sm" asChild className="font-black bg-primary"><Link href="/sales/new">Nueva Venta</Link></Button>
+                        <Button size="sm" asChild className="font-black bg-primary text-white"><Link href="/sales/new">Nueva Venta</Link></Button>
                     </div>
                 </div>
                 
-                <Card className="p-4 shadow-xl print:shadow-none print:border-none print:p-0 bg-white text-black card-pos-thermal">
+                <Card className="p-4 shadow-xl print:shadow-none print:border-none print:p-0 bg-white text-black card-pos-thermal relative overflow-hidden">
                     {/* ENCABEZADO COMPACTO POS */}
                     <div className="flex flex-col border-b-[2px] border-black pb-2 text-center">
                         <h1 className="text-xl font-black uppercase leading-tight tracking-tighter">
@@ -162,7 +170,7 @@ export default function InvoicePage() {
                         </div>
                     </div>
                     
-                    {/* TOTALES COMPACTOS - SIN DESBORDAMIENTO */}
+                    {/* TOTALES COMPACTOS */}
                     <div className="mt-3 border-t-2 border-black pt-2 flex flex-col gap-1 text-[11px] font-bold">
                          <div className="flex justify-between"><span>SUBTOTAL:</span><span>{formatCurrency((sale.subtotals?.general || 0) + (sale.subtotals?.exempt || 0))}</span></div>
                          {sale.taxDetails?.general > 0 && (
@@ -183,8 +191,27 @@ export default function InvoicePage() {
                         </div>
                     </div>
 
+                    {/* CODIGO QR PARA VER EN CELULAR */}
+                    <div className="mt-6 mb-4 flex flex-col items-center justify-center gap-2 border-t border-dashed border-black pt-4">
+                        <div className="bg-white p-1 border border-black">
+                             {qrUrl && (
+                                <img 
+                                    src={qrUrl} 
+                                    alt="QR Invoice" 
+                                    width={120} 
+                                    height={120} 
+                                    className="print:w-[100px] print:h-[100px]"
+                                />
+                             )}
+                        </div>
+                        <div className="text-center space-y-0.5">
+                            <p className="text-[9px] font-black uppercase tracking-tighter">Escanea para ver tu factura digital</p>
+                            <p className="text-[8px] font-bold opacity-60 italic">Krea Business • Cloud Backup</p>
+                        </div>
+                    </div>
+
                     {/* PIE DE PÁGINA POS */}
-                    <div className="mt-4 border-t border-black pt-2 text-center text-[9px] font-bold uppercase space-y-1">
+                    <div className="mt-2 border-t border-black pt-2 text-center text-[9px] font-bold uppercase space-y-1">
                         <p>MÉTODO DE PAGO: {sale.paymentMethod}</p>
                         <p className="text-[10px] font-black tracking-tighter leading-tight mt-1 px-4">{store?.footerMessage || '¡GRACIAS POR PREFERIRNOS!'}</p>
                         
