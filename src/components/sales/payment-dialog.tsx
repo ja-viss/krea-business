@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CreditCard, Banknote, Coins, QrCode, Loader2, CheckCircle2, Wallet, ArrowRight } from 'lucide-react';
+import { CreditCard, Banknote, Coins, QrCode, Loader2, CheckCircle2, Wallet, ArrowRight, Smartphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PaymentDialogProps {
@@ -32,7 +32,6 @@ export function PaymentDialog({ isOpen, onOpenChange, totals, rates, pagoMovil, 
   const [currency, setCurrency] = useState<'VES' | 'USD' | 'COP'>('USD');
   const [amountReceived, setAmountReceived] = useState<string>('');
   
-  // Totales en tiempo real
   const formatCurrency = (val: number, curr: string) => 
     new Intl.NumberFormat(curr === 'COP' ? 'es-CO' : 'es-VE', { 
         style: 'currency', 
@@ -52,8 +51,15 @@ export function PaymentDialog({ isOpen, onOpenChange, totals, rates, pagoMovil, 
   }, [amountReceived, currency, totals]);
 
   const qrString = useMemo(() => {
-    // Formato Suiche 7B: PM:BANCO:TELEFONO:CEDULA:MONTO
-    return `PM:${pagoMovil.bankCode}:${pagoMovil.phone}:${pagoMovil.idNumber.replace(/[^0-9VJEG]/g, '')}:${totals.ves.toFixed(2)}`;
+    // Estándar Suiche 7B para QR Dinámico C2B
+    // Formato: PM:<BANCO_4_DIGITOS>:<TELEFONO_11_DIGITOS>:<RIF_O_CI_SIN_GUIONES>:<MONTO_2_DECIMALES>
+    if (!pagoMovil.phone || !pagoMovil.idNumber) return '';
+    
+    const cleanId = pagoMovil.idNumber.replace(/[^0-9VJEG]/g, '');
+    const cleanPhone = pagoMovil.phone.replace(/[^0-9]/g, '');
+    const amountStr = totals.ves.toFixed(2);
+    
+    return `PM:${pagoMovil.bankCode}:${cleanPhone}:${cleanId}:${amountStr}`;
   }, [pagoMovil, totals]);
 
   const handleConfirm = () => {
@@ -94,10 +100,9 @@ export function PaymentDialog({ isOpen, onOpenChange, totals, rates, pagoMovil, 
                 </div>
 
                 <div className="mt-8 p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                    <p className="text-[9px] font-black uppercase opacity-40">Tasas de Referencia</p>
+                    <p className="text-[9px] font-black uppercase opacity-40">Tasa Oficial BCV</p>
                     <div className="flex justify-between text-[11px] font-bold">
-                        <span>USD: {rates.usd.toFixed(2)} Bs</span>
-                        <span>COP: {rates.cop.toFixed(2)} Bs</span>
+                        <span>1 USD = {rates.usd.toFixed(2)} Bs</span>
                     </div>
                 </div>
             </div>
@@ -115,37 +120,55 @@ export function PaymentDialog({ isOpen, onOpenChange, totals, rates, pagoMovil, 
                             { id: 'Zelle', icon: CheckCircle2 },
                             { id: 'Binance', icon: Coins },
                         ].map((m) => (
-                            <Button 
+                            <button 
                                 key={m.id}
-                                variant="outline"
                                 className={cn(
-                                    "h-16 flex flex-col gap-1 border-2 font-black text-[10px] uppercase",
-                                    method === m.id ? "border-primary bg-primary/5 text-primary" : "opacity-60"
+                                    "h-16 flex flex-col items-center justify-center gap-1 border-2 rounded-xl transition-all font-black text-[9px] uppercase",
+                                    method === m.id ? "border-primary bg-primary/5 text-primary" : "border-muted opacity-60 hover:opacity-100"
                                 )}
-                                onClick={() => setMethod(m.id as any)}
+                                onClick={() => {
+                                    setMethod(m.id as any);
+                                    if (m.id === 'Pago Móvil' || m.id === 'Tarjeta') setCurrency('VES');
+                                    if (m.id === 'Zelle' || m.id === 'Binance') setCurrency('USD');
+                                }}
                             >
                                 <m.icon className="h-5 w-5" />
                                 {m.id}
-                            </Button>
+                            </button>
                         ))}
                     </div>
                 </div>
 
                 {method === 'Pago Móvil' && (
-                    <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed flex items-center gap-4 animate-in zoom-in-95">
-                        <div className="bg-white p-2 border-2 border-black rounded-lg">
-                            <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrString)}&ecc=L`} 
-                                alt="Pago Móvil QR"
-                                className="w-20 h-20"
-                            />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                            <p className="text-[9px] font-black text-primary uppercase">Datos de Recepción</p>
-                            <p className="text-xs font-bold leading-none">{pagoMovil.phone}</p>
-                            <p className="text-xs font-bold leading-none">{pagoMovil.idNumber}</p>
-                            <p className="text-[8px] font-medium opacity-60 italic">Escanea con tu App Bancaria</p>
-                        </div>
+                    <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/20 border-dashed flex items-center gap-4 animate-in zoom-in-95">
+                        {pagoMovil.phone ? (
+                            <>
+                                <div className="bg-white p-2 border-2 border-black rounded-lg shrink-0">
+                                    <img 
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
+                                        alt="QR Suiche 7B"
+                                        className="w-24 h-24"
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-1.5">
+                                    <div className="flex items-center gap-2">
+                                        <Smartphone className="h-3 w-3 text-primary" />
+                                        <p className="text-[10px] font-black text-primary uppercase">Cobro Digital Estándar</p>
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-black leading-none">{pagoMovil.phone}</p>
+                                        <p className="text-[10px] font-bold opacity-60 leading-none">{pagoMovil.idNumber}</p>
+                                        <p className="text-[10px] font-bold opacity-60 leading-none">Cód: {pagoMovil.bankCode}</p>
+                                    </div>
+                                    <Badge className="bg-primary font-black text-[8px] uppercase">Monto Incluido</Badge>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-center w-full py-4 text-amber-600 font-bold text-xs uppercase italic">
+                                <Smartphone className="h-6 w-6 mx-auto mb-1" />
+                                Configure Pago Móvil en Ajustes
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -155,21 +178,21 @@ export function PaymentDialog({ isOpen, onOpenChange, totals, rates, pagoMovil, 
                             <Label className="text-[10px] font-black uppercase">Monto Recibido</Label>
                             <Input 
                                 type="number" 
-                                className="h-12 text-xl font-black border-2" 
+                                className="h-12 text-xl font-black border-2 bg-muted/20" 
                                 value={amountReceived}
                                 onChange={(e) => setAmountReceived(e.target.value)}
                                 autoFocus
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase">Moneda de Pago</Label>
+                            <Label className="text-[10px] font-black uppercase">Moneda del Pago</Label>
                             <div className="flex gap-1 h-12">
                                 {['USD', 'VES', 'COP'].map((curr) => (
                                     <Button 
                                         key={curr}
                                         variant="outline"
                                         className={cn(
-                                            "flex-1 border-2 font-black",
+                                            "flex-1 border-2 font-black text-xs h-full",
                                             currency === curr ? "bg-black text-white border-black" : ""
                                         )}
                                         onClick={() => setCurrency(curr as any)}
@@ -200,7 +223,7 @@ export function PaymentDialog({ isOpen, onOpenChange, totals, rates, pagoMovil, 
                     onClick={handleConfirm}
                 >
                     {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 h-6 w-6" />}
-                    Cerrar y Facturar
+                    Cerrar Venta (Enter)
                 </Button>
             </div>
         </div>

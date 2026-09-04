@@ -71,6 +71,7 @@ export default function NewSalePage() {
   const { rates } = useExchangeRates();
   const [isClient, setIsClient] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [storeConfig, setStoreConfig] = useState<any>(null);
   
   // Hardware States
   const [isScaleConnected, setIsScaleConnected] = useState(false);
@@ -80,6 +81,23 @@ export default function NewSalePage() {
 
   useEffect(() => {
     setIsClient(true);
+    
+    // Cargar configuración de recaudación de la tienda
+    const fetchStoreConfig = async () => {
+        const storeId = localStorage.getItem('storeId');
+        if (!storeId) return;
+        try {
+            const res = await fetch(`/api/settings/store?storeId=${storeId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setStoreConfig(data);
+            }
+        } catch (e) {
+            console.error("Error loading store config for POS", e);
+        }
+    };
+    fetchStoreConfig();
+
     // Detección de atajos de teclado
     const handleGlobalKeys = (e: any) => {
         if (e.key === 'F1') { e.preventDefault(); productSearchRef.current?.focus(); }
@@ -131,7 +149,7 @@ export default function NewSalePage() {
     });
     const ves = (general * 1.16) + exempt;
     const usd = rates.usd?.usd ? ves / rates.usd.usd : 0;
-    const cop = rates.cop?.rate ? ves / (rates.cop.rate / (rates.usd?.usd || 1)) : 0; // Aproximación si no hay tasa COP directa
+    const cop = rates.cop?.rate ? ves / (rates.cop.rate / (rates.usd?.usd || 1)) : 0;
     return { ves, usd, cop: rates.cop?.rate ? (usd * rates.cop.rate) : 0 };
   }, [watchItems, rates]);
 
@@ -299,7 +317,7 @@ export default function NewSalePage() {
                 onOpenChange={setIsPaymentDialogOpen}
                 totals={totals}
                 rates={{ usd: rates.usd?.usd || 0, cop: rates.cop?.rate || 0 }}
-                pagoMovil={{ bankCode: '0102', phone: '04120000000', idNumber: 'V-12345678' }}
+                pagoMovil={storeConfig?.pagoMovil || { bankCode: '0102', phone: '', idNumber: '' }}
                 onConfirm={handleFinalizeSale}
                 isSubmitting={isSubmitting}
             />

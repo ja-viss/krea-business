@@ -9,9 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, ShieldAlert, KeyRound, Lock, User } from 'lucide-react';
+import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const VENEZUELAN_BANKS = [
+    { code: '0102', name: 'Banco de Venezuela' },
+    { code: '0134', name: 'Banesco' },
+    { code: '0105', name: 'Mercantil' },
+    { code: '0108', name: 'Provincial' },
+    { code: '0172', name: 'Bancamiga' },
+    { code: '0174', name: 'Banplus' },
+    { code: '0191', name: 'BNC' },
+    { code: '0114', name: 'Bancaribe' },
+    { code: '0163', name: 'Banco del Tesoro' },
+    { code: '0128', name: 'Banco Caroní' },
+];
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -28,6 +42,11 @@ export default function SettingsPage() {
     email: '',
     seniatCondition: '',
     footerMessage: '',
+    pagoMovil: {
+        bankCode: '0102',
+        phone: '',
+        idNumber: ''
+    }
   });
 
   // Master Security Data
@@ -47,7 +66,6 @@ export default function SettingsPage() {
 
         if (!storeId) return;
 
-        // Cargar datos de la tienda
         const storeRes = await fetch(`/api/settings/store?storeId=${storeId}`);
         if (storeRes.ok) {
           const data = await storeRes.json();
@@ -59,11 +77,9 @@ export default function SettingsPage() {
             email: data.email || '',
             seniatCondition: data.seniatCondition || 'Contribuyente Ordinario del IVA',
             footerMessage: data.footerMessage || 'Gracias por su compra',
+            pagoMovil: data.pagoMovil || { bankCode: '0102', phone: '', idNumber: '' }
           });
         }
-
-        // Si es master, cargar las llaves actuales (opcional para pre-llenar)
-        // Por seguridad no las mostramos directamente al cargar, el admin debe saberlas para editarlas.
       } catch (error) {
         console.error("Error fetching settings data", error);
       } finally {
@@ -85,7 +101,7 @@ export default function SettingsPage() {
 
       if (!response.ok) throw new Error('No se pudo guardar la configuración fiscal.');
 
-      toast({ title: "Configuración Guardada", description: "Datos fiscales actualizados." });
+      toast({ title: "Configuración Guardada", description: "Datos fiscales y de Pago Móvil actualizados." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
@@ -106,7 +122,7 @@ export default function SettingsPage() {
       if (!response.ok) throw new Error('Error al actualizar seguridad.');
 
       toast({ title: "Seguridad Actualizada", description: "Las llaves maestras han sido modificadas." });
-      setMasterSecurity(prev => ({ ...prev, newPassword: '' })); // Limpiar campo pass
+      setMasterSecurity(prev => ({ ...prev, newPassword: '' }));
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error crítico", description: error.message });
     } finally {
@@ -121,16 +137,16 @@ export default function SettingsPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader 
           title="Configuración de Sistema" 
-          description={isGlobal ? "Gestión global de identidad y fiscalidad." : "Gestiona los datos fiscales de tu empresa."} 
+          description={isGlobal ? "Gestión global de identidad y fiscalidad." : "Gestiona los datos fiscales y de recaudación de tu empresa."} 
         />
 
         <Tabs defaultValue="fiscal" className="space-y-6">
           <TabsList className="bg-muted/50 p-1 border-2">
-            <TabsTrigger value="fiscal" className="font-black text-xs uppercase">Datos Fiscales</TabsTrigger>
+            <TabsTrigger value="fiscal" className="font-black text-xs uppercase">Identidad Fiscal</TabsTrigger>
+            <TabsTrigger value="payments" className="font-black text-xs uppercase">Recaudación QR</TabsTrigger>
             <TabsTrigger value="security" className="font-black text-xs uppercase">Seguridad Acceso</TabsTrigger>
           </TabsList>
 
-          {/* TAB 1: DATOS FISCALES (STORE) */}
           <TabsContent value="fiscal">
             <div className="max-w-3xl">
               <Card className="border-2 shadow-md">
@@ -145,11 +161,11 @@ export default function SettingsPage() {
                       <Input value={storeData.name} onChange={(e) => setStoreData({...storeData, name: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase">RIF</Label>
+                      <Label className="text-[10px] font-black uppercase">RIF Principal</Label>
                       <Input placeholder="J-00000000-0" value={storeData.rif} onChange={(e) => setStoreData({...storeData, rif: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase">Teléfono</Label>
+                      <Label className="text-[10px] font-black uppercase">Teléfono de Contacto</Label>
                       <Input value={storeData.phone} onChange={(e) => setStoreData({...storeData, phone: e.target.value})} />
                     </div>
                     <div className="space-y-2">
@@ -165,17 +181,81 @@ export default function SettingsPage() {
                 <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
                   <Button onClick={handleSaveStore} disabled={saving} className="font-black uppercase">
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Guardar Fiscal
+                    Guardar Datos
                   </Button>
                 </CardFooter>
               </Card>
             </div>
           </TabsContent>
 
-          {/* TAB 2: SEGURIDAD (USER & MASTER KEYS) */}
+          <TabsContent value="payments">
+            <div className="max-w-3xl">
+                <Card className="border-2 shadow-xl border-primary/10">
+                    <CardHeader className="bg-primary/5 border-b">
+                        <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
+                            <QrCode className="h-5 w-5 text-primary" /> Configuración Pago Móvil (C2B)
+                        </CardTitle>
+                        <CardDescription>Define la cuenta receptora para los cobros automáticos en el POS.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6 pt-6">
+                        <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl flex items-start gap-3">
+                            <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                            <p className="text-[11px] font-bold text-blue-800 leading-tight">
+                                El sistema generará códigos QR dinámicos siguiendo el estándar Suiche 7B. Asegúrese de que el número telefónico y RIF coincidan exactamente con los registrados en su banco.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase">Banco Receptor</Label>
+                                <Select 
+                                    value={storeData.pagoMovil.bankCode} 
+                                    onValueChange={(val) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, bankCode: val }})}
+                                >
+                                    <SelectTrigger className="font-bold">
+                                        <SelectValue placeholder="Seleccione su banco" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {VENEZUELAN_BANKS.map(bank => (
+                                            <SelectItem key={bank.code} value={bank.code} className="font-medium">
+                                                {bank.name} ({bank.code})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase">Teléfono Afiliado</Label>
+                                <Input 
+                                    placeholder="Ej: 04121234567" 
+                                    value={storeData.pagoMovil.phone}
+                                    onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, phone: e.target.value }})}
+                                    className="font-mono font-bold"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase">Cédula o RIF Afiliado</Label>
+                                <Input 
+                                    placeholder="Ej: J-12345678-9" 
+                                    value={storeData.pagoMovil.idNumber}
+                                    onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, idNumber: e.target.value }})}
+                                    className="font-mono font-bold uppercase"
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                    <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
+                        <Button onClick={handleSaveStore} disabled={saving} className="font-black uppercase shadow-lg shadow-primary/20">
+                            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Vincular Cuenta
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+          </TabsContent>
+
           <TabsContent value="security">
              <div className="max-w-3xl space-y-6">
-                {/* Primer Login: Perfil Personal */}
                 <Card className="border-2">
                     <CardHeader className="bg-muted/10 border-b">
                         <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
@@ -203,7 +283,6 @@ export default function SettingsPage() {
                     )}
                 </Card>
 
-                {/* Segundo Login: Exclusivo Super Admin */}
                 {isGlobal && (
                     <Card className="border-4 border-primary/20 bg-primary/5">
                         <CardHeader className="bg-primary/10 border-b border-primary/20">
