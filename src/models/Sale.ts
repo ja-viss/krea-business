@@ -1,4 +1,3 @@
-
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { IStore } from './Store';
 import { ICustomer } from './Customer';
@@ -57,7 +56,7 @@ const SaleItemSchema: Schema = new Schema({
     taxRate: { type: Number, required: true },
 });
 
-const SaleSchema: Schema = new Schema({
+export const SaleSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
   invoiceNumber: { type: Number, required: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },

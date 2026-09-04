@@ -11,7 +11,7 @@ export interface IExpense extends Document {
   updatedAt: Date;
 }
 
-const ExpenseSchema: Schema = new Schema({
+export const ExpenseSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   category: { type: String, required: true },
   description: { type: String, required: true },
