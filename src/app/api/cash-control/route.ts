@@ -10,25 +10,25 @@ export async function GET(req: NextRequest) {
         await dbConnect();
         const storeId = req.nextUrl.searchParams.get('storeId');
 
-        // Buscar sesión abierta
         const activeSession = await CashSessionModel.findOne({ store: storeId, status: 'Abierta' });
 
         if (activeSession) {
-            // Calcular ventas acumuladas en la sesión
+            // Calcular totales teóricos por moneda y método
             const salesInSession = await SaleModel.aggregate([
                 { $match: { 
                     store: new mongoose.Types.ObjectId(storeId!), 
                     createdAt: { $gte: activeSession.openedAt },
                     status: 'Pagado'
                 }},
-                { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+                { $group: { 
+                    _id: { method: '$paymentMethod', currency: '$paymentCurrency' }, 
+                    total: { $sum: '$totalAmount' } 
+                }}
             ]);
             
             return NextResponse.json({ 
-                activeSession: {
-                    ...activeSession.toObject(),
-                    totalSalesInSession: salesInSession[0]?.total || 0
-                }
+                activeSession: activeSession.toObject(),
+                theoreticalSales: salesInSession
             });
         }
 
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         await dbConnect();
-        const { storeId, userId, amount, action } = await req.json();
+        const { storeId, userId, openingBalances, action } = await req.json();
 
         if (action === 'OPEN') {
             const existing = await CashSessionModel.findOne({ store: storeId, status: 'Abierta' });
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
             const newSession = new CashSessionModel({
                 store: storeId,
                 user: userId,
-                openingAmount: amount,
+                openingBalances,
                 status: 'Abierta'
             });
             await newSession.save();
@@ -66,29 +66,16 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
     try {
         await dbConnect();
-        const { sessionId, closingAmount, action } = await req.json();
+        const { sessionId, declaredBalances, action, note } = await req.json();
 
         if (action === 'CLOSE') {
             const session = await CashSessionModel.findById(sessionId);
             if (!session) throw new Error("Sesión no encontrada");
 
-            // Obtener ventas reales para calcular diferencia
-            const salesInSession = await SaleModel.aggregate([
-                { $match: { 
-                    store: session.store, 
-                    createdAt: { $gte: session.openedAt },
-                    status: 'Pagado'
-                }},
-                { $group: { _id: null, total: { $sum: '$totalAmount' } } }
-            ]);
-
-            const expectedAmount = session.openingAmount + (salesInSession[0]?.total || 0);
-            
-            session.closingAmount = closingAmount;
-            session.expectedAmount = expectedAmount;
-            session.difference = closingAmount - expectedAmount;
+            session.declaredBalances = declaredBalances;
             session.status = 'Cerrada';
             session.closedAt = new Date();
+            session.notes = note;
             
             await session.save();
             return NextResponse.json(session);
