@@ -157,7 +157,7 @@ export default function SettingsPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader 
           title="Configuración de Sistema" 
-          description={isGlobal ? "Gestión global de identidad y fiscalidad." : "Gestiona los datos fiscales y de recaudación de tu empresa."} 
+          description={isGlobal ? "Gestión global de identidad y fiscalidad." : "Gestión de datos fiscales y recaudación dinámica."} 
         />
 
         <Tabs defaultValue="fiscal" className="space-y-6">
@@ -213,7 +213,7 @@ export default function SettingsPage() {
                 <Card className="border-2 shadow-xl border-primary/10">
                     <CardHeader className="bg-primary/5 border-b">
                         <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
-                            <QrCode className="h-5 w-5 text-primary" /> Configuración Pago Móvil (C2B)
+                            <QrCode className="h-5 w-5 text-primary" /> Configuración Pago Móvil (Suiche 7B)
                         </CardTitle>
                         <CardDescription>Define la cuenta receptora para los cobros automáticos en el POS.</CardDescription>
                     </CardHeader>
