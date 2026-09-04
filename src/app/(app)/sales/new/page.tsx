@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { 
     Loader2, 
     Trash2, 
@@ -87,7 +88,7 @@ export default function NewSalePage() {
   const watchCurrency = form.watch('paymentCurrency');
   const watchAmountReceived = form.watch('amountReceived');
 
-  // Formateadores estrictos de 2 decimales
+  // Formateadores estrictos de 2 decimales para evitar el bug del 0.004
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
@@ -117,10 +118,10 @@ export default function NewSalePage() {
         const sub = i.price * i.quantity;
         if (i.taxRate === 0) exempt += sub; else general += sub;
     });
-    // Aplicar redondeo a 2 decimales en cada paso intermedio
+    // Aplicar redondeo a 2 decimales exactos
     const ves = Math.round(((general * 1.16) + exempt) * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
-    const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; // Pesos suelen redondearse a centenas
+    const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
     return { ves, usd, cop };
   }, [watchItems, rates]);
 
@@ -132,12 +133,12 @@ export default function NewSalePage() {
 
   const allowsChange = ['Efectivo'].includes(watchMethod);
 
-  // Auto-completar monto al cambiar método
+  // Auto-completar monto al cambiar método para pagos digitales (monto exacto)
   useEffect(() => {
     if (!allowsChange) {
         form.setValue('amountReceived', targetAmount.toFixed(2));
     }
-  }, [watchMethod, targetAmount, allowsChange]);
+  }, [watchMethod, targetAmount, allowsChange, form]);
 
   const change = useMemo(() => {
       if (!allowsChange) return 0;
@@ -194,6 +195,7 @@ export default function NewSalePage() {
   const qrString = useMemo(() => {
     if (!storeConfig?.pagoMovil?.phone) return '';
     const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
+    // Estándar Suiche 7B para Venezuela
     return `PM:${bankCode}:${phone.replace(/[^0-9]/g, '')}:${idNumber.replace(/[^0-9VJEG]/g, '')}:${totals.ves.toFixed(2)}`;
   }, [storeConfig, totals]);
 
@@ -221,7 +223,7 @@ export default function NewSalePage() {
                         <span className="text-[10px] font-black uppercase opacity-40">Tasa Oficial BCV</span>
                         <span className="text-sm font-black text-primary">Bs. {rates.usd?.usd.toFixed(2)}</span>
                     </div>
-                    <Button variant="outline" className="rounded-xl border-2 font-black text-xs uppercase h-10"><Monitor className="mr-2 h-4 w-4" /> Visor</Button>
+                    <Button variant="outline" className="rounded-xl border-2 font-black text-xs uppercase h-10"><Monitor className="mr-2 h-4 w-4" /> Visor Cliente</Button>
                 </div>
             </div>
 
@@ -290,7 +292,7 @@ export default function NewSalePage() {
                     </Card>
                 </div>
 
-                {/* COLUMNA DERECHA: LIQUIDACIÓN COMPACTA */}
+                {/* COLUMNA DERECHA: LIQUIDACIÓN POS v4.0 */}
                 <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
                     {/* BLOQUE 1: TOTALES MULTIMONEDA */}
                     <Card className="immersive-card rounded-2xl bg-slate-900 text-white border-none overflow-hidden shadow-2xl">
@@ -334,7 +336,7 @@ export default function NewSalePage() {
 
                             <Separator />
 
-                            {/* Métodos de Pago (Pills) */}
+                            {/* Métodos de Pago (Selector Rápido) */}
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Método de Liquidación</Label>
                                 <div className="grid grid-cols-3 gap-2">
@@ -373,7 +375,7 @@ export default function NewSalePage() {
                                         <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0">
                                              <img 
                                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
-                                                alt="QR" className="w-[120px] h-[120px]"
+                                                alt="QR Suiche 7B" className="w-[120px] h-[120px]"
                                             />
                                         </div>
                                         <div className="flex-1 space-y-2">
@@ -391,7 +393,7 @@ export default function NewSalePage() {
                                                     />
                                                 </div>
                                                 <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5">
-                                                    {storeConfig?.pagoMovil?.phone || 'Configurar cuenta en Ajustes'}
+                                                    {storeConfig?.pagoMovil?.phone || 'Sin cuenta vinculada'}
                                                 </div>
                                             </div>
                                         </div>
@@ -444,13 +446,13 @@ export default function NewSalePage() {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full gap-2 opacity-60">
                                         <ShieldCheck className="h-8 w-8 text-primary" />
-                                        <p className="text-[10px] font-black uppercase">Pago {watchMethod} Directo</p>
+                                        <p className="text-[10px] font-black uppercase">Liquidación {watchMethod} Directa</p>
                                         <div className="px-4 py-1 bg-white rounded-full font-bold text-sm">
                                             {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(targetAmount)}
                                         </div>
                                         <div className="w-full mt-2">
                                             <Input 
-                                                placeholder="Nº de Referencia / Aprobación" 
+                                                placeholder="Nº Referencia / Aprobación" 
                                                 className="h-9 text-xs text-center font-bold bg-white"
                                                 {...form.register('referenceNumber')}
                                             />
