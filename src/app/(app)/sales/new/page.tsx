@@ -28,7 +28,8 @@ import {
     ShieldCheck,
     Hash,
     Plus,
-    Minus
+    Minus,
+    AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -88,6 +89,7 @@ export default function NewSalePage() {
   const watchMethod = form.watch('paymentMethod');
   const watchCurrency = form.watch('paymentCurrency');
   const watchAmountReceived = form.watch('amountReceived');
+  const watchReference = form.watch('referenceNumber');
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
@@ -119,7 +121,6 @@ export default function NewSalePage() {
         totalVES += (sub + tax);
     });
     
-    // Redondeo bancario a 2 decimales
     const ves = Math.round(totalVES * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
@@ -134,6 +135,7 @@ export default function NewSalePage() {
   }, [watchCurrency, totals]);
 
   const allowsChange = ['Efectivo'].includes(watchMethod);
+  const isDigitalPayment = ['Pago Móvil', 'Tarjeta', 'Zelle', 'Binance', 'Biopago'].includes(watchMethod);
 
   useEffect(() => {
     if (!allowsChange) {
@@ -180,8 +182,20 @@ export default function NewSalePage() {
 
   const handleFinalizeSale = async () => {
     if (watchItems.length === 0) return;
+    
+    // Validación de Monto
     if ((parseFloat(watchAmountReceived) || 0) < targetAmount * 0.999) {
         toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago recibido es menor al total.' });
+        return;
+    }
+
+    // Validación de Referencia para Pagos Digitales
+    if (isDigitalPayment && !watchReference?.trim()) {
+        toast({ 
+            variant: 'destructive', 
+            title: 'Referencia Requerida', 
+            description: `Para ${watchMethod} es obligatorio ingresar el número de referencia.` 
+        });
         return;
     }
 
@@ -208,11 +222,16 @@ export default function NewSalePage() {
     }
   };
 
-  const qrString = useMemo(() => {
+  // Formato Interoperable: BANCO;DOCUMENTO;TELEFONO;MONTO
+  const qrPayload = useMemo(() => {
     if (!storeConfig?.pagoMovil?.phone || !storeConfig?.pagoMovil?.bankCode) return '';
     const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
-    // Estándar Suiche 7B: PM:BANCO:TELEFONO:ID:MONTO
-    return `PM:${bankCode}:${phone.replace(/[^0-9]/g, '')}:${idNumber.replace(/[^0-9VJEG]/g, '')}:${totals.ves.toFixed(2)}`;
+    
+    const cleanDoc = idNumber.replace(/[^0-9VJEG]/g, '').toUpperCase();
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const amountStr = totals.ves.toFixed(2);
+    
+    return `${bankCode};${cleanDoc};${cleanPhone};${amountStr}`;
   }, [storeConfig, totals]);
 
   return (
@@ -229,7 +248,7 @@ export default function NewSalePage() {
                              </Badge>
                              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted border border-border">
                                 <div className={cn("h-2 w-2 rounded-full", storeConfig?.pagoMovil?.phone ? "bg-green-500" : "bg-red-500")} />
-                                <span className="text-[8px] font-black uppercase opacity-60">Pago Móvil {storeConfig?.pagoMovil?.phone ? 'Habilitado' : 'Pendiente'}</span>
+                                <span className="text-[8px] font-black uppercase opacity-60">Recaudación QR {storeConfig?.pagoMovil?.phone ? 'Activa' : 'Inactiva'}</span>
                              </div>
                         </div>
                     </div>
@@ -394,6 +413,8 @@ export default function NewSalePage() {
                                                 form.setValue('paymentMethod', m.id);
                                                 if (['Efectivo', 'Zelle', 'Binance'].includes(m.id)) form.setValue('paymentCurrency', 'USD');
                                                 else form.setValue('paymentCurrency', 'VES');
+                                                // Reset reference when changing method
+                                                form.setValue('referenceNumber', '');
                                             }}
                                         >
                                             <m.icon className={cn("h-4 w-4", watchMethod === m.id ? m.color : "text-muted-foreground/40")} />
@@ -405,35 +426,48 @@ export default function NewSalePage() {
 
                             <div className="flex-1 bg-muted/20 rounded-2xl p-4 border-2 border-dashed border-border/50">
                                 {watchMethod === 'Pago Móvil' ? (
-                                    <div className="flex gap-4 animate-in slide-in-from-right-4">
-                                        <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0 flex items-center justify-center w-[130px] h-[130px]">
-                                             {qrString ? (
-                                                <img 
-                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
-                                                    alt="QR" className="w-[120px] h-[120px]"
-                                                />
-                                             ) : (
-                                                <div className="text-[8px] font-black text-center text-muted-foreground p-2 uppercase">Configuración pendiente en ajustes</div>
-                                             )}
-                                        </div>
-                                        <div className="flex-1 space-y-2">
-                                            <div className="bg-primary/10 p-2 rounded-lg">
-                                                <p className="text-[10px] font-black uppercase text-primary leading-none">Cobro Exacto</p>
-                                                <p className="text-lg font-black text-slate-800">Bs. {formatCurrency(totals.ves)}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <Hash className="h-3 w-3 text-muted-foreground" />
-                                                    <Input 
-                                                        placeholder="Ref. (últimos 6)" 
-                                                        className="h-8 text-xs font-bold bg-white"
-                                                        {...form.register('referenceNumber')}
+                                    <div className="flex flex-col gap-4 animate-in slide-in-from-right-4 h-full">
+                                        <div className="flex gap-4 items-start">
+                                            <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0 flex items-center justify-center w-[140px] h-[140px]">
+                                                {qrPayload ? (
+                                                    <img 
+                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrPayload)}&ecc=L&margin=1`} 
+                                                        alt="QR Pago Móvil" className="w-[130px] h-[130px]"
                                                     />
+                                                ) : (
+                                                    <div className="text-[8px] font-black text-center text-muted-foreground p-2 uppercase">Configuración pendiente en ajustes</div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 space-y-2">
+                                                <div className="bg-primary/10 p-2 rounded-lg border border-primary/20">
+                                                    <p className="text-[9px] font-black uppercase text-primary leading-none">Monto Exacto</p>
+                                                    <p className="text-lg font-black text-slate-800">Bs. {formatCurrency(totals.ves)}</p>
                                                 </div>
-                                                <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5 truncate">
-                                                    {storeConfig?.pagoMovil?.phone || 'SIN CUENTA'}
+                                                <div className="space-y-1 text-[10px] font-bold text-slate-600 uppercase leading-tight">
+                                                    <p className='truncate'>Banco: {storeConfig?.pagoMovil?.bankCode || '----'}</p>
+                                                    <p>RIF: {storeConfig?.pagoMovil?.idNumber || '----'}</p>
+                                                    <p>Tel: {storeConfig?.pagoMovil?.phone || '----'}</p>
                                                 </div>
                                             </div>
+                                        </div>
+                                        
+                                        <div className="mt-auto space-y-2">
+                                            <div className="relative">
+                                                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                                <Input 
+                                                    placeholder="Nº Referencia (Últimos 6)" 
+                                                    className={cn(
+                                                        "pl-10 h-12 font-black uppercase bg-white border-2",
+                                                        !watchReference ? "border-red-200 animate-pulse" : "border-primary/20"
+                                                    )}
+                                                    {...form.register('referenceNumber')}
+                                                />
+                                            </div>
+                                            {!watchReference && (
+                                                <p className="text-[9px] font-black text-red-500 uppercase flex items-center gap-1">
+                                                    <AlertCircle size={10} /> Ingrese la referencia para continuar
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 ) : allowsChange ? (
@@ -484,18 +518,31 @@ export default function NewSalePage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center h-full gap-2 opacity-60">
-                                        <ShieldCheck className="h-8 w-8 text-primary" />
-                                        <p className="text-[10px] font-black uppercase">Liquidación {watchMethod} Directa</p>
-                                        <div className="px-4 py-1 bg-white rounded-full font-bold text-sm">
-                                            {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(targetAmount)}
+                                    <div className="flex flex-col items-center justify-center h-full gap-4 py-2">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <ShieldCheck className="h-10 w-10 text-primary" />
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-800">Liquidación Exacta: {watchMethod}</p>
                                         </div>
-                                        <div className="w-full mt-2">
+                                        
+                                        <div className="bg-white border-2 border-dashed border-primary/20 rounded-2xl p-4 w-full text-center">
+                                            <span className="text-2xl font-black text-primary tracking-tighter">
+                                                {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(targetAmount)}
+                                            </span>
+                                        </div>
+
+                                        <div className="w-full space-y-2">
+                                            <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Referencia Obligatoria</Label>
                                             <Input 
-                                                placeholder="Nº Referencia / Aprobación" 
-                                                className="h-9 text-xs text-center font-bold bg-white"
+                                                placeholder="Nº de Referencia / Aprobación" 
+                                                className={cn(
+                                                    "h-12 text-sm text-center font-black bg-white border-2 uppercase",
+                                                    !watchReference ? "border-red-200 animate-pulse" : "border-primary/20"
+                                                )}
                                                 {...form.register('referenceNumber')}
                                             />
+                                            {!watchReference && (
+                                                <p className="text-[9px] font-black text-red-500 uppercase text-center">Campo obligatorio para pagos digitales</p>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -506,8 +553,12 @@ export default function NewSalePage() {
                              <Button 
                                 type="button"
                                 onClick={handleFinalizeSale}
-                                disabled={isSubmitting || watchItems.length === 0}
-                                className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all border-none"
+                                disabled={
+                                    isSubmitting || 
+                                    watchItems.length === 0 || 
+                                    (isDigitalPayment && !watchReference?.trim())
+                                }
+                                className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all border-none disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <Printer className="mr-3 h-6 w-6" />}
                                 CERRAR VENTA (F4)
