@@ -16,6 +16,12 @@ export interface IStore extends Document {
   maxUsers: number;
   maxInvoicesPerMonth: number;
   storageLimitMB: number;
+  // Pago Móvil Config (Suiche 7B)
+  pagoMovil: {
+    bankCode: string;
+    phone: string;
+    idNumber: string;
+  };
   // Feature Flags (Módulos Modulares)
   enabledModules: {
     inventory: boolean;
@@ -48,7 +54,12 @@ const StoreSchema: Schema = new Schema({
   maxUsers: { type: Number, default: 3 },
   maxInvoicesPerMonth: { type: Number, default: 500 },
   storageLimitMB: { type: Number, default: 500 },
-  // Flags iniciales por defecto
+  // Configuración Pago Móvil
+  pagoMovil: {
+    bankCode: { type: String, default: '0102' },
+    phone: { type: String, default: '04120000000' },
+    idNumber: { type: String, default: 'J-00000000-0' },
+  },
   enabledModules: {
     inventory: { type: Boolean, default: true },
     sales: { type: Boolean, default: true },
