@@ -2,10 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import StoreModel from '@/models/Store';
+import ProductModel from '@/models/Product';
 import { getTenantDb } from '@/lib/tenant-manager';
+import mongoose from 'mongoose';
 
 /**
- * Endpoint de Productos (Protegido por Feature Flags).
+ * Endpoint de Productos (Híbrido: Central + Tenant DB).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +16,10 @@ export async function GET(req: NextRequest) {
 
     if (!storeId || storeId === 'SYSTEM_MASTER') {
       return NextResponse.json({ message: 'Acceso no permitido.' }, { status: 400 });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(storeId)) {
+        return NextResponse.json({ message: 'ID de tienda inválido.' }, { status: 400 });
     }
 
     const store = await StoreModel.findById(storeId);
@@ -31,17 +37,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'Suscripción inactiva.' }, { status: 403 });
     }
 
-    if (!store.tenantDbUri) {
-      return NextResponse.json({ message: 'Infraestructura no configurada.' }, { status: 500 });
+    let products;
+
+    // Si tiene una base de datos aislada, usar el Tenant Manager
+    if (store.tenantDbUri) {
+      const { models } = await getTenantDb(String(store._id), store.tenantDbUri);
+      products = await models.Product.find().sort({ createdAt: -1 });
+    } else {
+      // Fallback a base de datos central (para registros nuevos o sin Atlas propio)
+      products = await ProductModel.find({ store: storeId }).sort({ createdAt: -1 });
     }
 
-    const { models } = await getTenantDb(String(store._id), store.tenantDbUri);
-    const products = await models.Product.find().sort({ createdAt: -1 });
-
-    return NextResponse.json(products, { status: 200 });
+    return NextResponse.json(products || [], { status: 200 });
 
   } catch (error: any) {
     console.error('Error GET Products:', error);
-    return NextResponse.json({ message: 'Error de conexión.' }, { status: 500 });
+    return NextResponse.json({ message: 'Error al procesar la solicitud de inventario.' }, { status: 500 });
   }
 }

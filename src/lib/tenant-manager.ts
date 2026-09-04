@@ -19,6 +19,10 @@ interface TenantModels {
 const connectionPool: Map<string, Connection> = new Map();
 
 export async function getTenantDb(tenantId: string, encryptedUri: string): Promise<{ connection: Connection, models: TenantModels }> {
+  if (!encryptedUri) {
+      throw new Error('URI de base de datos no proporcionada para el inquilino.');
+  }
+
   if (connectionPool.has(tenantId)) {
     const conn = connectionPool.get(tenantId)!;
     if (conn.readyState === 1) {
