@@ -42,7 +42,7 @@ export interface ISalePopulated extends Omit<ISale, 'customer'> {
 const SaleCounterV2Schema = new Schema({
     storeId: { type: String, required: true },
     seq: { type: Number, default: 0 }
-}, { strict: false }); // strict false como medida de seguridad extra
+}, { strict: false });
 
 SaleCounterV2Schema.index({ storeId: 1 }, { unique: true });
 export const SaleCounterV2Model = (mongoose.models.SaleCounterV2 || mongoose.model('SaleCounterV2', SaleCounterV2Schema));

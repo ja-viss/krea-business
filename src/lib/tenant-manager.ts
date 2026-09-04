@@ -1,4 +1,3 @@
-
 import mongoose, { Connection, Model } from 'mongoose';
 import { ProductSchema } from '@/models/schemas/ProductSchema';
 import { SaleSchema } from '@/models/Sale';
