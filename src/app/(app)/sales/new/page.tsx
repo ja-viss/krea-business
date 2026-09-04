@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -27,8 +26,7 @@ import {
     Plus,
     Minus,
     QrCode,
-    UserCheck,
-    ArrowRightLeft
+    UserCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -133,19 +131,24 @@ export default function NewSalePage() {
       return totals.usd;
   }, [watchCurrency, totals]);
 
+  // REQUERIMIENTO: Sincronizar moneda de vuelto con moneda de pago automáticamente
+  useEffect(() => {
+    if (watchMethod === 'Efectivo') {
+        form.setValue('changeCurrency', watchCurrency);
+    }
+  }, [watchCurrency, watchMethod, form]);
+
   // Lógica de Vueltos Multimoneda
   const changeInfo = useMemo(() => {
       const received = parseFloat(watchAmountReceived) || 0;
       if (received <= targetAmount) return { amount: 0, currency: watchChangeCurrency };
 
-      // Calcular excedente en Bolívares (VES) como base neutra
       const receivedInVES = watchCurrency === 'USD' ? received * (rates.usd?.usd || 0) : 
                            watchCurrency === 'COP' ? (received / (rates.cop?.rate || 1)) * (rates.usd?.usd || 0) : 
                            received;
       
       const changeInVES = receivedInVES - totals.ves;
 
-      // Convertir excedente a la moneda de vuelto elegida
       let finalChange = 0;
       if (watchChangeCurrency === 'VES') {
           finalChange = changeInVES;
@@ -172,7 +175,7 @@ export default function NewSalePage() {
         form.setValue('changeCurrency', 'USD');
         form.setValue('amountReceived', totals.usd.toFixed(2));
     }
-  }, [watchMethod, totals, form]);
+  }, [watchMethod, totals.ves, totals.usd, form]);
 
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
     const existing = fields.findIndex(item => item.productId === String(product._id));
@@ -207,11 +210,6 @@ export default function NewSalePage() {
         return;
     }
 
-    if (['Pago Móvil', 'Tarjeta', 'Zelle', 'Binance'].includes(watchMethod) && !watchReference?.trim()) {
-        toast({ variant: 'destructive', title: 'Referencia Requerida', description: `Ingresa el número de operación.` });
-        return;
-    }
-
     setIsSubmitting(true);
     try {
         const storeId = localStorage.getItem('storeId');
@@ -241,7 +239,7 @@ export default function NewSalePage() {
     const cleanDoc = idNumber.replace(/[^0-9VJEG]/g, '').toUpperCase();
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     return `${bankCode};${cleanDoc};${cleanPhone};${totals.ves.toFixed(2)}`;
-  }, [storeConfig, totals]);
+  }, [storeConfig, totals.ves]);
 
   return (
     <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
@@ -324,15 +322,15 @@ export default function NewSalePage() {
                     <Card className="rounded-2xl bg-primary text-primary-foreground border-none overflow-hidden shadow-xl">
                         <CardContent className="p-0">
                             <div className="grid grid-cols-3 divide-x divide-white/10 border-b border-white/10">
-                                <div className="p-3 text-center">
+                                <div className={cn("p-3 text-center transition-all", watchCurrency === 'USD' ? "bg-white/10 scale-105" : "opacity-60")}>
                                     <span className="text-[9px] font-black uppercase opacity-60 block">Dólares</span>
                                     <span className="text-lg font-black">${formatCurrency(totals.usd, 'USD')}</span>
                                 </div>
-                                <div className="p-3 text-center bg-white/5">
+                                <div className={cn("p-3 text-center transition-all", watchCurrency === 'VES' ? "bg-white/10 scale-105" : "opacity-60")}>
                                     <span className="text-[9px] font-black uppercase opacity-60 block">Bolívares</span>
                                     <span className="text-lg font-black">Bs. {formatCurrency(totals.ves)}</span>
                                 </div>
-                                <div className="p-3 text-center">
+                                <div className={cn("p-3 text-center transition-all", watchCurrency === 'COP' ? "bg-white/10 scale-105" : "opacity-60")}>
                                     <span className="text-[9px] font-black uppercase opacity-60 block">Pesos</span>
                                     <span className="text-lg font-black">{totals.cop.toLocaleString()}</span>
                                 </div>
@@ -342,19 +340,19 @@ export default function NewSalePage() {
 
                     <Card className="rounded-2xl flex-1 flex flex-col overflow-hidden border-2">
                         <CardContent className="p-4 space-y-4 flex-1 overflow-y-auto">
-                            {/* CLIENTE */}
+                            {/* SECCIÓN CLIENTE SELECCIONADO */}
                             <div className="space-y-1">
                                 <Label className="text-[10px] font-black uppercase opacity-50 ml-1">Titular de Factura</Label>
                                 {selectedCustomer ? (
-                                    <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-xl">
+                                    <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-xl animate-in zoom-in-95 duration-200">
                                         <div className="flex items-center gap-2">
-                                            <UserCheck className="h-4 w-4 text-primary" />
+                                            <div className="bg-primary text-white p-1.5 rounded-lg"><UserCheck className="h-4 w-4" /></div>
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-black uppercase">{selectedCustomer.name}</span>
                                                 <span className="text-[9px] font-mono opacity-60">{selectedCustomer.idNumber}</span>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-red-500" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', 'Cliente Contado'); }}><X className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-red-500" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', 'Cliente Contado'); form.setValue('customerId', undefined); }}><X className="h-4 w-4" /></Button>
                                     </div>
                                 ) : (
                                     <CustomerSearch onCustomerSelect={(c) => { form.setValue('customerId', c._id); form.setValue('customerName', c.name); setSelectedCustomer(c); }} />
@@ -363,7 +361,7 @@ export default function NewSalePage() {
 
                             <Separator />
 
-                            {/* MÉTODOS */}
+                            {/* MÉTODOS DE PAGO */}
                             <div className="grid grid-cols-3 gap-2">
                                 {[
                                     { id: 'Pago Móvil', icon: Smartphone, color: 'text-blue-500' },
@@ -416,7 +414,7 @@ export default function NewSalePage() {
                                         
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-1">
-                                                <Label className="text-[9px] font-black uppercase opacity-40 ml-1">Monto Recibido ({watchCurrency})</Label>
+                                                <Label className="text-[9px] font-black uppercase opacity-40 ml-1">Recibido ({watchCurrency})</Label>
                                                 <div className="relative">
                                                     <Input type="number" className="h-10 text-xl font-black text-center rounded-xl border-2 border-primary/20 focus:border-primary" {...form.register('amountReceived')} />
                                                     {watchMethod === 'Efectivo' && (
@@ -424,14 +422,14 @@ export default function NewSalePage() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className={cn("rounded-xl p-2 flex flex-col justify-center text-center border-2 transition-all", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700" : "bg-muted border-transparent")}>
+                                            <div className={cn("rounded-xl p-2 flex flex-col justify-center text-center border-2 transition-all", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700 scale-105 shadow-lg" : "bg-muted border-transparent opacity-40")}>
                                                 <span className="text-[9px] font-black uppercase opacity-60">Vuelto ({changeInfo.currency})</span>
                                                 <span className="text-lg font-black">{formatCurrency(changeInfo.amount, changeInfo.currency)}</span>
                                             </div>
                                         </div>
 
                                         {changeInfo.amount > 0 && (
-                                            <div className="space-y-1">
+                                            <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
                                                 <Label className="text-[9px] font-black uppercase opacity-40 ml-1">Entregar Vuelto en...</Label>
                                                 <div className="flex gap-1 p-1 bg-white/50 rounded-xl border">
                                                     {['USD', 'VES', 'COP'].map((curr: any) => (
@@ -441,7 +439,7 @@ export default function NewSalePage() {
                                             </div>
                                         )}
 
-                                        {['Tarjeta', 'Zelle', 'Binance'].includes(watchMethod) && (
+                                        {['Tarjeta', 'Zelle', 'Binance', 'Biopago'].includes(watchMethod) && (
                                             <Input placeholder="Nº Referencia de Transacción" className="h-9 font-black uppercase text-center rounded-xl bg-white" {...form.register('referenceNumber')} />
                                         )}
                                     </div>
@@ -453,7 +451,7 @@ export default function NewSalePage() {
                              <Button 
                                 type="button"
                                 onClick={handleFinalizeSale}
-                                disabled={isSubmitting || watchItems.length === 0 || (['Pago Móvil', 'Tarjeta', 'Zelle', 'Binance'].includes(watchMethod) && !watchReference?.trim())}
+                                disabled={isSubmitting || watchItems.length === 0 || (['Pago Móvil', 'Tarjeta', 'Zelle', 'Binance', 'Biopago'].includes(watchMethod) && !watchReference?.trim())}
                                 className="w-full h-14 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white"
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-5 w-5" />}
