@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +13,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { 
     Loader2, 
-    Trash2, 
     ChevronLeft, 
     Printer, 
     Monitor,
@@ -90,7 +88,6 @@ export default function NewSalePage() {
   const watchCurrency = form.watch('paymentCurrency');
   const watchAmountReceived = form.watch('amountReceived');
 
-  // Formateadores estrictos de 2 decimales para evitar el bug del 0.004
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
@@ -120,7 +117,6 @@ export default function NewSalePage() {
         const sub = i.price * i.quantity;
         if (i.taxRate === 0) exempt += sub; else general += sub;
     });
-    // Aplicar redondeo a 2 decimales exactos
     const ves = Math.round(((general * 1.16) + exempt) * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
@@ -135,7 +131,6 @@ export default function NewSalePage() {
 
   const allowsChange = ['Efectivo'].includes(watchMethod);
 
-  // Auto-completar monto al cambiar método para pagos digitales (monto exacto)
   useEffect(() => {
     if (!allowsChange) {
         form.setValue('amountReceived', targetAmount.toFixed(2));
@@ -209,7 +204,6 @@ export default function NewSalePage() {
   const qrString = useMemo(() => {
     if (!storeConfig?.pagoMovil?.phone) return '';
     const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
-    // Estándar Suiche 7B para Venezuela
     return `PM:${bankCode}:${phone.replace(/[^0-9]/g, '')}:${idNumber.replace(/[^0-9VJEG]/g, '')}:${totals.ves.toFixed(2)}`;
   }, [storeConfig, totals]);
 
@@ -220,14 +214,14 @@ export default function NewSalePage() {
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
                     <div>
-                        <h2 className="text-xl font-black uppercase tracking-tighter italic">Terminal POS v4.0</h2>
+                        <h2 className="text-xl font-black uppercase tracking-tight text-primary">Nueva Venta</h2>
                         <div className="flex items-center gap-2">
                              <Badge variant="outline" className="text-[9px] font-black uppercase bg-green-50 text-green-600 border-green-200">
-                                <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> Sistema Online
+                                <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> Operativo
                              </Badge>
                              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted border border-border">
                                 <div className={cn("h-2 w-2 rounded-full", storeConfig?.pagoMovil?.phone ? "bg-green-500" : "bg-red-500")} />
-                                <span className="text-[8px] font-black uppercase opacity-60">Pago Móvil {storeConfig?.pagoMovil?.phone ? 'OK' : 'OFF'}</span>
+                                <span className="text-[8px] font-black uppercase opacity-60">Pago Móvil {storeConfig?.pagoMovil?.phone ? 'Habilitado' : 'Pendiente'}</span>
                              </div>
                         </div>
                     </div>
@@ -237,12 +231,12 @@ export default function NewSalePage() {
                         <span className="text-[10px] font-black uppercase opacity-40">Tasa Oficial BCV</span>
                         <span className="text-sm font-black text-primary">Bs. {rates.usd?.usd.toFixed(2)}</span>
                     </div>
-                    <Button variant="outline" className="rounded-xl border-2 font-black text-xs uppercase h-10"><Monitor className="mr-2 h-4 w-4" /> Visor Cliente</Button>
+                    <Button variant="outline" className="rounded-xl border-2 font-black text-xs uppercase h-10"><Monitor className="mr-2 h-4 w-4" /> Pantalla Cliente</Button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 flex-1 overflow-hidden">
-                {/* COLUMNA IZQUIERDA: CARRITO */}
+                {/* CARRITO */}
                 <div className="lg:col-span-7 flex flex-col gap-4 overflow-hidden">
                     <Card className='immersive-card rounded-2xl'>
                         <CardContent className="p-3">
@@ -326,30 +320,28 @@ export default function NewSalePage() {
                     </Card>
                 </div>
 
-                {/* COLUMNA DERECHA: LIQUIDACIÓN POS v4.0 */}
+                {/* LIQUIDACIÓN */}
                 <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
-                    {/* BLOQUE 1: TOTALES MULTIMONEDA */}
-                    <Card className="immersive-card rounded-2xl bg-slate-900 text-white border-none overflow-hidden shadow-2xl">
+                    {/* TOTALES */}
+                    <Card className="immersive-card rounded-2xl bg-white border-2 border-primary/10 overflow-hidden shadow-xl">
                         <CardContent className="p-4 grid grid-cols-3 gap-2">
-                             <div className="flex flex-col border-r border-white/10 pr-2">
-                                <span className="text-[9px] font-black uppercase text-white/40">Bolívares (VES)</span>
-                                <span className="text-xl font-black tracking-tighter">Bs. {formatCurrency(totals.ves)}</span>
+                             <div className="flex flex-col border-r pr-2">
+                                <span className="text-[9px] font-black uppercase text-muted-foreground">Bolívares (VES)</span>
+                                <span className="text-xl font-black tracking-tighter text-slate-900">Bs. {formatCurrency(totals.ves)}</span>
                              </div>
-                             <div className="flex flex-col border-r border-white/10 px-2">
+                             <div className="flex flex-col border-r px-2">
                                 <span className="text-[9px] font-black uppercase text-primary">Dólares (USD)</span>
                                 <span className="text-xl font-black tracking-tighter text-primary">${formatCurrency(totals.usd)}</span>
                              </div>
                              <div className="flex flex-col pl-2">
-                                <span className="text-[9px] font-black uppercase text-white/40">Pesos (COP)</span>
-                                <span className="text-xl font-black tracking-tighter">{totals.cop.toLocaleString()}</span>
+                                <span className="text-[9px] font-black uppercase text-muted-foreground">Pesos (COP)</span>
+                                <span className="text-xl font-black tracking-tighter text-slate-700">{totals.cop.toLocaleString()}</span>
                              </div>
                         </CardContent>
                     </Card>
 
-                    {/* BLOQUE 2: CLIENTE Y MÉTODOS */}
                     <Card className="immersive-card rounded-2xl flex-1 overflow-hidden flex flex-col">
                         <CardContent className="p-4 space-y-4 flex-1 flex flex-col">
-                            {/* Selector de Cliente */}
                             <div className="flex items-center gap-3">
                                 <div className="flex-1">
                                     <CustomerSearch onCustomerSelect={(c) => {
@@ -370,9 +362,8 @@ export default function NewSalePage() {
 
                             <Separator />
 
-                            {/* Métodos de Pago (Selector Rápido) */}
                             <div className="space-y-3">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Método de Liquidación</Label>
+                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Método de Pago</Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {[
                                         { id: 'Pago Móvil', icon: Smartphone, color: 'text-primary' },
@@ -410,25 +401,25 @@ export default function NewSalePage() {
                                         <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0">
                                              <img 
                                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
-                                                alt="QR Suiche 7B" className="w-[120px] h-[120px]"
+                                                alt="QR" className="w-[120px] h-[120px]"
                                             />
                                         </div>
                                         <div className="flex-1 space-y-2">
                                             <div className="bg-primary/10 p-2 rounded-lg">
-                                                <p className="text-[10px] font-black uppercase text-primary leading-none">Monto Exacto</p>
+                                                <p className="text-[10px] font-black uppercase text-primary leading-none">Cobro Exacto</p>
                                                 <p className="text-lg font-black text-slate-800">Bs. {formatCurrency(totals.ves)}</p>
                                             </div>
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <Hash className="h-3 w-3 text-muted-foreground" />
                                                     <Input 
-                                                        placeholder="Últimos 6 de Referencia" 
+                                                        placeholder="Ref. (últimos 6)" 
                                                         className="h-8 text-xs font-bold bg-white"
                                                         {...form.register('referenceNumber')}
                                                     />
                                                 </div>
                                                 <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5">
-                                                    {storeConfig?.pagoMovil?.phone || 'Sin cuenta vinculada'}
+                                                    {storeConfig?.pagoMovil?.phone || 'Sin cuenta'}
                                                 </div>
                                             </div>
                                         </div>
@@ -461,7 +452,7 @@ export default function NewSalePage() {
                                                 />
                                             </div>
                                             <div className={cn("rounded-xl p-3 flex flex-col justify-center", change > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground/40")}>
-                                                <span className="text-[8px] font-black uppercase">Vuelto a entregar</span>
+                                                <span className="text-[8px] font-black uppercase">Vuelto</span>
                                                 <span className="text-xl font-black leading-none">
                                                     {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(change)}
                                                 </span>
@@ -499,8 +490,7 @@ export default function NewSalePage() {
                             </div>
                         </CardContent>
 
-                        {/* BLOQUE FINAL: ACCIÓN FIJA */}
-                        <div className="p-4 bg-slate-100 border-t">
+                        <div className="p-4 bg-muted/20 border-t">
                              <Button 
                                 type="button"
                                 onClick={handleFinalizeSale}
@@ -508,7 +498,7 @@ export default function NewSalePage() {
                                 className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all border-none"
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <Printer className="mr-3 h-6 w-6" />}
-                                FINALIZAR Y FACTURAR (F4)
+                                CERRAR VENTA (F4)
                             </Button>
                         </div>
                     </Card>
