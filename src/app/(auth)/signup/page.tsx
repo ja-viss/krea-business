@@ -8,7 +8,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,10 +99,9 @@ export default function SignupPage() {
 
   return (
       <form onSubmit={handleSignup}>
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-black uppercase tracking-tighter">Únete a Krea</CardTitle>
-          <CardDescription className='font-medium'>
-            {isGlobalAdmin ? 'Configura el acceso maestro del desarrollador' : 'Crea tu tienda y gestiona tu negocio'}
+        <CardHeader className="space-y-1 text-center pt-8">
+          <CardDescription className='font-bold text-sm uppercase tracking-widest text-primary/60'>
+            {isGlobalAdmin ? 'Configuración de Acceso Maestro' : 'Creación de Nueva Entidad Empresarial'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -130,7 +128,7 @@ export default function SignupPage() {
               {!isGlobalAdmin && (
                 <>
                     <div className="space-y-2">
-                      <Label htmlFor="business-name" className="text-xs font-bold uppercase">Nombre de tu Negocio</Label>
+                      <Label htmlFor="business-name" className="text-[10px] font-black uppercase">Nombre de tu Negocio</Label>
                       <Input
                         id="business-name"
                         placeholder="Ej: Inversiones Javis"
@@ -138,13 +136,13 @@ export default function SignupPage() {
                         value={businessName}
                         onChange={(e) => setBusinessName(e.target.value)}
                         disabled={loading}
-                        className="font-medium"
+                        className="font-medium h-11"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="role" className="text-xs font-bold uppercase">Tu Cargo</Label>
+                      <Label htmlFor="role" className="text-[10px] font-black uppercase">Tu Cargo</Label>
                       <Select value={role} onValueChange={setRole} disabled={loading}>
-                        <SelectTrigger className="font-bold">
+                        <SelectTrigger className="font-bold h-11">
                             <SelectValue placeholder="Selecciona tu cargo" />
                         </SelectTrigger>
                         <SelectContent>
@@ -160,7 +158,7 @@ export default function SignupPage() {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="admin-name" className="text-xs font-bold uppercase">Nombre del Responsable</Label>
+                <Label htmlFor="admin-name" className="text-[10px] font-black uppercase">Nombre del Responsable</Label>
                 <Input
                   id="admin-name"
                   placeholder="Ej: Javier Rodríguez"
@@ -168,12 +166,12 @@ export default function SignupPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
-                  className="font-medium"
+                  className="font-medium h-11"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-bold uppercase">Usuario / Email</Label>
+                <Label htmlFor="email" className="text-[10px] font-black uppercase">Usuario / Login</Label>
                 <Input
                   id="email"
                   type="text"
@@ -182,12 +180,12 @@ export default function SignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  className="font-mono"
+                  className="font-mono h-11"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs font-bold uppercase">Contraseña</Label>
+                <Label htmlFor="password" className="text-[10px] font-black uppercase">Contraseña</Label>
                 <Input
                   id="password"
                   type="password"
@@ -195,6 +193,7 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
+                  className="h-11"
                 />
               </div>
           </div>

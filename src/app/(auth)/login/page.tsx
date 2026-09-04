@@ -8,7 +8,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,9 +66,8 @@ export default function LoginPage() {
 
   return (
     <form onSubmit={handleLogin}>
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-black uppercase tracking-tighter">Krea Business</CardTitle>
-        <CardDescription className="font-medium text-sm">
+      <CardHeader className="space-y-1 text-center pt-8">
+        <CardDescription className="font-bold text-sm uppercase tracking-widest text-primary/60">
           Acceso al Ecosistema Empresarial
         </CardDescription>
       </CardHeader>
@@ -86,7 +84,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
-            className="font-medium"
+            className="font-medium h-11"
           />
         </div>
         <div className="space-y-2">
@@ -108,6 +106,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
+            className="h-11"
           />
         </div>
       </CardContent>
