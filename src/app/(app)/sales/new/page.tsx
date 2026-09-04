@@ -44,7 +44,10 @@ import {
     PlayCircle,
     X,
     Scale,
-    Monitor
+    Monitor,
+    UserCheck,
+    WifiOff,
+    Usb
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -90,10 +93,19 @@ export default function NewSalePage() {
   const [isClient, setIsClient] = useState(false);
   const [readingScale, setReadingScale] = useState<string | null>(null);
   
+  // Estados de Hardware
+  const [isScaleConnected, setIsScaleConnected] = useState(false);
+  const [isPrinterConnected, setIsPrinterConnected] = useState(false);
+  
   const productSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
+    // Simulación de detección de hardware (en prod verificaría puertos vinculados)
+    const scaleConfig = localStorage.getItem('hardware_scale');
+    const printerConfig = localStorage.getItem('hardware_printer');
+    if (scaleConfig) setIsScaleConnected(true);
+    if (printerConfig) setIsPrinterConnected(true);
   }, []);
 
   const form = useForm<SaleFormValues>({
@@ -137,6 +149,10 @@ export default function NewSalePage() {
   };
 
   const handleWeightCapture = (index: number) => {
+      if (!isScaleConnected) {
+          toast({ variant: 'destructive', title: "Hardware no listo", description: "Vincule la balanza en Configuración > Hardware." });
+          return;
+      }
       setReadingScale(fields[index].productId);
       setTimeout(() => {
           const simulatedWeight = (Math.random() * 2 + 0.5).toFixed(3);
@@ -158,8 +174,6 @@ export default function NewSalePage() {
     return { totalVES: ves, totalUSD: usd };
   }, [watchItems, rates]);
 
-  const changeAmount = Math.max(0, (watchAmountReceived || 0) - (watchPaymentCurrency === 'VES' ? totalVES : totalUSD));
-
   const onSubmit = async (data: SaleFormValues) => {
     setIsSubmitting(true);
     try {
@@ -169,11 +183,14 @@ export default function NewSalePage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...data, storeId }),
         });
-        if (!response.ok) throw new Error("Error en servidor");
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || "Error en servidor");
+        }
         const result = await response.json();
         router.push(`/sales/${result._id}/invoice?print=true`);
-    } catch (e) {
-        toast({ variant: 'destructive', title: 'Error POS' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error POS', description: e.message });
     } finally {
         setIsSubmitting(false);
     }
@@ -184,7 +201,7 @@ export default function NewSalePage() {
        <main className="flex-1 space-y-4 p-4 md:px-8 pt-6 pb-24 overflow-y-auto">
             <PageHeader
                 title="POS Industrial"
-                description="Integrado con Balanza y Visor de Cliente."
+                description="Terminal de alta velocidad orientada a teclado."
                 actions={
                     <div className='flex gap-2'>
                         <Button variant="outline" className='bg-primary/5 text-primary border-primary/20'>
@@ -195,9 +212,9 @@ export default function NewSalePage() {
                 }
             />
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 <div className="lg:col-span-8 space-y-4">
-                    <Card className='shadow-lg border-2'>
+                    <Card className='shadow-lg border-2 overflow-visible z-[50]'>
                         <CardContent className="pt-6">
                             <ProductSearch inputRef={productSearchRef} onProductSelect={handleProductSelect} />
                         </CardContent>
@@ -215,7 +232,7 @@ export default function NewSalePage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {fields.map((item, index) => (
+                                    {fields.length > 0 ? fields.map((item, index) => (
                                         <TableRow key={item.id} className='group'>
                                             <TableCell className="pl-4">
                                                 <div className='flex flex-col'>
@@ -252,7 +269,13 @@ export default function NewSalePage() {
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className='h-40 text-center text-muted-foreground italic font-medium'>
+                                                Presione F1 o empiece a escribir para buscar productos...
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>
@@ -260,9 +283,40 @@ export default function NewSalePage() {
                 </div>
 
                 <div className="lg:col-span-4 space-y-4">
+                    {/* MODULO DE CLIENTE REINCORPORADO */}
+                    <Card className='shadow-lg border-2 border-dashed overflow-visible z-[40]'>
+                        <CardHeader className='pb-2'>
+                            <CardTitle className='text-[10px] font-black uppercase text-muted-foreground flex items-center gap-2'>
+                                <UserCheck className='h-3 w-3' /> Cliente (F2)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <CustomerSearch onCustomerSelect={(c) => {
+                                form.setValue('customerId', c._id);
+                                form.setValue('customerName', c.name);
+                                setSelectedCustomer(c);
+                            }} />
+                            {selectedCustomer && (
+                                <div className='mt-2 flex items-center justify-between p-2 bg-primary/5 rounded-lg border border-primary/20'>
+                                    <div className='flex flex-col'>
+                                        <span className='text-[10px] font-black uppercase text-primary leading-tight'>{selectedCustomer.name}</span>
+                                        <span className='text-[8px] font-mono opacity-60'>{selectedCustomer.idNumber}</span>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className='h-5 w-5 text-red-500' onClick={() => {
+                                        form.setValue('customerId', undefined);
+                                        form.setValue('customerName', 'Cliente Contado');
+                                        setSelectedCustomer(null);
+                                    }}>
+                                        <X className='h-3 w-3' />
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     <Card className='shadow-2xl border-4 border-primary/30 bg-primary/[0.02]'>
                         <CardHeader className='pb-2 bg-primary/10 border-b border-primary/20'>
-                            <CardTitle className='text-lg font-black uppercase italic text-primary'>Cobro POS</CardTitle>
+                            <CardTitle className='text-lg font-black uppercase italic text-primary'>Total Cobro (F4)</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-4">
                             <div className="p-4 bg-white rounded-xl border-2 shadow-inner space-y-4">
@@ -272,11 +326,11 @@ export default function NewSalePage() {
                                 </div>
                                 <div className='flex justify-between items-center'>
                                     <span className='text-[10px] font-black uppercase opacity-40 italic'>Impuestos (IVA)</span>
-                                    <span className='font-bold'>Incluido</span>
+                                    <span className='font-bold text-green-600'>Incluido</span>
                                 </div>
                                 <Separator />
                                 <div className='flex justify-between items-end'>
-                                    <span className='text-xs font-black uppercase text-primary'>Total a Cobrar</span>
+                                    <span className='text-xs font-black uppercase text-primary'>Total a Pagar</span>
                                     <div className='text-right'>
                                         <p className='text-4xl font-black text-primary tracking-tighter leading-none'>
                                             {totalVES.toLocaleString('es-VE')} <span className='text-sm'>BS</span>
@@ -285,6 +339,37 @@ export default function NewSalePage() {
                                             ≈ ${totalUSD.toFixed(2)}
                                         </p>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className='grid grid-cols-2 gap-2'>
+                                <div className='space-y-1'>
+                                    <Label className='text-[9px] font-black uppercase opacity-60'>Método de Pago</Label>
+                                    <Select 
+                                        defaultValue="Efectivo" 
+                                        onValueChange={(val: any) => form.setValue('paymentMethod', val)}
+                                    >
+                                        <SelectTrigger className='font-bold'><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Efectivo" className='font-bold'>EFECTIVO</SelectItem>
+                                            <SelectItem value="Tarjeta" className='font-bold'>TARJETA POS</SelectItem>
+                                            <SelectItem value="Pago Móvil" className='font-bold'>PAGO MÓVIL</SelectItem>
+                                            <SelectItem value="Transferencia" className='font-bold'>TRANSFERENCIA</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className='space-y-1'>
+                                    <Label className='text-[9px] font-black uppercase opacity-60'>Moneda Pago</Label>
+                                    <Select 
+                                        defaultValue="VES" 
+                                        onValueChange={(val: any) => form.setValue('paymentCurrency', val)}
+                                    >
+                                        <SelectTrigger className='font-bold'><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="VES" className='font-bold'>BOLÍVARES</SelectItem>
+                                            <SelectItem value="USD" className='font-bold'>DÓLARES</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                             
@@ -306,12 +391,34 @@ export default function NewSalePage() {
        <footer className="fixed bottom-0 w-full bg-black text-white py-2 px-6 flex items-center justify-between z-50 border-t-4 border-primary">
             <div className='flex gap-8'>
                 <div className='flex gap-2 items-center'>
-                    <Badge className='bg-primary font-black'>USB</Badge>
-                    <span className='text-[10px] font-bold uppercase tracking-tighter opacity-80'>Balanza Conectada</span>
+                    <Badge className={cn("font-black", isScaleConnected ? "bg-primary" : "bg-red-600")}>
+                        {isScaleConnected ? "USB" : "OFF"}
+                    </Badge>
+                    <span className='text-[10px] font-bold uppercase tracking-tighter opacity-80'>
+                        {isScaleConnected ? "Balanza Conectada" : "Balanza Desconectada"}
+                    </span>
                 </div>
                 <div className='flex gap-2 items-center'>
-                    <Badge className='bg-green-600 font-black'>NET</Badge>
-                    <span className='text-[10px] font-bold uppercase tracking-tighter opacity-80'>Impresora Red OK</span>
+                    <Badge className={cn("font-black", isPrinterConnected ? "bg-green-600" : "bg-red-600")}>
+                        {isPrinterConnected ? "NET" : "OFF"}
+                    </Badge>
+                    <span className='text-[10px] font-bold uppercase tracking-tighter opacity-80'>
+                        {isPrinterConnected ? "Impresora Red OK" : "Impresora Desconectada"}
+                    </span>
+                </div>
+            </div>
+            <div className='hidden sm:flex gap-4'>
+                <div className='flex items-center gap-1.5 opacity-60'>
+                    <Badge variant="outline" className='text-white border-white/20 text-[9px]'>F1</Badge>
+                    <span className='text-[9px] font-black uppercase'>PRODUCTO</span>
+                </div>
+                <div className='flex items-center gap-1.5 opacity-60'>
+                    <Badge variant="outline" className='text-white border-white/20 text-[9px]'>F2</Badge>
+                    <span className='text-[9px] font-black uppercase'>CLIENTE</span>
+                </div>
+                <div className='flex items-center gap-1.5 opacity-60'>
+                    <Badge variant="outline" className='text-white border-white/20 text-[9px]'>F4</Badge>
+                    <span className='text-[9px] font-black uppercase'>COBRAR</span>
                 </div>
             </div>
             <div className='bg-white/10 px-4 py-1 rounded font-mono text-xs font-black'>
@@ -321,3 +428,4 @@ export default function NewSalePage() {
     </div>
   );
 }
+
