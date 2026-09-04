@@ -1,5 +1,9 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
+
+import mongoose, { Document, Types } from 'mongoose';
 import { IStore } from './Store';
+import { ExpenseSchema } from './schemas/ExpenseSchema';
+
+export { ExpenseSchema };
 
 export interface IExpense extends Document {
   store: Types.ObjectId | IStore;
@@ -10,16 +14,6 @@ export interface IExpense extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
-export const ExpenseSchema: Schema = new Schema({
-  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
-  category: { type: String, required: true },
-  description: { type: String, required: true },
-  amount: { type: Number, required: true },
-  date: { type: Date, required: true },
-}, {
-  timestamps: true
-});
 
 const ExpenseModel = (mongoose.models.Expense || mongoose.model<IExpense>('Expense', ExpenseSchema)) as mongoose.Model<IExpense>;
 

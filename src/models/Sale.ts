@@ -1,14 +1,18 @@
+
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { IStore } from './Store';
 import { ICustomer } from './Customer';
 import { IProduct } from './Product';
+import { SaleSchema } from './schemas/SaleSchema';
+
+export { SaleSchema };
 
 interface ISaleItem {
   product: Types.ObjectId | IProduct;
   name: string;
   quantity: number;
-  price: number; // Price in VES at the time of sale
-  taxRate: number; // Tax rate at the time of sale
+  price: number; 
+  taxRate: number; 
 }
 
 export interface ISale extends Document {
@@ -25,7 +29,7 @@ export interface ISale extends Document {
     general: number;
     reduced: number;
   };
-  totalAmount: number; // Monto total (subtotal + iva) en VES
+  totalAmount: number;
   items: ISaleItem[];
   paymentMethod: 'Efectivo' | 'Tarjeta' | 'Transferencia' | 'Pago Móvil';
   paymentReference?: string;
@@ -45,40 +49,6 @@ const SaleCounterV2Schema = new Schema({
 
 SaleCounterV2Schema.index({ storeId: 1 }, { unique: true });
 export const SaleCounterV2Model = (mongoose.models.SaleCounterV2 || mongoose.model('SaleCounterV2', SaleCounterV2Schema));
-
-
-const SaleItemSchema: Schema = new Schema({
-    product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
-    name: { type: String, required: true },
-    quantity: { type: Number, required: true },
-    price: { type: Number, required: true },
-    taxRate: { type: Number, required: true },
-});
-
-export const SaleSchema: Schema = new Schema({
-  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
-  invoiceNumber: { type: Number, required: true },
-  customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
-  customerName: { type: String, required: true },
-  subtotals: {
-    exempt: { type: Number, default: 0 },
-    general: { type: Number, default: 0 },
-    reduced: { type: Number, default: 0 },
-  },
-  taxDetails: {
-    general: { type: Number, default: 0 },
-    reduced: { type: Number, default: 0 },
-  },
-  totalAmount: { type: Number, required: true },
-  items: [SaleItemSchema],
-  paymentMethod: { type: String, enum: ['Efectivo', 'Tarjeta', 'Transferencia', 'Pago Móvil'], required: true },
-  paymentReference: { type: String },
-  status: { type: String, enum: ['Pagado', 'Pendiente', 'Atrasado', 'Anulado'], required: true, default: 'Pagado' },
-}, {
-  timestamps: true
-});
-
-SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
 
 const SaleModel = (mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)) as mongoose.Model<ISale>;
 
