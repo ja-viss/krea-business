@@ -2,29 +2,22 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function Logo({ className }: { className?: string }) {
-  // Placeholder de alta calidad como respaldo inmediato
-  const logoPlaceholder = PlaceHolderImages.find(img => img.id === 'krea-logo-placeholder')?.imageUrl || 'https://placehold.co/600x200/0047AB/white?text=KREA+BUSINESS';
-
   return (
-    <div className={cn('flex items-center justify-center p-2', className)}>
-      <div className="relative flex items-center justify-center">
-        <img
-          // Intentamos cargar la imagen física
-          src="/img/krealogo.png"
-          alt="Krea Business"
-          // Tamaño masivo para impacto visual
-          className="h-32 md:h-40 w-auto object-contain transition-all duration-300"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            // Si falla la carga de la imagen local, aplicamos el placeholder sin parpadeos
-            if (target.src !== logoPlaceholder) {
-              target.src = logoPlaceholder;
-            }
-          }}
-        />
+    <div className={cn('flex items-center justify-center p-2 select-none', className)}>
+      <div className="flex flex-col items-center justify-center group">
+        {/* Texto principal con estética moderna y audaz */}
+        <span className="text-6xl md:text-7xl font-black tracking-tighter text-primary italic transform -skew-x-2 transition-transform duration-300 group-hover:scale-105">
+          KREA
+        </span>
+        {/* Detalle visual de subrayado tecnológico */}
+        <div className="h-2 w-16 bg-primary mt-[-8px] rounded-full self-end mr-2 shadow-sm shadow-primary/20" />
+        
+        {/* Subtexto sutil opcional para dar contexto de producto */}
+        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/40 mt-1 ml-4">
+          BUSINESS
+        </span>
       </div>
     </div>
   );
