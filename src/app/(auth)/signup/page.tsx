@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
 } from '@/components/ui/card';
@@ -99,10 +98,8 @@ export default function SignupPage() {
 
   return (
       <form onSubmit={handleSignup}>
-        <CardHeader className="space-y-1 text-center pt-8">
-          <CardDescription className='font-bold text-sm uppercase tracking-widest text-primary/60'>
-            {isGlobalAdmin ? 'Configuración de Acceso Maestro' : 'Creación de Nueva Entidad Empresarial'}
-          </CardDescription>
+        <CardHeader className="space-y-1 text-center pt-4">
+          {/* Texto eliminado para dejar protagonismo al Logo */}
         </CardHeader>
         <CardContent className="space-y-4">
           

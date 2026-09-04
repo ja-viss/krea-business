@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
 } from '@/components/ui/card';
@@ -66,10 +65,8 @@ export default function LoginPage() {
 
   return (
     <form onSubmit={handleLogin}>
-      <CardHeader className="space-y-1 text-center pt-8">
-        <CardDescription className="font-bold text-sm uppercase tracking-widest text-primary/60">
-          Acceso al Ecosistema Empresarial
-        </CardDescription>
+      <CardHeader className="space-y-1 text-center pt-4">
+        {/* Texto eliminado para dejar protagonismo al Logo */}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">

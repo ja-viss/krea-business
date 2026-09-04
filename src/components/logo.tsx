@@ -5,20 +5,21 @@ import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export function Logo({ className }: { className?: string }) {
-  // Obtenemos el placeholder de seguridad para evitar el estado de "cargando infinito"
+  // Placeholder de alta calidad como respaldo inmediato
   const logoPlaceholder = PlaceHolderImages.find(img => img.id === 'krea-logo-placeholder')?.imageUrl || 'https://placehold.co/600x200/0047AB/white?text=KREA+BUSINESS';
 
   return (
-    <div className={cn('flex items-center justify-center p-4', className)}>
+    <div className={cn('flex items-center justify-center p-2', className)}>
       <div className="relative flex items-center justify-center">
         <img
-          // Intentamos cargar la imagen física del sistema
+          // Intentamos cargar la imagen física
           src="/img/krealogo.png"
           alt="Krea Business"
-          className="h-28 w-auto md:h-32 object-contain transition-all duration-500 ease-in-out"
-          // Si la imagen física no existe o falla, cargamos el placeholder instantáneamente
+          // Tamaño masivo para impacto visual
+          className="h-32 md:h-40 w-auto object-contain transition-all duration-300"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
+            // Si falla la carga de la imagen local, aplicamos el placeholder sin parpadeos
             if (target.src !== logoPlaceholder) {
               target.src = logoPlaceholder;
             }
