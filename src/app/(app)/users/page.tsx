@@ -25,6 +25,7 @@ import { MoreHorizontal, AlertTriangle, UserCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
+import { NewUserDialog } from '@/components/users/new-user-dialog';
 
 interface Role {
   _id: string;
@@ -48,10 +49,11 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [isGlobal, setIsGlobal] = useState(false);
   const [search, setSearch] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
+  const fetchUsers = async () => {
       try {
+        setLoading(true);
         const storeId = localStorage.getItem('storeId');
         const isMaster = localStorage.getItem('isGlobalAdmin') === 'true';
         setIsGlobal(isMaster);
@@ -73,6 +75,7 @@ export default function UsersPage() {
       }
     };
 
+  useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -90,11 +93,17 @@ export default function UsersPage() {
           description={isGlobal ? "Administra el acceso de todos los usuarios registrados en la plataforma." : "Gestiona los usuarios y roles de tu tienda."}
           actions={
             !isGlobal && (
-                <Button className="font-bold">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Registrar Usuario
+                <Button className="font-bold" onClick={() => setIsDialogOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Registrar Empleado
                 </Button>
             )
           }
+        />
+
+        <NewUserDialog 
+            isOpen={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            onUserAdded={fetchUsers}
         />
 
         <div className="flex items-center gap-2 max-w-sm">

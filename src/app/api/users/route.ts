@@ -3,6 +3,7 @@ import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
 import StoreModel from '@/models/Store';
 import RoleModel from '@/models/Role';
+import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 export async function GET(req: NextRequest) {
@@ -40,7 +41,44 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('Error al obtener los usuarios:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor.';
-    return NextResponse.json({ message: 'Error al obtener los usuarios.', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Error al obtener los usuarios.' }, { status: 500 });
   }
+}
+
+export async function POST(req: NextRequest) {
+    try {
+        await dbConnect();
+        const body = await req.json();
+        const { name, email, password, roleId, storeId } = body;
+
+        if (!name || !email || !password || !roleId || !storeId) {
+            return NextResponse.json({ message: 'Todos los campos son obligatorios.' }, { status: 400 });
+        }
+
+        // Verificar si el usuario ya existe
+        const existingUser = await UserModel.findOne({ email: email.trim().toLowerCase() });
+        if (existingUser) {
+            return NextResponse.json({ message: 'Este correo electrónico ya está registrado.' }, { status: 409 });
+        }
+
+        // Cifrar contraseña
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = new UserModel({
+            store: storeId,
+            name,
+            email: email.trim().toLowerCase(),
+            password: hashedPassword,
+            role: roleId,
+            active: true,
+            isGlobalAdmin: false
+        });
+
+        await newUser.save();
+
+        return NextResponse.json({ message: 'Usuario registrado con éxito.' }, { status: 201 });
+    } catch (error: any) {
+        console.error('Error al crear usuario:', error);
+        return NextResponse.json({ message: 'Error interno del servidor.' }, { status: 500 });
+    }
 }
