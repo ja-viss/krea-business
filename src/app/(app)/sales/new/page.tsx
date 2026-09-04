@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,9 @@ import {
     Banknote,
     Coins,
     Zap,
-    CheckCircle2
+    CheckCircle2,
+    ShieldCheck,
+    Hash
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -34,7 +36,6 @@ import { Form } from '@/components/ui/form';
 import { CustomerSearch } from '@/components/sales/customer-search';
 import { ICustomer } from '@/models/Customer';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +53,7 @@ const saleSchema = z.object({
   paymentMethod: z.string().default('Efectivo'),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).default('USD'),
   amountReceived: z.string().default(''),
+  referenceNumber: z.string().optional(),
 });
 
 export default function NewSalePage() {
@@ -71,6 +73,7 @@ export default function NewSalePage() {
       paymentMethod: 'Efectivo',
       paymentCurrency: 'USD',
       amountReceived: '',
+      referenceNumber: '',
     },
   });
 
@@ -83,6 +86,10 @@ export default function NewSalePage() {
   const watchMethod = form.watch('paymentMethod');
   const watchCurrency = form.watch('paymentCurrency');
   const watchAmountReceived = form.watch('amountReceived');
+
+  // Formateadores estrictos de 2 decimales
+  const formatCurrency = (val: number) => 
+    new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
   useEffect(() => {
     const fetchStoreConfig = async () => {
@@ -103,6 +110,41 @@ export default function NewSalePage() {
     return () => window.removeEventListener('keydown', handleGlobalKeys);
   }, []);
 
+  const totals = useMemo(() => {
+    let general = 0;
+    let exempt = 0;
+    watchItems.forEach(i => {
+        const sub = i.price * i.quantity;
+        if (i.taxRate === 0) exempt += sub; else general += sub;
+    });
+    // Aplicar redondeo a 2 decimales en cada paso intermedio
+    const ves = Math.round(((general * 1.16) + exempt) * 100) / 100;
+    const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
+    const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; // Pesos suelen redondearse a centenas
+    return { ves, usd, cop };
+  }, [watchItems, rates]);
+
+  const targetAmount = useMemo(() => {
+      if (watchCurrency === 'VES') return totals.ves;
+      if (watchCurrency === 'COP') return totals.cop;
+      return totals.usd;
+  }, [watchCurrency, totals]);
+
+  const allowsChange = ['Efectivo'].includes(watchMethod);
+
+  // Auto-completar monto al cambiar método
+  useEffect(() => {
+    if (!allowsChange) {
+        form.setValue('amountReceived', targetAmount.toFixed(2));
+    }
+  }, [watchMethod, targetAmount, allowsChange]);
+
+  const change = useMemo(() => {
+      if (!allowsChange) return 0;
+      const received = parseFloat(watchAmountReceived) || 0;
+      return Math.max(0, received - targetAmount);
+  }, [watchAmountReceived, targetAmount, allowsChange]);
+
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
     const existing = fields.findIndex(item => item.productId === String(product._id));
     if (existing > -1) {
@@ -119,33 +161,9 @@ export default function NewSalePage() {
     }
   };
 
-  const totals = useMemo(() => {
-    let general = 0;
-    let exempt = 0;
-    watchItems.forEach(i => {
-        const sub = i.price * i.quantity;
-        if (i.taxRate === 0) exempt += sub; else general += sub;
-    });
-    const ves = (general * 1.16) + exempt;
-    const usd = rates.usd?.usd ? ves / rates.usd.usd : 0;
-    const cop = rates.cop?.rate ? (usd * rates.cop.rate) : 0;
-    return { ves, usd, cop };
-  }, [watchItems, rates]);
-
-  const targetAmount = useMemo(() => {
-      if (watchCurrency === 'VES') return totals.ves;
-      if (watchCurrency === 'COP') return totals.cop;
-      return totals.usd;
-  }, [watchCurrency, totals]);
-
-  const change = useMemo(() => {
-      const received = parseFloat(watchAmountReceived) || 0;
-      return Math.max(0, received - targetAmount);
-  }, [watchAmountReceived, targetAmount]);
-
   const handleFinalizeSale = async () => {
     if (watchItems.length === 0) return;
-    if ((parseFloat(watchAmountReceived) || 0) < targetAmount * 0.99) {
+    if ((parseFloat(watchAmountReceived) || 0) < targetAmount * 0.999) {
         toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago recibido es menor al total.' });
         return;
     }
@@ -181,253 +199,278 @@ export default function NewSalePage() {
 
   return (
     <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
-       <main className="flex-1 p-4 md:px-8 pt-6 pb-12 overflow-hidden flex flex-col gap-6">
-            <PageHeader
-                title="POS Multimoneda"
-                description="Terminal inmersiva de alta velocidad."
-                actions={
-                    <div className='flex gap-2'>
-                        <Button variant="outline" className='bg-primary/5 text-primary border-primary/20 rounded-full'>
-                            <Monitor className='mr-2 h-4 w-4' /> Visor Cliente
-                        </Button>
-                        <Button variant="ghost" asChild className="rounded-full"><Link href="/sales"><ChevronLeft className="mr-1 h-4 w-4" /> Salir</Link></Button>
+       <main className="flex-1 p-4 md:px-6 pt-4 pb-6 overflow-hidden flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
+                    <div>
+                        <h2 className="text-xl font-black uppercase tracking-tighter italic">Terminal POS v4.0</h2>
+                        <div className="flex items-center gap-2">
+                             <Badge variant="outline" className="text-[9px] font-black uppercase bg-green-50 text-green-600 border-green-200">
+                                <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> Sistema Online
+                             </Badge>
+                             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted border border-border">
+                                <div className={cn("h-2 w-2 rounded-full", storeConfig?.pagoMovil?.phone ? "bg-green-500" : "bg-red-500")} />
+                                <span className="text-[8px] font-black uppercase opacity-60">Pago Móvil {storeConfig?.pagoMovil?.phone ? 'OK' : 'OFF'}</span>
+                             </div>
+                        </div>
                     </div>
-                }
-            />
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="hidden sm:flex flex-col items-end mr-4">
+                        <span className="text-[10px] font-black uppercase opacity-40">Tasa Oficial BCV</span>
+                        <span className="text-sm font-black text-primary">Bs. {rates.usd?.usd.toFixed(2)}</span>
+                    </div>
+                    <Button variant="outline" className="rounded-xl border-2 font-black text-xs uppercase h-10"><Monitor className="mr-2 h-4 w-4" /> Visor</Button>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 flex-1 overflow-hidden">
-                {/* COLUMNA IZQUIERDA: PRODUCTOS */}
-                <div className="lg:col-span-8 flex flex-col gap-4 overflow-hidden">
+                {/* COLUMNA IZQUIERDA: CARRITO */}
+                <div className="lg:col-span-7 flex flex-col gap-4 overflow-hidden">
                     <Card className='immersive-card rounded-2xl'>
-                        <CardContent className="pt-6">
+                        <CardContent className="p-3">
                             <ProductSearch inputRef={productSearchRef} onProductSelect={handleProductSelect} />
                         </CardContent>
                     </Card>
 
                     <Card className="immersive-card rounded-2xl flex-1 overflow-hidden">
                         <CardContent className="p-0 h-full">
-                            <Table>
-                                <TableHeader className='bg-muted/30 sticky top-0 z-10'>
-                                    <TableRow>
-                                        <TableHead className="pl-6 font-black uppercase text-[10px]">Item</TableHead>
-                                        <TableHead className="text-center font-black uppercase text-[10px]">Cant</TableHead>
-                                        <TableHead className="text-right pr-6 font-black uppercase text-[10px]">Subtotal</TableHead>
-                                        <TableHead className="w-[60px]"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {fields.length > 0 ? fields.map((item, index) => (
-                                        <TableRow key={item.id} className="hover:bg-muted/20 border-b">
-                                            <TableCell className="pl-6 py-4">
-                                                <div className='flex flex-col'>
-                                                    <span className='font-black uppercase text-xs tracking-tight'>{item.name}</span>
-                                                    <span className='text-[10px] text-muted-foreground'>Bs. {item.price.toLocaleString()}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className='text-center'>
-                                                <Input 
-                                                    type="number" 
-                                                    className='w-16 h-9 text-center font-black mx-auto bg-muted/30 border-none' 
-                                                    {...form.register(`items.${index}.quantity`)} 
-                                                />
-                                            </TableCell>
-                                            <TableCell className="text-right pr-6 font-black text-primary">
-                                                {(item.price * item.quantity).toLocaleString('es-VE')}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => remove(index)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : (
+                            <div className="overflow-auto h-full">
+                                <Table>
+                                    <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                                         <TableRow>
-                                            <TableCell colSpan={4} className='h-60 text-center text-muted-foreground'>
-                                                <div className="flex flex-col items-center gap-3">
-                                                    <Zap className="h-12 w-12 opacity-10" />
-                                                    <p className="font-bold uppercase text-xs tracking-widest opacity-40">Escanea o busca un producto para comenzar</p>
-                                                </div>
-                                            </TableCell>
+                                            <TableHead className="pl-6 font-black uppercase text-[10px]">Producto</TableHead>
+                                            <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
+                                            <TableHead className="text-right pr-6 font-black uppercase text-[10px]">Total</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {fields.length > 0 ? fields.map((item, index) => (
+                                            <TableRow key={item.id} className="hover:bg-muted/20 border-b group">
+                                                <TableCell className="pl-6 py-3">
+                                                    <div className='flex flex-col'>
+                                                        <span className='font-black uppercase text-[11px] leading-tight'>{item.name}</span>
+                                                        <span className='text-[9px] text-muted-foreground font-mono'>Bs. {formatCurrency(item.price)}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className='text-center'>
+                                                    <Input 
+                                                        type="number" 
+                                                        className='w-14 h-8 text-center font-black mx-auto bg-muted/50 border-none rounded-lg' 
+                                                        {...form.register(`items.${index}.quantity`)} 
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6 font-black text-sm text-slate-800">
+                                                    {formatCurrency(item.price * item.quantity)}
+                                                </TableCell>
+                                                <TableCell className="pr-4">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => remove(index)}>
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className='h-60 text-center'>
+                                                    <div className="flex flex-col items-center gap-3 opacity-20">
+                                                        <div className="p-6 bg-muted rounded-full">
+                                                            <Zap className="h-10 w-10 fill-current" />
+                                                        </div>
+                                                        <p className="font-black uppercase text-[10px] tracking-[0.2em]">Caja vacía. Iniciar escaneo.</p>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* COLUMNA DERECHA: LIQUIDACIÓN (COBRO SIEMPRE VISIBLE) */}
-                <div className="lg:col-span-4 flex flex-col gap-4 overflow-y-auto pr-1">
-                    {/* SECCIÓN CLIENTE */}
-                    <Card className='immersive-card rounded-2xl'>
-                        <CardHeader className='pb-2'>
-                            <CardTitle className='text-[10px] font-black uppercase text-muted-foreground flex items-center gap-2'>
-                                <UserCheck className='h-3 w-3' /> Cliente (F2)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <CustomerSearch onCustomerSelect={(c) => {
-                                form.setValue('customerId', c._id);
-                                form.setValue('customerName', c.name);
-                                setSelectedCustomer(c);
-                            }} />
-                            {selectedCustomer && (
-                                <div className='mt-3 flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95'>
-                                    <div className='flex flex-col'>
-                                        <span className='text-[10px] font-black uppercase text-primary leading-none'>{selectedCustomer.name}</span>
-                                        <span className='text-[8px] font-mono mt-1'>{selectedCustomer.idNumber}</span>
-                                    </div>
-                                    <Button variant="ghost" size="icon" className='h-6 w-6 text-red-500' onClick={() => {
-                                        form.setValue('customerId', undefined);
-                                        form.setValue('customerName', 'Cliente Contado');
-                                        setSelectedCustomer(null);
-                                    }}><X className='h-4 w-4'/></Button>
-                                </div>
-                            )}
+                {/* COLUMNA DERECHA: LIQUIDACIÓN COMPACTA */}
+                <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
+                    {/* BLOQUE 1: TOTALES MULTIMONEDA */}
+                    <Card className="immersive-card rounded-2xl bg-slate-900 text-white border-none overflow-hidden shadow-2xl">
+                        <CardContent className="p-4 grid grid-cols-3 gap-2">
+                             <div className="flex flex-col border-r border-white/10 pr-2">
+                                <span className="text-[9px] font-black uppercase text-white/40">Bolívares (VES)</span>
+                                <span className="text-xl font-black tracking-tighter">Bs. {formatCurrency(totals.ves)}</span>
+                             </div>
+                             <div className="flex flex-col border-r border-white/10 px-2">
+                                <span className="text-[9px] font-black uppercase text-primary">Dólares (USD)</span>
+                                <span className="text-xl font-black tracking-tighter text-primary">${formatCurrency(totals.usd)}</span>
+                             </div>
+                             <div className="flex flex-col pl-2">
+                                <span className="text-[9px] font-black uppercase text-white/40">Pesos (COP)</span>
+                                <span className="text-xl font-black tracking-tighter">{totals.cop.toLocaleString()}</span>
+                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* SECCIÓN MÉTODOS DE PAGO */}
-                    <Card className='immersive-card rounded-2xl flex-1'>
-                        <CardContent className="pt-6 space-y-6">
-                            <div className="space-y-4">
-                                <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">Forma de Pago</Label>
+                    {/* BLOQUE 2: CLIENTE Y MÉTODOS */}
+                    <Card className="immersive-card rounded-2xl flex-1 overflow-hidden flex flex-col">
+                        <CardContent className="p-4 space-y-4 flex-1 flex flex-col">
+                            {/* Selector de Cliente */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1">
+                                    <CustomerSearch onCustomerSelect={(c) => {
+                                        form.setValue('customerId', c._id);
+                                        form.setValue('customerName', c.name);
+                                        setSelectedCustomer(c);
+                                    }} />
+                                </div>
+                                {selectedCustomer ? (
+                                    <Badge className="bg-primary h-11 px-3 rounded-xl gap-2 font-black uppercase text-[10px]">
+                                        <UserCheck className="h-3.5 w-3.5" /> {selectedCustomer.name.split(' ')[0]}
+                                        <button onClick={() => setSelectedCustomer(null)} className="ml-1 hover:text-red-200"><X size={12} /></button>
+                                    </Badge>
+                                ) : (
+                                    <div className="bg-muted px-4 h-11 flex items-center rounded-xl text-[10px] font-black uppercase opacity-40 italic">Consumidor Final</div>
+                                )}
+                            </div>
+
+                            <Separator />
+
+                            {/* Métodos de Pago (Pills) */}
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Método de Liquidación</Label>
                                 <div className="grid grid-cols-3 gap-2">
                                     {[
-                                        { id: 'Efectivo', icon: Banknote },
-                                        { id: 'Tarjeta', icon: CreditCard },
-                                        { id: 'Pago Móvil', icon: Smartphone },
-                                        { id: 'Zelle', icon: CheckCircle2 },
-                                        { id: 'Transferencia', icon: Monitor },
-                                        { id: 'Binance', icon: Coins },
+                                        { id: 'Pago Móvil', icon: Smartphone, color: 'text-primary' },
+                                        { id: 'Tarjeta', icon: CreditCard, color: 'text-blue-600' },
+                                        { id: 'Efectivo', icon: Banknote, color: 'text-green-600' },
+                                        { id: 'Zelle', icon: CheckCircle2, color: 'text-purple-600' },
+                                        { id: 'Binance', icon: Coins, color: 'text-amber-500' },
+                                        { id: 'Biopago', icon: ShieldCheck, color: 'text-red-500' },
                                     ].map((m) => (
                                         <button 
                                             key={m.id}
                                             className={cn(
-                                                "h-16 flex flex-col items-center justify-center gap-1 rounded-xl transition-all font-black text-[9px] uppercase border-2",
+                                                "h-12 flex items-center gap-2 px-3 rounded-xl transition-all font-black text-[9px] uppercase border-2",
                                                 watchMethod === m.id 
-                                                    ? "border-primary bg-primary/5 text-primary scale-105" 
-                                                    : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted"
+                                                    ? "border-primary bg-primary/5 text-primary" 
+                                                    : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/80"
                                             )}
                                             onClick={() => {
                                                 form.setValue('paymentMethod', m.id);
-                                                if (['Pago Móvil', 'Tarjeta'].includes(m.id)) form.setValue('paymentCurrency', 'VES');
-                                                else if (['Zelle', 'Binance'].includes(m.id)) form.setValue('paymentCurrency', 'USD');
+                                                if (['Efectivo', 'Zelle', 'Binance'].includes(m.id)) form.setValue('paymentCurrency', 'USD');
+                                                else form.setValue('paymentCurrency', 'VES');
                                             }}
                                         >
-                                            <m.icon className={cn("h-5 w-5", watchMethod === m.id ? "text-primary" : "text-muted-foreground")} />
+                                            <m.icon className={cn("h-4 w-4", watchMethod === m.id ? m.color : "text-muted-foreground/40")} />
                                             {m.id}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            <Separator />
-
-                            <div className="space-y-4">
-                                <div className="flex gap-2 p-1 bg-muted/50 rounded-xl h-11 border-2 border-transparent">
-                                    {['USD', 'VES', 'COP'].map((curr: any) => (
-                                        <button 
-                                            key={curr}
-                                            className={cn(
-                                                "flex-1 rounded-lg font-black text-[10px] transition-all",
-                                                watchCurrency === curr ? "bg-white shadow-sm text-primary" : "text-muted-foreground"
-                                            )}
-                                            onClick={() => form.setValue('paymentCurrency', curr)}
-                                        >
-                                            {curr}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase opacity-60">Monto Percibido ({watchCurrency})</Label>
-                                    <div className="relative">
-                                        <Input 
-                                            type="number" 
-                                            className="h-16 text-3xl font-black bg-white rounded-2xl border-2 focus:ring-primary" 
-                                            placeholder="0.00"
-                                            {...form.register('amountReceived')}
-                                        />
-                                        <button 
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 bg-primary/10 text-primary font-black text-[10px] rounded-lg hover:bg-primary/20"
-                                            onClick={() => form.setValue('amountReceived', targetAmount.toFixed(2))}
-                                        >
-                                            EXACTO
-                                        </button>
+                            <div className="flex-1 bg-muted/20 rounded-2xl p-4 border-2 border-dashed border-border/50">
+                                {watchMethod === 'Pago Móvil' ? (
+                                    <div className="flex gap-4 animate-in slide-in-from-right-4">
+                                        <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0">
+                                             <img 
+                                                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
+                                                alt="QR" className="w-[120px] h-[120px]"
+                                            />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="bg-primary/10 p-2 rounded-lg">
+                                                <p className="text-[10px] font-black uppercase text-primary leading-none">Monto Exacto</p>
+                                                <p className="text-lg font-black text-slate-800">Bs. {formatCurrency(totals.ves)}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Hash className="h-3 w-3 text-muted-foreground" />
+                                                    <Input 
+                                                        placeholder="Últimos 6 de Referencia" 
+                                                        className="h-8 text-xs font-bold bg-white"
+                                                        {...form.register('referenceNumber')}
+                                                    />
+                                                </div>
+                                                <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5">
+                                                    {storeConfig?.pagoMovil?.phone || 'Configurar cuenta en Ajustes'}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-
-                                {watchCurrency === 'USD' && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {[1, 5, 10, 20, 50, 100].map(val => (
-                                            <button 
-                                                key={val}
-                                                className="h-9 px-3 border-2 rounded-xl font-bold text-xs hover:bg-primary/5 transition-colors"
-                                                onClick={() => form.setValue('amountReceived', val.toString())}
-                                            >
-                                                ${val}
-                                            </button>
-                                        ))}
+                                ) : allowsChange ? (
+                                    <div className="space-y-4 animate-in slide-in-from-bottom-2">
+                                        <div className="flex gap-2">
+                                            {['USD', 'VES', 'COP'].map((curr: any) => (
+                                                <button 
+                                                    key={curr}
+                                                    className={cn(
+                                                        "flex-1 h-9 rounded-lg font-black text-[10px] transition-all border-2",
+                                                        watchCurrency === curr ? "bg-white border-primary text-primary" : "bg-transparent border-transparent text-muted-foreground"
+                                                    )}
+                                                    onClick={() => form.setValue('paymentCurrency', curr)}
+                                                >
+                                                    {curr}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] font-black uppercase opacity-60">Recibido ({watchCurrency})</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    className="h-12 text-2xl font-black bg-white rounded-xl border-2" 
+                                                    placeholder="0.00"
+                                                    {...form.register('amountReceived')}
+                                                />
+                                            </div>
+                                            <div className={cn("rounded-xl p-3 flex flex-col justify-center", change > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground/40")}>
+                                                <span className="text-[8px] font-black uppercase">Vuelto a entregar</span>
+                                                <span className="text-xl font-black leading-none">
+                                                    {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(change)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {[1, 5, 10, 20, 50, 100].map(val => (
+                                                <button 
+                                                    key={val}
+                                                    className="flex-1 h-8 rounded-lg bg-white border-2 text-[10px] font-black hover:bg-primary/5 active:scale-95 transition-all"
+                                                    onClick={() => form.setValue('amountReceived', val.toString())}
+                                                >
+                                                    ${val}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full gap-2 opacity-60">
+                                        <ShieldCheck className="h-8 w-8 text-primary" />
+                                        <p className="text-[10px] font-black uppercase">Pago {watchMethod} Directo</p>
+                                        <div className="px-4 py-1 bg-white rounded-full font-bold text-sm">
+                                            {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(targetAmount)}
+                                        </div>
+                                        <div className="w-full mt-2">
+                                            <Input 
+                                                placeholder="Nº de Referencia / Aprobación" 
+                                                className="h-9 text-xs text-center font-bold bg-white"
+                                                {...form.register('referenceNumber')}
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </div>
-
-                            {watchMethod === 'Pago Móvil' && storeConfig?.pagoMovil?.phone && (
-                                <div className="bg-primary/5 p-4 rounded-2xl border-2 border-dashed border-primary/20 flex items-center gap-4 animate-in slide-in-from-bottom-2">
-                                    <div className="bg-white p-1.5 rounded-lg border-2 border-black/5">
-                                        <img 
-                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
-                                            alt="QR" className="w-20 h-20"
-                                        />
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <p className="text-[10px] font-black uppercase text-primary">QR Suiche 7B</p>
-                                        <p className="text-xs font-black leading-none">{storeConfig.pagoMovil.phone}</p>
-                                        <p className="text-[9px] font-bold text-muted-foreground">{storeConfig.pagoMovil.idNumber}</p>
-                                        <Badge className="bg-primary text-[8px] h-4 font-black">Bs. {totals.ves.toFixed(2)}</Badge>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className={cn(
-                                "p-5 rounded-2xl border-2 border-dashed flex justify-between items-center transition-colors duration-500",
-                                change > 0 ? "bg-green-50 border-green-200" : "bg-muted/20 border-transparent"
-                            )}>
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase opacity-40">{change > 0 ? 'Vuelto a Entregar' : 'Saldo Pendiente'}</p>
-                                    <p className={cn("text-2xl font-black tracking-tight", change > 0 ? "text-green-600" : "text-slate-900")}>
-                                        {watchCurrency === 'USD' ? '$' : watchCurrency === 'VES' ? 'Bs.' : ''} {change.toLocaleString()}
-                                    </p>
-                                </div>
-                                {change > 0 && <CheckCircle2 className="h-8 w-8 text-green-500 animate-pulse" />}
-                            </div>
                         </CardContent>
-                    </Card>
 
-                    {/* TOTAL FINAL Y ACCIÓN */}
-                    <Card className='immersive-card rounded-2xl bg-primary text-white border-none'>
-                        <CardContent className="pt-6 space-y-4">
-                            <div className="flex justify-between items-end">
-                                <div className="space-y-0.5">
-                                    <p className="text-[10px] font-black uppercase opacity-60">Total Venta</p>
-                                    <p className="text-5xl font-black tracking-tighter leading-none">${totals.usd.toFixed(2)}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold opacity-80">{totals.ves.toLocaleString('es-VE')} Bs.</p>
-                                    <p className="text-[9px] font-black uppercase opacity-40">Tasa: {rates.usd?.usd.toFixed(2)}</p>
-                                </div>
-                            </div>
-                            
-                            <Button 
+                        {/* BLOQUE FINAL: ACCIÓN FIJA */}
+                        <div className="p-4 bg-slate-100 border-t">
+                             <Button 
                                 onClick={handleFinalizeSale}
                                 disabled={isSubmitting || watchItems.length === 0}
-                                className="w-full h-16 text-xl font-black uppercase shadow-2xl rounded-2xl bg-white text-primary hover:bg-primary-foreground/90 transition-all border-none"
+                                className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all border-none"
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <Printer className="mr-3 h-6 w-6" />}
-                                FACTURAR (F4)
+                                FINALIZAR Y FACTURAR (F4)
                             </Button>
-                        </CardContent>
+                        </div>
                     </Card>
                 </div>
             </div>
