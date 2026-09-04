@@ -5,6 +5,7 @@ import SaleModel from '@/models/Sale';
 import CustomerModel from '@/models/Customer';
 import ProductModel from '@/models/Product';
 import mongoose from 'mongoose';
+import { createLog } from '@/app/api/audit-logs/route';
 
 
 // GET a single sale by ID
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: { saleId: stri
   }
 }
 
-// DELETE a sale by ID
+// DELETE a sale by ID (ANULACIÓN CRÍTICA)
 export async function DELETE(req: NextRequest, { params }: { params: { saleId: string } }) {
     await dbConnect();
     const session = await mongoose.startSession();
@@ -43,18 +44,32 @@ export async function DELETE(req: NextRequest, { params }: { params: { saleId: s
 
     try {
         const { saleId } = params;
+        const userId = req.nextUrl.searchParams.get('userId') || 'SISTEMA';
+        const userName = req.nextUrl.searchParams.get('userName') || 'Admin';
 
         if (!mongoose.Types.ObjectId.isValid(saleId)) {
             throw new Error('ID de venta inválido.');
         }
 
-        // Find the sale to be deleted
         const sale = await SaleModel.findById(saleId).session(session);
         if (!sale) {
             throw new Error('Venta no encontrada.');
         }
 
-        // Restore stock for each item in the sale
+        // AUDITORÍA: Registrar antes de borrar
+        await createLog({
+            store: String(sale.store),
+            user: userId,
+            userName: userName,
+            action: 'VENTA_ANULADA',
+            module: 'Ventas',
+            details: `Anulación de factura Nº ${sale.invoiceNumber}. Cliente: ${sale.customerName}. Monto: ${sale.totalAmount} Bs.`,
+            targetId: String(sale._id),
+            previousState: sale.toObject(),
+            newState: { status: 'ANULADA_ELIMINADA' }
+        });
+
+        // Restaurar stock
         for (const item of sale.items) {
             await ProductModel.findByIdAndUpdate(
                 item.product,
@@ -63,22 +78,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { saleId: s
             );
         }
 
-        // Delete the sale document
-        const deletedSale = await SaleModel.findByIdAndDelete(saleId).session(session);
-        
-        if (!deletedSale) {
-            throw new Error('No se pudo completar la eliminación de la venta.');
-        }
+        await SaleModel.findByIdAndDelete(saleId).session(session);
         
         await session.commitTransaction();
-
-        return NextResponse.json({ message: 'Venta eliminada y stock restaurado exitosamente.' }, { status: 200 });
+        return NextResponse.json({ message: 'Venta anulada y stock restaurado.' });
 
     } catch (error: any) {
         await session.abortTransaction();
-        console.error('Error al eliminar la venta:', error);
-        const errorMessage = error.message || 'Error interno del servidor.';
-        return NextResponse.json({ message: errorMessage }, { status: 500 });
+        return NextResponse.json({ message: error.message }, { status: 500 });
     } finally {
         session.endSession();
     }

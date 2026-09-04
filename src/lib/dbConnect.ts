@@ -1,3 +1,4 @@
+
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
@@ -7,6 +8,7 @@ import '@/models/User';
 import '@/models/Role';
 import '@/models/SystemConfig';
 import '@/models/SaaSPayment';
+import '@/models/AuditLog';
 
 dotenv.config();
 
