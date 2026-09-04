@@ -5,8 +5,8 @@ import Image from 'next/image';
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn('flex items-center gap-3', className)}>
-      <div className="relative h-10 w-10">
+    <div className={cn('flex items-center justify-center', className)}>
+      <div className="relative h-12 w-32">
         <Image
           src="/img/krealogo.png"
           alt="Krea Logo"
@@ -15,9 +15,6 @@ export function Logo({ className }: { className?: string }) {
           priority
         />
       </div>
-      <span className="font-headline text-3xl font-black tracking-tighter text-primary group-data-[collapsible=icon]:hidden">
-        Krea
-      </span>
     </div>
   );
 }
