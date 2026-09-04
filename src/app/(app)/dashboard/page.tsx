@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -61,17 +62,17 @@ export default function DashboardPage() {
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
-          title={data?.isSystemMaster ? "Panel Global de Infraestructura" : "Resumen de Negocio"}
-          description={data?.isSystemMaster ? "Supervisión de toda la plataforma Krea Business." : "Bienvenido a tu centro de control."}
+          title={data?.isSystemMaster ? "Panel Maestro" : "Resumen de Negocio"}
+          description={data?.isSystemMaster ? "Supervisión global de infraestructura." : "Bienvenido a tu centro de control."}
           actions={
             data?.isSystemMaster ? (
-              <Button asChild className="font-black uppercase tracking-tight shadow-lg shadow-primary/20">
+              <Button asChild className="w-full sm:w-auto font-black uppercase tracking-tight shadow-lg shadow-primary/20">
                   <Link href="/admin/stores">
                     <PlusCircle className="mr-2 h-4 w-4" /> Alta de Cliente
                   </Link>
               </Button>
             ) : (
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link href="/sales/new">
                   <PlusCircle className="mr-2 h-4 w-4" /> Nueva Venta
                 </Link>
@@ -80,7 +81,7 @@ export default function DashboardPage() {
           }
         />
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {loading ? (
              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[120px] w-full rounded-xl" />)
           ) : (
@@ -88,86 +89,44 @@ export default function DashboardPage() {
                 <KpiCard
                     title={data?.isSystemMaster ? "Facturación Global" : "Ventas Totales"}
                     value={formatCurrency(data?.totalSales || 0)}
-                    change={data?.isSystemMaster ? "Total bruto plataforma" : "+1.2% desde ayer"}
+                    change={data?.isSystemMaster ? "Bruto plataforma" : "Métricas actuales"}
                     iconName="dollar-sign"
                     className={data?.isSystemMaster ? "border-primary/20 bg-primary/5" : ""}
                 />
                 <KpiCard
                     title={data?.isSystemMaster ? "Empresas Activas" : "Gastos Totales"}
                     value={data?.isSystemMaster ? String(data.totalExpenses) : formatCurrency(data?.totalExpenses || 0)}
-                    change={data?.isSystemMaster ? "Tenants operando" : "Métricas actuales"}
+                    change="Estado actual"
                     iconName={data?.isSystemMaster ? "boxes" : "receipt"}
                 />
                 <KpiCard
-                    title={data?.isSystemMaster ? "Usuarios del Sistema" : "Clientes"}
+                    title={data?.isSystemMaster ? "Usuarios Totales" : "Clientes"}
                     value={String(data?.customerCount || 0)}
-                    change="Total histórico"
+                    change="Base de datos"
                     iconName="users"
                 />
                 <Card className="bg-primary text-primary-foreground shadow-xl border-none">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-sm font-bold uppercase tracking-wider">Estado Sistema</CardTitle>
-                        <Globe className="h-4 w-4 animate-pulse" />
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider">Estado Sistema</CardTitle>
+                        <Globe className="h-4 w-4" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-black">ONLINE</div>
-                        <p className="text-xs opacity-80">Nodos Cloud operativos</p>
+                        <div className="text-xl md:text-2xl font-black">ONLINE</div>
+                        <p className="text-[10px] opacity-80">Nodos Cloud operativos</p>
                     </CardContent>
                 </Card>
             </>
           )}
         </div>
 
-        {data?.isSystemMaster && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <Card className="lg:col-span-2 border-2 border-dashed">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-lg font-black uppercase">Monitor de Salud de Infraestructura</CardTitle>
-                                <CardDescription>Consumo de recursos y tráfico global.</CardDescription>
-                            </div>
-                            <Activity className="h-6 w-6 text-primary" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <MonthlyProfitChart data={data?.monthlyProfit} />
-                    </CardContent>
-                </Card>
-
-                <Card className="border-2 border-amber-500/20 bg-amber-50/10">
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <ShieldAlert className="h-5 w-5 text-amber-500" />
-                            <CardTitle className="text-sm font-black uppercase">Alertas Administrativas</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="p-3 border rounded-lg bg-background flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <p className="text-[10px] font-black uppercase text-amber-600">Vencimiento Próximo</p>
-                                <p className="text-xs font-bold">Distribuidora Galpón</p>
-                            </div>
-                            <Button variant="ghost" size="icon" asChild><Link href="/admin/stores"><ArrowUpRight className="h-4 w-4" /></Link></Button>
-                        </div>
-                        <div className="p-3 border rounded-lg bg-background flex items-center justify-between opacity-50">
-                            <p className="text-xs italic text-muted-foreground">No hay más alertas pendientes.</p>
-                        </div>
-                    </CardContent>
-                </Card>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
+            <div className="lg:col-span-4">
+                {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <MonthlyProfitChart data={data?.monthlyProfit} />}
             </div>
-        )}
-
-        {!data?.isSystemMaster && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-7">
-                <div className="lg:col-span-4">
-                    {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <MonthlyProfitChart data={data?.monthlyProfit} />}
-                </div>
-                <div className="lg:col-span-3">
-                    {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <RecentSales data={data?.recentSales} />}
-                </div>
+            <div className="lg:col-span-3">
+                {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <RecentSales data={data?.recentSales} />}
             </div>
-        )}
+        </div>
       </main>
     </div>
   );

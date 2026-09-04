@@ -158,11 +158,11 @@ export default function InventoryPage() {
             )) : metrics && (
                 <>
                     <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Valor Total</CardTitle><Boxes className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                    <CardContent><div className="text-xl sm:text-2xl font-bold">{formatCurrency(metrics.totalValue)}</div></CardContent></Card>
+                    <CardContent><div className="text-lg md:text-2xl font-bold">{formatCurrency(metrics.totalValue)}</div></CardContent></Card>
                     <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stock Bajo</CardTitle><TrendingDown className="h-4 w-4 text-yellow-500" /></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{metrics.lowStockCount}</div></CardContent></Card>
+                    <CardContent><div className="text-lg md:text-2xl font-bold">{metrics.lowStockCount}</div></CardContent></Card>
                     <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Agotados</CardTitle><Ban className="h-4 w-4 text-red-500" /></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{metrics.outOfStockCount}</div></CardContent></Card>
+                    <CardContent><div className="text-lg md:text-2xl font-bold">{metrics.outOfStockCount}</div></CardContent></Card>
                 </>
             )}
         </div>
@@ -171,12 +171,12 @@ export default function InventoryPage() {
           <div className="lg:col-span-3">
               <Card className="h-full">
                   <CardHeader><CardTitle>IA: Optimización</CardTitle></CardHeader>
-                  <CardContent>
+                  <CardContent className="overflow-x-auto">
                       {loadingRecommendations ? <div className='space-y-2'><Skeleton className='h-8 w-full' /><Skeleton className='h-8 w-full' /></div> : aiRecommendations.length > 0 ? (
-                         <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Producto</TableHead><TableHead className='text-center'>Reponer</TableHead></TableRow></TableHeader>
+                         <Table><TableHeader><TableRow><TableHead>Producto</TableHead><TableHead className='text-center'>Reponer</TableHead></TableRow></TableHeader>
                                 <TableBody>{aiRecommendations.slice(0, 5).map(rec => (
                                         <TableRow key={rec.productId}><TableCell><div>{products.find(p => String(p._id) === rec.productId)?.name}</div></TableCell><TableCell className='text-center font-bold text-primary'>{rec.reorderQuantity}</TableCell></TableRow>
-                                    ))}</TableBody></Table></div>
+                                    ))}</TableBody></Table>
                       ) : <div className="text-center py-8 border-dashed border-2 rounded-lg bg-muted/20"><Button onClick={handleGetRecommendations} size="sm">Generar Análisis</Button></div>}
                   </CardContent>
               </Card>
@@ -193,24 +193,23 @@ export default function InventoryPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
-                <Table>
+          <CardContent className="p-0 sm:p-6 overflow-x-auto">
+            <Table>
                 <TableHeader><TableRow><TableHead className="pl-4">Producto</TableHead><TableHead className='text-right'>Precio</TableHead><TableHead className='text-right'>Stock</TableHead><TableHead className="hidden md:table-cell">Estado</TableHead><TableHead className="w-[50px] pr-4"></TableHead></TableRow></TableHeader>
                 <TableBody>
                     {loading ? Array.from({ length: 5 }).map((_, i) => (
                         <TableRow key={i}><TableCell><Skeleton className="h-4 w-[150px] ml-4" /></TableCell><TableCell className="text-right"><Skeleton className="h-4 w-[80px]" /></TableCell><TableCell className='text-right'><Skeleton className="h-4 w-[40px]" /></TableCell><TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell><TableCell className="pr-4"><Skeleton className="h-8 w-8 ml-auto" /></TableCell></TableRow>
                     )) : filteredProducts.length > 0 ? filteredProducts.map((p) => (
                         <TableRow key={p._id}>
-                        <TableCell className="pl-4"><div className="font-medium text-sm sm:text-base">{p.name}</div><div className="text-[10px] text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div></TableCell>
-                        <TableCell className="text-right text-sm">{formatCurrency(p.price)}</TableCell>
-                        <TableCell className='text-right font-medium'>{p.stock}</TableCell>
-                        <TableCell className="hidden md:table-cell"><Badge variant={p.status === 'En Stock' ? 'secondary' : p.status === 'Stock Bajo' ? 'outline' : 'destructive'}>{p.status}</Badge></TableCell>
-                        <TableCell className="pr-4"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-auto"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <TableCell className="pl-4"><div className="font-medium text-xs md:text-sm">{p.name}</div><div className="text-[8px] md:text-[10px] text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div></TableCell>
+                        <TableCell className="text-right text-xs md:text-sm">{formatCurrency(p.price)}</TableCell>
+                        <TableCell className='text-right font-medium text-xs md:text-sm'>{p.stock}</TableCell>
+                        <TableCell className="hidden md:table-cell"><Badge variant={p.status === 'En Stock' ? 'secondary' : p.status === 'Stock Bajo' ? 'outline' : 'destructive'} className="text-[10px]">{p.status}</Badge></TableCell>
+                        <TableCell className="pr-4 text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-auto"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => router.push(`/inventory/${p._id}`)}>Ver</DropdownMenuItem><DropdownMenuItem onSelect={() => router.push(`/inventory/${p._id}/edit`)}>Editar</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600" onSelect={() => setProductToDelete(p)}>Eliminar</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>
                     )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">Sin resultados.</TableCell></TableRow>}
-                </TableBody></Table>
-            </div>
+                </TableBody>
+            </Table>
           </CardContent>
         </Card>
         
