@@ -29,7 +29,10 @@ import {
   Truck,
   ClipboardList,
   Fingerprint,
-  Wallet
+  Wallet,
+  Scale,
+  Printer,
+  Layers
 } from 'lucide-react';
 
 export type NavLink = {
@@ -118,6 +121,22 @@ export const navLinks: NavLink[] = [
     moduleKey: 'inventory',
   },
   {
+    href: '/inventory/composite',
+    label: 'Kits y Combos',
+    icon: Layers,
+    roles: ['Administrador Principal', 'Almacenista'],
+    category: 'Inventario',
+    moduleKey: 'inventory',
+  },
+  {
+    href: '/inventory/labels',
+    label: 'Etiquetado',
+    icon: Tag,
+    roles: ['Administrador Principal', 'Almacenista'],
+    category: 'Inventario',
+    moduleKey: 'inventory',
+  },
+  {
     href: '/purchases',
     label: 'Compras (Entradas)',
     icon: Truck,
@@ -153,6 +172,13 @@ export const navLinks: NavLink[] = [
     href: '/settings',
     label: 'Configuración',
     icon: Settings,
+    roles: ['Administrador Principal'],
+    category: 'Seguridad',
+  },
+  {
+    href: '/settings/hardware',
+    label: 'Hardware / Periféricos',
+    icon: Printer,
     roles: ['Administrador Principal'],
     category: 'Seguridad',
   },
