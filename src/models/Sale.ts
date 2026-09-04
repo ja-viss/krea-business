@@ -38,7 +38,6 @@ export interface ISalePopulated extends Omit<ISale, 'customer'> {
     customer?: ICustomer;
 }
 
-// Renombrado a V2 para evitar conflictos con esquemas antiguos en cache
 const SaleCounterV2Schema = new Schema({
     storeId: { type: String, required: true },
     seq: { type: Number, default: 0 }
@@ -79,7 +78,6 @@ export const SaleSchema: Schema = new Schema({
   timestamps: true
 });
 
-// Ensure that the combination of store and invoiceNumber is unique.
 SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
 
 const SaleModel = (mongoose.models.Sale || mongoose.model<ISale>('Sale', SaleSchema)) as mongoose.Model<ISale>;
