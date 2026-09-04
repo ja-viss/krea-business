@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,9 +11,11 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    /* Azul Corporativo Krea */
+    
+    /* Krea Deep Blue - Identidad Corporativa */
     --primary: 221 83% 45%;
     --primary-foreground: 210 40% 98%;
+    
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
     --muted: 210 40% 96.1%;
@@ -33,38 +36,26 @@
     @apply border-border;
   }
   body {
-    @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10;
+    @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans;
   }
 }
 
-/* Efecto de inmersión para tarjetas */
+/* Efectos visuales de profundidad Krea */
 .immersive-card {
-  @apply bg-white border border-border/40 shadow-[0_2px_15px_rgb(0,0,0,0.02)] transition-all duration-300;
-}
-
-.immersive-card:hover {
-  @apply shadow-[0_8px_30px_rgb(0,0,0,0.05)];
-}
-
-/* Scrollbar elegante */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-primary/20 rounded-full hover:bg-primary/40;
-}
-
-/* Estilos POS Específicos */
-.pos-table-row {
-  @apply border-b last:border-0 transition-colors hover:bg-primary/[0.02];
+  @apply bg-white border border-border/40 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300;
 }
 
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* Estilos de Impresión Térmica POS */
+@media print {
+    @page { margin: 0; size: 58mm auto; }
+    body { background: white !important; font-family: 'Courier New', Courier, monospace !important; margin: 0; padding: 0; width: 58mm; }
+    header, nav, aside, button, .print\:hidden { display: none !important; }
+    main { padding: 0 !important; margin: 0 !important; width: 58mm !important; }
+    .card-pos-thermal { border: none !important; width: 58mm !important; padding: 1mm !important; margin: 0 !important; border-radius: 0 !important; font-size: 10px; line-height: 1.1; }
 }
