@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Logo } from '@/components/logo';
@@ -28,11 +27,11 @@ interface User {
 }
 
 const DesktopSidebar = () => (
-  <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r bg-card">
-    <div className="flex items-center h-16 px-6 border-b">
+  <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r bg-card shadow-sm">
+    <div className="flex items-center h-32 px-4 border-b justify-center">
         <Logo />
     </div>
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto pt-4">
         <SideNav />
     </div>
   </aside>
@@ -50,7 +49,7 @@ const MobileSidebar = () => (
              <VisuallyHidden>
                 <SheetTitle>Menú Principal</SheetTitle>
             </VisuallyHidden>
-            <div className="flex items-center h-16 px-6 border-b">
+            <div className="flex items-center h-32 px-4 border-b justify-center">
                 <Logo />
             </div>
             <SideNav />
@@ -86,15 +85,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
         <DesktopSidebar />
-        <div className="flex-1 flex flex-col bg-muted/20">
-            <header className="flex h-16 items-center justify-between gap-4 border-b bg-card px-4 lg:px-8">
+        <div className="flex-1 flex flex-col bg-slate-50/50">
+            <header className="flex h-16 items-center justify-between gap-4 border-b bg-card px-4 lg:px-8 shadow-sm">
                 <MobileSidebar />
                 
                 <div className="flex items-center gap-4">
                     {localStorage.getItem('isGlobalAdmin') === 'true' && (
                         <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
                             <ShieldCheck className="h-3 w-3 text-primary" />
-                            <span className="text-[10px] font-black text-primary uppercase">Super Admin Mode</span>
+                            <span className="text-[10px] font-black text-primary uppercase tracking-tight">Super Admin Mode</span>
                         </div>
                     )}
                     
