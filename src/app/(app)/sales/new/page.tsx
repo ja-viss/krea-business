@@ -235,7 +235,7 @@ export default function NewSalePage() {
             {/* Header POS */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" asChild className="rounded-full h-10 w-10 border"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
+                    <Button variant="ghost" size="icon" asChild className="rounded-full h-10 w-10 border bg-white"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
                     <div>
                         <h2 className="text-xl font-black uppercase tracking-tighter text-primary">Ventas</h2>
                         <div className="flex items-center gap-2">
@@ -275,7 +275,7 @@ export default function NewSalePage() {
                                     {fields.length > 0 ? fields.map((item, index) => {
                                         const currentItem = watchItems[index];
                                         return (
-                                        <TableRow key={item.id} className="hover:bg-muted/10 border-b group">
+                                        <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b group">
                                             <TableCell className="pl-4 py-3">
                                                 <div className='flex flex-col'>
                                                     <span className='font-black uppercase text-xs md:text-sm leading-tight'>{item.name}</span>
@@ -303,7 +303,7 @@ export default function NewSalePage() {
                                                     </Button>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right pr-4 font-black text-sm">
+                                            <TableCell className="text-right pr-4 font-black text-sm text-primary">
                                                 {formatCurrency(currentItem.price * currentItem.quantity * (1 + (currentItem.taxRate || 0)))}
                                             </TableCell>
                                             <TableCell className="pr-4">
@@ -316,8 +316,8 @@ export default function NewSalePage() {
                                         <TableRow>
                                             <TableCell colSpan={4} className='h-64 text-center'>
                                                 <div className="flex flex-col items-center opacity-20 grayscale">
-                                                    <QrCode className="h-16 w-16 mb-4" />
-                                                    <p className="font-black uppercase text-xs tracking-[0.2em]">Carrito Vacío</p>
+                                                    <QrCode className="h-16 w-16 mb-4 text-primary" />
+                                                    <p className="font-black uppercase text-xs tracking-[0.2em] text-primary">Carrito Vacío</p>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -331,19 +331,19 @@ export default function NewSalePage() {
                 {/* PANEL DE PAGO (DERECHA) */}
                 <div className="lg:col-span-5 flex flex-col gap-4">
                     {/* Visualización de Totales */}
-                    <Card className="immersive-card rounded-2xl bg-white border-2 border-primary/10 overflow-hidden shadow-xl">
+                    <Card className="immersive-card rounded-2xl bg-primary text-primary-foreground border-none overflow-hidden shadow-xl">
                         <CardContent className="p-0">
-                            <div className="grid grid-cols-3 divide-x border-b">
+                            <div className="grid grid-cols-3 divide-x divide-white/10 border-b border-white/10">
                                 <div className="p-4 text-center">
-                                    <span className="text-[10px] font-black uppercase opacity-40 block mb-1">Dólares</span>
-                                    <span className="text-xl font-black text-primary">${formatCurrency(totals.usd)}</span>
+                                    <span className="text-[10px] font-black uppercase opacity-60 block mb-1">Dólares</span>
+                                    <span className="text-xl font-black">${formatCurrency(totals.usd)}</span>
                                 </div>
-                                <div className="p-4 text-center bg-primary/[0.02]">
-                                    <span className="text-[10px] font-black uppercase text-primary block mb-1">Bolívares</span>
+                                <div className="p-4 text-center bg-white/5">
+                                    <span className="text-[10px] font-black uppercase opacity-60 block mb-1">Bolívares</span>
                                     <span className="text-xl font-black">Bs. {formatCurrency(totals.ves)}</span>
                                 </div>
                                 <div className="p-4 text-center">
-                                    <span className="text-[10px] font-black uppercase opacity-40 block mb-1">Pesos</span>
+                                    <span className="text-[10px] font-black uppercase opacity-60 block mb-1">Pesos</span>
                                     <span className="text-xl font-black">{totals.cop.toLocaleString()}</span>
                                 </div>
                             </div>
@@ -358,13 +358,15 @@ export default function NewSalePage() {
                                 {selectedCustomer ? (
                                     <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-xl animate-in zoom-in-95">
                                         <div className="flex items-center gap-2">
-                                            <UserCheck className="h-4 w-4 text-primary" />
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                <UserCheck className="h-4 w-4 text-primary" />
+                                            </div>
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-black uppercase">{selectedCustomer.name}</span>
                                                 <span className="text-[9px] font-mono opacity-60">{selectedCustomer.idNumber}</span>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => {
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-500" onClick={() => {
                                             setSelectedCustomer(null);
                                             form.setValue('customerId', undefined);
                                             form.setValue('customerName', 'Cliente Contado');
@@ -429,7 +431,7 @@ export default function NewSalePage() {
                                             </div>
                                             <Input 
                                                 placeholder="Ref. (últimos 6)" 
-                                                className="h-10 font-black uppercase text-center rounded-xl bg-white border-2" 
+                                                className="h-10 font-black uppercase text-center rounded-xl bg-white border-2 border-primary/20 focus:border-primary" 
                                                 {...form.register('referenceNumber')} 
                                             />
                                         </div>
@@ -439,7 +441,7 @@ export default function NewSalePage() {
                                         {isCash && (
                                             <div className="flex gap-2 p-1 bg-white/50 rounded-xl border">
                                                 {['USD', 'VES', 'COP'].map((curr: any) => (
-                                                    <button key={curr} type="button" className={cn("flex-1 h-8 rounded-lg font-black text-[10px] transition-all", watchCurrency === curr ? "bg-white text-primary shadow-sm border-2 border-primary/20" : "bg-transparent text-muted-foreground opacity-50")} onClick={() => form.setValue('paymentCurrency', curr)}>{curr}</button>
+                                                    <button key={curr} type="button" className={cn("flex-1 h-8 rounded-lg font-black text-[10px] transition-all", watchCurrency === curr ? "bg-primary text-white shadow-sm" : "bg-transparent text-muted-foreground opacity-50")} onClick={() => form.setValue('paymentCurrency', curr)}>{curr}</button>
                                                 ))}
                                             </div>
                                         )}
@@ -448,16 +450,15 @@ export default function NewSalePage() {
                                             <div className="space-y-1">
                                                 <Label className="text-[10px] font-black uppercase opacity-40 ml-1">Recibido ({watchCurrency})</Label>
                                                 <div className="relative">
-                                                    <Input type="number" className="h-12 text-2xl font-black text-center rounded-xl border-2" {...form.register('amountReceived')} />
+                                                    <Input type="number" className="h-12 text-2xl font-black text-center rounded-xl border-2 border-primary/20 focus:border-primary" {...form.register('amountReceived')} />
                                                     {isCash && (
-                                                         <Button 
+                                                         <button 
                                                             type="button" 
-                                                            variant="ghost" 
-                                                            className="absolute right-1 top-1 h-10 px-2 font-black text-[9px] uppercase text-primary"
+                                                            className="absolute right-1 top-1 h-10 px-2 font-black text-[9px] uppercase text-primary bg-primary/5 rounded-lg hover:bg-primary/10 transition-colors"
                                                             onClick={() => form.setValue('amountReceived', targetAmount.toFixed(2))}
                                                          >
                                                              Exacto
-                                                         </Button>
+                                                         </button>
                                                     )}
                                                 </div>
                                             </div>
@@ -470,7 +471,7 @@ export default function NewSalePage() {
                                         {isDigital && watchMethod !== 'Pago Móvil' && (
                                             <Input 
                                                 placeholder="Nº Referencia de Transacción" 
-                                                className="h-10 font-black uppercase text-center rounded-xl bg-white border-2" 
+                                                className="h-10 font-black uppercase text-center rounded-xl bg-white border-2 border-primary/20 focus:border-primary" 
                                                 {...form.register('referenceNumber')} 
                                             />
                                         )}
@@ -488,21 +489,12 @@ export default function NewSalePage() {
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <Printer className="mr-3 h-6 w-6" />}
                                 FACTURAR VENTA (F4)
-                            </Button>
+                             </Button>
                         </div>
                     </Card>
                 </div>
             </div>
        </main>
-
-       <style jsx global>{`
-           input::-webkit-outer-spin-button,
-           input::-webkit-inner-spin-button {
-             -webkit-appearance: none;
-             margin: 0;
-           }
-           .immersive-card { border-radius: 1.5rem; }
-       `}</style>
     </div>
   );
 }

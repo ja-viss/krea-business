@@ -4,13 +4,14 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
+    --background: 0 0% 100%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
+    /* Azul Corporativo Krea */
+    --primary: 221 83% 45%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
@@ -22,8 +23,8 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
-    --radius: 0.75rem;
+    --ring: 221 83% 45%;
+    --radius: 1rem;
   }
 }
 
@@ -32,32 +33,38 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased selection:bg-primary/10;
+    @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10;
   }
 }
 
 /* Efecto de inmersión para tarjetas */
 .immersive-card {
-  @apply bg-white border border-border/50 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300;
+  @apply bg-white border border-border/40 shadow-[0_2px_15px_rgb(0,0,0,0.02)] transition-all duration-300;
 }
 
 .immersive-card:hover {
-  @apply shadow-[0_8px_30px_rgb(0,0,0,0.06)];
+  @apply shadow-[0_8px_30px_rgb(0,0,0,0.05)];
 }
 
 /* Scrollbar elegante */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full;
+  @apply bg-primary/20 rounded-full hover:bg-primary/40;
 }
 
 /* Estilos POS Específicos */
 .pos-table-row {
-  @apply border-b last:border-0 transition-colors hover:bg-muted/30;
+  @apply border-b last:border-0 transition-colors hover:bg-primary/[0.02];
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
