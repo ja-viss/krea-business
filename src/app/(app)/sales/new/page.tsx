@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, ChevronLeft, Minus, Plus, DollarSign, Calculator } from 'lucide-react';
+import { Loader2, Trash2, ChevronLeft, Minus, Plus, DollarSign, Calculator, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
@@ -249,8 +249,9 @@ export default function NewSalePage() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'Error al procesar la venta.');
 
-        toast({ title: 'Venta Registrada con Éxito' });
-        router.push(`/sales/${result._id}/invoice`);
+        toast({ title: 'Venta Registrada', description: 'Imprimiendo ticket...' });
+        // Redirigir con bandera de impresión directa
+        router.push(`/sales/${result._id}/invoice?print=true`);
 
     } catch (error: any) {
         toast({
@@ -268,7 +269,7 @@ export default function NewSalePage() {
        <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
             <PageHeader
                 title="Punto de Venta"
-                description="Registra ventas rápidas con autocálculo de divisas."
+                description="Registra ventas rápidas con impresión POS directa."
                 actions={
                     <Button variant="outline" asChild className="w-full sm:w-auto">
                         <Link href="/sales">
@@ -282,15 +283,15 @@ export default function NewSalePage() {
         <div className="flex flex-col sm:flex-row gap-4 border rounded-lg p-4 bg-primary/5 mb-6">
             <div className='flex items-center gap-3 flex-1'>
                 <Calculator className='h-5 w-5 text-primary' />
-                <span className='font-bold text-sm'>Modo Venta Activo</span>
+                <span className='font-bold text-sm'>Modo POS Activo</span>
                 <div className='h-2 w-2 rounded-full bg-green-500 animate-pulse' />
             </div>
             <div className='flex items-center gap-2 text-sm'>
-                <span className='text-muted-foreground font-medium uppercase'>Tasa BCV:</span>
+                <span className='text-muted-foreground font-medium uppercase'>Tasa Oficial:</span>
                 <span className='font-mono font-black bg-background px-3 py-1 rounded-md border shadow-sm text-primary'>
-                    {ratesLoading.usd ? 'Cargando...' : rates.usd?.usd.toFixed(2) || '0.00'}
+                    {ratesLoading.usd ? '...' : rates.usd?.usd.toFixed(2) || '0.00'}
                 </span>
-                <span className='text-[10px] text-muted-foreground font-bold'>Bs./USD</span>
+                <span className='text-[10px] text-muted-foreground font-bold'>Bs./$</span>
             </div>
         </div>
 
@@ -298,11 +299,10 @@ export default function NewSalePage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-                      {/* Búsqueda y Detalle de Items */}
                       <div className="lg:col-span-3 space-y-6">
                           <Card className='shadow-md'>
                               <CardHeader className='pb-3'>
-                                  <CardTitle className='text-lg'>Buscador de Productos</CardTitle>
+                                  <CardTitle className='text-lg font-black uppercase'>Buscador de Items</CardTitle>
                               </CardHeader>
                               <CardContent>
                                   <ProductSearch onProductSelect={handleProductSelect} />
@@ -310,17 +310,17 @@ export default function NewSalePage() {
                           </Card>
                           <Card className="overflow-hidden shadow-md">
                               <CardHeader className='pb-3'>
-                                  <CardTitle className='text-lg'>Carrito de Compra</CardTitle>
+                                  <CardTitle className='text-lg font-black uppercase'>Detalle de Orden</CardTitle>
                               </CardHeader>
                               <CardContent className="p-0">
                                   <div className="overflow-x-auto">
                                     <Table>
                                         <TableHeader className='bg-muted/30'>
                                             <TableRow>
-                                                <TableHead className="pl-4">Descripción</TableHead>
-                                                <TableHead className="text-right">Precio</TableHead>
-                                                <TableHead className="text-center">Cant.</TableHead>
-                                                <TableHead className="text-right pr-4">Subtotal</TableHead>
+                                                <TableHead className="pl-4 font-black uppercase text-[10px]">Producto</TableHead>
+                                                <TableHead className="text-right font-black uppercase text-[10px]">Precio</TableHead>
+                                                <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
+                                                <TableHead className="text-right pr-4 font-black uppercase text-[10px]">Subtotal</TableHead>
                                                 <TableHead className="w-[40px]"></TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -357,8 +357,8 @@ export default function NewSalePage() {
                                                 ))
                                             ) : (
                                                 <TableRow>
-                                                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-sm italic">
-                                                        El carrito está vacío. Agrega productos arriba.
+                                                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground text-sm italic font-medium">
+                                                        Escanea o busca productos para facturar.
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -369,11 +369,10 @@ export default function NewSalePage() {
                           </Card>
                       </div>
 
-                      {/* Cliente y Resumen de Pago */}
                       <div className="lg:col-span-2 space-y-6">
                           <Card className='shadow-md border-primary/20'>
                               <CardHeader className='pb-3'>
-                                  <CardTitle className='text-lg'>Cliente</CardTitle>
+                                  <CardTitle className='text-lg font-black uppercase'>Cliente / Pagador</CardTitle>
                               </CardHeader>
                               <CardContent>
                                   { !selectedCustomer ? (
@@ -393,9 +392,9 @@ export default function NewSalePage() {
                               </CardContent>
                           </Card>
                           
-                          <Card className='shadow-lg border-2'>
+                          <Card className='shadow-lg border-2 border-primary/20 bg-primary/[0.01]'>
                               <CardHeader className='pb-3 bg-muted/20 border-b'>
-                                  <CardTitle className='text-lg'>Finalizar Pago</CardTitle>
+                                  <CardTitle className='text-lg font-black uppercase'>Finalizar y Cobrar</CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-4 pt-4">
                                   <FormField
@@ -403,9 +402,9 @@ export default function NewSalePage() {
                                       name="paymentMethod"
                                       render={({ field }) => (
                                           <FormItem>
-                                              <FormLabel className='text-xs font-bold uppercase'>Forma de Pago</FormLabel>
+                                              <FormLabel className='text-[10px] font-black uppercase'>Forma de Pago</FormLabel>
                                               <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                  <FormControl><SelectTrigger className='font-bold'><SelectValue placeholder="Método" /></SelectTrigger></FormControl>
+                                                  <FormControl><SelectTrigger className='font-black h-11'><SelectValue placeholder="Método" /></SelectTrigger></FormControl>
                                                   <SelectContent>
                                                       <SelectItem value="Efectivo" className='font-bold'>Efectivo</SelectItem>
                                                       <SelectItem value="Tarjeta" className='font-bold'>Tarjeta / Punto</SelectItem>
@@ -427,11 +426,11 @@ export default function NewSalePage() {
                                                   <FormItem>
                                                       <FormLabel className="text-[10px] font-black uppercase">Moneda de Pago</FormLabel>
                                                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                          <FormControl><SelectTrigger className="h-9 font-bold bg-background"><SelectValue /></SelectTrigger></FormControl>
+                                                          <FormControl><SelectTrigger className="h-9 font-black bg-background"><SelectValue /></SelectTrigger></FormControl>
                                                           <SelectContent>
-                                                              <SelectItem value="USD" className='font-bold'>Dólares</SelectItem>
-                                                              <SelectItem value="VES" className='font-bold'>Bolívares</SelectItem>
-                                                              <SelectItem value="COP" className='font-bold'>Pesos</SelectItem>
+                                                              <SelectItem value="USD" className='font-bold'>Dólares ($)</SelectItem>
+                                                              <SelectItem value="VES" className='font-bold'>Bolívares (Bs.)</SelectItem>
+                                                              <SelectItem value="COP" className='font-bold'>Pesos (COP)</SelectItem>
                                                           </SelectContent>
                                                       </Select>
                                                   </FormItem>
@@ -443,12 +442,12 @@ export default function NewSalePage() {
                                               render={({ field }) => (
                                                   <FormItem>
                                                       <FormLabel className="text-[10px] font-black uppercase">Monto Recibido</FormLabel>
-                                                      <FormControl><Input type="number" step="0.01" className="h-9 font-black text-lg bg-background" {...field} /></FormControl>
+                                                      <FormControl><Input type="number" step="0.01" className="h-9 font-black text-lg bg-background text-center" {...field} /></FormControl>
                                                   </FormItem>
                                               )}
                                           />
-                                          <div className="sm:col-span-2 pt-3 border-t flex justify-between items-center">
-                                              <span className="text-xs font-black uppercase">Vuelto a entregar:</span>
+                                          <div className="sm:col-span-2 pt-3 border-t border-muted-foreground/20 flex justify-between items-center">
+                                              <span className="text-[10px] font-black uppercase">Cambio a entregar:</span>
                                               <span className="font-black text-xl text-green-700 underline decoration-double">
                                                 {formatCurrency(changeAmount, watchPaymentCurrency || 'USD')}
                                               </span>
@@ -462,8 +461,8 @@ export default function NewSalePage() {
                                           name="paymentReference"
                                           render={({ field }) => (
                                               <FormItem>
-                                                  <FormLabel className='text-xs font-bold uppercase'>Referencia / Lote</FormLabel>
-                                                  <FormControl><Input placeholder="Escribe el nº de confirmación" className='font-mono uppercase' {...field} /></FormControl>
+                                                  <FormLabel className='text-[10px] font-black uppercase'>Referencia / Lote</FormLabel>
+                                                  <FormControl><Input placeholder="Nº Confirmación" className='font-mono uppercase h-11 text-center font-bold' {...field} /></FormControl>
                                                   <FormMessage />
                                               </FormItem>
                                           )}
@@ -474,25 +473,21 @@ export default function NewSalePage() {
                               <CardFooter className='flex flex-col items-stretch bg-muted/60 p-5 border-t gap-3'>
                                   <div className='flex justify-between text-[11px] font-bold text-muted-foreground uppercase'>
                                       <span>Gravable (IVA 16%):</span> 
-                                      <span>{formatCurrency(subtotalGeneral, 'VES')}</span>
+                                      <span className='font-mono'>{formatCurrency(subtotalGeneral, 'VES')}</span>
                                   </div>
                                   <div className='flex justify-between text-[11px] font-bold text-muted-foreground uppercase'>
-                                      <span>IVA Total:</span> 
-                                      <span>{formatCurrency(taxGeneralAmount, 'VES')}</span>
+                                      <span>Monto Exento:</span> 
+                                      <span className='font-mono'>{formatCurrency(subtotalExempt, 'VES')}</span>
                                   </div>
                                   <Separator className='my-1 bg-muted-foreground/20' />
                                   <div className='flex justify-between items-center py-1'>
-                                      <span className='font-black text-sm uppercase text-primary'>Total a Pagar:</span>
-                                      <span className='text-3xl font-black text-primary tracking-tighter'>{formatCurrency(totalVES, 'VES')}</span>
+                                      <span className='font-black text-sm uppercase text-primary'>Total Bs:</span>
+                                      <span className='text-3xl font-black text-primary tracking-tighter tabular-nums'>{formatCurrency(totalVES, 'VES')}</span>
                                   </div>
                                   <div className='flex flex-col gap-1.5 pt-3 border-t border-dotted border-muted-foreground/50'>
                                       <div className='flex justify-between text-xs font-bold'>
-                                          <span className='text-muted-foreground italic uppercase'>Equivalente USD:</span>
-                                          <span className='font-black text-base'>{formatCurrency(totalUSD, 'USD')}</span>
-                                      </div>
-                                      <div className='flex justify-between text-xs font-bold'>
-                                          <span className='text-muted-foreground italic uppercase'>Equivalente COP:</span>
-                                          <span className='font-mono'>{formatCurrency(totalCOP, 'COP')}</span>
+                                          <span className='text-muted-foreground italic uppercase'>Equiv. Divisa:</span>
+                                          <span className='font-black text-base text-foreground'>{formatCurrency(totalUSD, 'USD')}</span>
                                       </div>
                                   </div>
                                   
@@ -500,10 +495,10 @@ export default function NewSalePage() {
                                     type="submit" 
                                     size="lg"
                                     disabled={isSubmitting || watchItems.length === 0}
-                                    className="w-full mt-4 font-black uppercase text-lg shadow-xl shadow-primary/20 h-14"
+                                    className="w-full mt-4 font-black uppercase text-lg shadow-xl shadow-primary/20 h-16"
                                   >
-                                      {isSubmitting ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <DollarSign className="mr-2 h-6 w-6" />}
-                                      Finalizar Venta
+                                      {isSubmitting ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Printer className="mr-2 h-6 w-6" />}
+                                      Emitir Ticket
                                   </Button>
                               </CardFooter>
                           </Card>
