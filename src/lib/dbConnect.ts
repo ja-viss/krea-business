@@ -2,13 +2,23 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
-// Importar modelos para asegurar su registro inicial
+// Registro forzado de todos los modelos para evitar errores de compilación en producción/demo
 import '@/models/Store';
 import '@/models/User';
 import '@/models/Role';
 import '@/models/SystemConfig';
 import '@/models/SaaSPayment';
 import '@/models/AuditLog';
+import '@/models/CashSession';
+import '@/models/Sale';
+import '@/models/Product';
+import '@/models/Customer';
+import '@/models/Expense';
+import '@/models/Return';
+import '@/models/Quotation';
+import '@/models/AccountPayable';
+import '@/models/AccountReceivable';
+import '@/models/CreditNote';
 
 dotenv.config();
 
@@ -28,7 +38,6 @@ async function dbConnect() {
   }
 
   try {
-    // Evitar advertencias de Mongoose 7+
     mongoose.set('strictQuery', true);
     
     const conn = await mongoose.connect(MONGODB_URI, {

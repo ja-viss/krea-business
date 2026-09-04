@@ -1,22 +1,19 @@
 
-import mongoose, { Schema, Document, Types } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ICashSession extends Document {
-  store: Types.ObjectId;
-  user: Types.ObjectId;
-  // Fondos iniciales desglosados
+  store: string; // Cambiado a string para soportar 'SYSTEM_MASTER'
+  user: string;
   openingBalances: {
     currency: 'USD' | 'VES' | 'COP';
     amount: number;
   }[];
-  // Registro de lo contado físicamente (Arqueo)
   declaredBalances: {
     currency: 'USD' | 'VES' | 'COP';
-    method: string; // 'Efectivo', 'Punto', 'Pago Movil', 'Zelle', etc.
+    method: string;
     amount: number;
-    denominations?: Record<string, number>; // Ej: { "20": 5, "10": 2 }
+    denominations?: Record<string, number>;
   }[];
-  // Salidas manuales (Vales/Egresos)
   adjustments: {
     type: 'IN' | 'OUT';
     currency: 'USD' | 'VES' | 'COP';
@@ -31,8 +28,9 @@ export interface ICashSession extends Document {
 }
 
 const CashSessionSchema: Schema = new Schema({
-  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Usamos String en lugar de ObjectId para permitir identificadores virtuales como 'SYSTEM_MASTER'
+  store: { type: String, required: true, index: true },
+  user: { type: String, required: true },
   openingBalances: [{
     currency: { type: String, enum: ['USD', 'VES', 'COP'], required: true },
     amount: { type: Number, required: true }
