@@ -35,10 +35,19 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'ID de tienda inválido.' }, { status: 400 });
     }
 
-    // Actualización con $set para asegurar que los objetos anidados (pagoMovil) se guarden correctamente
+    // Aplanamiento manual para asegurar que Mongoose procese correctamente los objetos anidados
+    // Esto evita que se pierdan datos en el objeto pagoMovil al actualizar
+    const finalUpdate: any = { ...updateData };
+    if (updateData.pagoMovil) {
+        finalUpdate['pagoMovil.bankCode'] = updateData.pagoMovil.bankCode;
+        finalUpdate['pagoMovil.phone'] = updateData.pagoMovil.phone;
+        finalUpdate['pagoMovil.idNumber'] = updateData.pagoMovil.idNumber;
+        delete finalUpdate.pagoMovil; // Eliminamos el objeto para usar solo las claves planas
+    }
+
     const updatedStore = await StoreModel.findByIdAndUpdate(
         storeId, 
-        { $set: updateData }, 
+        { $set: finalUpdate }, 
         { new: true, runValidators: true }
     );
 

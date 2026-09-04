@@ -80,7 +80,11 @@ export default function SettingsPage() {
             email: data.email || '',
             seniatCondition: data.seniatCondition || 'Contribuyente Ordinario del IVA',
             footerMessage: data.footerMessage || 'Gracias por su compra',
-            pagoMovil: data.pagoMovil || { bankCode: '0102', phone: '', idNumber: '' }
+            pagoMovil: {
+                bankCode: data.pagoMovil?.bankCode || '0102',
+                phone: data.pagoMovil?.phone || '',
+                idNumber: data.pagoMovil?.idNumber || ''
+            }
           });
         }
       } catch (error) {
@@ -99,6 +103,8 @@ export default function SettingsPage() {
       const userId = localStorage.getItem('userId');
       const userName = localStorage.getItem('userName');
 
+      if (!storeId) throw new Error("Sesión no válida.");
+
       const response = await fetch('/api/settings/store', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -110,11 +116,14 @@ export default function SettingsPage() {
         }),
       });
 
-      if (!response.ok) throw new Error('No se pudo guardar la configuración fiscal.');
+      if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.message || 'No se pudo guardar la configuración.');
+      }
 
-      toast({ title: "Configuración Guardada", description: "Datos fiscales y de Pago Móvil actualizados correctamente." });
+      toast({ title: "Configuración Guardada", description: "Datos actualizados correctamente en el servidor." });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast({ variant: "destructive", title: "Error al Guardar", description: error.message });
     } finally {
       setSaving(false);
     }

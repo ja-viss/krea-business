@@ -57,8 +57,8 @@ const StoreSchema: Schema = new Schema({
   // Configuración Pago Móvil
   pagoMovil: {
     bankCode: { type: String, default: '0102' },
-    phone: { type: String, default: '04120000000' },
-    idNumber: { type: String, default: 'J-00000000-0' },
+    phone: { type: String, default: '' },
+    idNumber: { type: String, default: '' },
   },
   enabledModules: {
     inventory: { type: Boolean, default: true },
