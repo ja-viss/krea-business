@@ -27,7 +27,9 @@ import {
     Zap,
     CheckCircle2,
     ShieldCheck,
-    Hash
+    Hash,
+    Plus,
+    Minus
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -149,7 +151,8 @@ export default function NewSalePage() {
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
     const existing = fields.findIndex(item => item.productId === String(product._id));
     if (existing > -1) {
-      update(existing, { ...fields[existing], quantity: fields[existing].quantity + quantity });
+      const newQty = (parseFloat(watchItems[existing].quantity.toString()) || 0) + quantity;
+      update(existing, { ...fields[existing], quantity: newQty });
     } else {
         append({
             productId: String(product._id),
@@ -159,6 +162,17 @@ export default function NewSalePage() {
             stock: product.stock,
             taxRate: product.taxRate
         });
+    }
+  };
+
+  const handleAdjustQuantity = (index: number, delta: number) => {
+    const currentQty = parseFloat(watchItems[index].quantity.toString()) || 0;
+    const nextQty = currentQty + delta;
+    
+    if (nextQty <= 0) {
+        remove(index);
+    } else {
+        update(index, { ...fields[index], quantity: nextQty });
     }
   };
 
@@ -249,7 +263,9 @@ export default function NewSalePage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {fields.length > 0 ? fields.map((item, index) => (
+                                        {fields.length > 0 ? fields.map((item, index) => {
+                                            const currentItem = watchItems[index];
+                                            return (
                                             <TableRow key={item.id} className="hover:bg-muted/20 border-b group">
                                                 <TableCell className="pl-6 py-3">
                                                     <div className='flex flex-col'>
@@ -258,14 +274,32 @@ export default function NewSalePage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className='text-center'>
-                                                    <Input 
-                                                        type="number" 
-                                                        className='w-14 h-8 text-center font-black mx-auto bg-muted/50 border-none rounded-lg' 
-                                                        {...form.register(`items.${index}.quantity`)} 
-                                                    />
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="icon" 
+                                                            className="h-7 w-7 rounded-full border-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                                                            onClick={() => handleAdjustQuantity(index, -1)}
+                                                        >
+                                                            <Minus className="h-3 w-3" />
+                                                        </Button>
+                                                        <Input 
+                                                            type="number" 
+                                                            className='w-12 h-8 text-center font-black bg-muted/50 border-none rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none' 
+                                                            {...form.register(`items.${index}.quantity`)} 
+                                                        />
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="icon" 
+                                                            className="h-7 w-7 rounded-full border-2 border-primary/20 text-primary hover:bg-primary/5"
+                                                            onClick={() => handleAdjustQuantity(index, 1)}
+                                                        >
+                                                            <Plus className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6 font-black text-sm text-slate-800">
-                                                    {formatCurrency(item.price * item.quantity)}
+                                                    {currentItem ? formatCurrency(currentItem.price * currentItem.quantity) : '0,00'}
                                                 </TableCell>
                                                 <TableCell className="pr-4">
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => remove(index)}>
@@ -273,7 +307,7 @@ export default function NewSalePage() {
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
-                                        )) : (
+                                        )}) : (
                                             <TableRow>
                                                 <TableCell colSpan={4} className='h-60 text-center'>
                                                     <div className="flex flex-col items-center gap-3 opacity-20">
@@ -350,6 +384,7 @@ export default function NewSalePage() {
                                     ].map((m) => (
                                         <button 
                                             key={m.id}
+                                            type="button"
                                             className={cn(
                                                 "h-12 flex items-center gap-2 px-3 rounded-xl transition-all font-black text-[9px] uppercase border-2",
                                                 watchMethod === m.id 
@@ -404,6 +439,7 @@ export default function NewSalePage() {
                                             {['USD', 'VES', 'COP'].map((curr: any) => (
                                                 <button 
                                                     key={curr}
+                                                    type="button"
                                                     className={cn(
                                                         "flex-1 h-9 rounded-lg font-black text-[10px] transition-all border-2",
                                                         watchCurrency === curr ? "bg-white border-primary text-primary" : "bg-transparent border-transparent text-muted-foreground"
@@ -435,6 +471,7 @@ export default function NewSalePage() {
                                             {[1, 5, 10, 20, 50, 100].map(val => (
                                                 <button 
                                                     key={val}
+                                                    type="button"
                                                     className="flex-1 h-8 rounded-lg bg-white border-2 text-[10px] font-black hover:bg-primary/5 active:scale-95 transition-all"
                                                     onClick={() => form.setValue('amountReceived', val.toString())}
                                                 >
@@ -465,6 +502,7 @@ export default function NewSalePage() {
                         {/* BLOQUE FINAL: ACCIÓN FIJA */}
                         <div className="p-4 bg-slate-100 border-t">
                              <Button 
+                                type="button"
                                 onClick={handleFinalizeSale}
                                 disabled={isSubmitting || watchItems.length === 0}
                                 className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all border-none"
