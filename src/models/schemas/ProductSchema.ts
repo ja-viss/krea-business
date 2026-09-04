@@ -1,6 +1,12 @@
 
 import { Schema } from 'mongoose';
 
+const LotSchema = new Schema({
+    number: { type: String, required: true },
+    expiryDate: { type: Date },
+    quantity: { type: Number, required: true, default: 0 },
+});
+
 export const ProductSchema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   name: { type: String, required: true },
@@ -18,10 +24,13 @@ export const ProductSchema = new Schema({
   location: { type: String },
   imageUrl: { type: String },
   status: { type: String, enum: ['En Stock', 'Stock Bajo', 'Sin Stock'], required: true },
+  // Campos Avanzados
+  lots: [LotSchema],
+  isBimonetary: { type: Boolean, default: true },
+  allowCredit: { type: Boolean, default: true },
 }, {
   timestamps: true
 });
 
-// Índices para búsquedas rápidas
 ProductSchema.index({ store: 1, sku: 1 }, { unique: true, sparse: true });
 ProductSchema.index({ store: 1, barcode: 1 }, { unique: true, sparse: true });

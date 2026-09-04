@@ -23,7 +23,13 @@ import {
   ShieldAlert,
   Monitor,
   Package2,
-  HardDriveDownload
+  HardDriveDownload,
+  Calculator,
+  RotateCcw,
+  Truck,
+  ClipboardList,
+  Fingerprint,
+  Wallet
 } from 'lucide-react';
 
 export type NavLink = {
@@ -33,11 +39,11 @@ export type NavLink = {
   roles: string[];
   isGlobal?: boolean;
   category?: string;
-  moduleKey?: 'inventory' | 'sales' | 'expenses' | 'reports'; // El enlace depende de este módulo
+  moduleKey?: 'inventory' | 'sales' | 'expenses' | 'reports';
 };
 
 export const navLinks: NavLink[] = [
-  // --- SECCION GLOBAL (Krea Admin) ---
+  // --- SECCION GLOBAL ---
   {
     href: '/dashboard',
     label: 'Dashboard / Inicio',
@@ -55,22 +61,6 @@ export const navLinks: NavLink[] = [
     category: 'Gestión de Clientes',
   },
   {
-    href: '/admin/offline-deployments',
-    label: 'Despliegue Offline',
-    icon: HardDriveDownload,
-    roles: ['SUPER_ADMIN_MASTER'],
-    isGlobal: true,
-    category: 'Gestión de Clientes',
-  },
-  {
-    href: '/admin/users',
-    label: 'Usuarios Globales',
-    icon: Users,
-    roles: ['SUPER_ADMIN_MASTER'],
-    isGlobal: true,
-    category: 'Gestión de Clientes',
-  },
-  {
     href: '/admin/saas-billing',
     label: 'Control de Pagos',
     icon: CreditCard,
@@ -78,84 +68,92 @@ export const navLinks: NavLink[] = [
     isGlobal: true,
     category: 'Control Comercial',
   },
-  {
-    href: '/admin/plans',
-    label: 'Planes y Tarifas',
-    icon: Tag,
-    roles: ['SUPER_ADMIN_MASTER'],
-    isGlobal: true,
-    category: 'Control Comercial',
-  },
-  {
-    href: '/admin/settings',
-    label: 'Configuración Sistema',
-    icon: Settings,
-    roles: ['SUPER_ADMIN_MASTER'],
-    isGlobal: true,
-    category: 'Herramientas Dev',
-  },
-  
-  // --- SECCION OPERATIVA (Usuarios de Tiendas) ---
+
+  // --- SECCION OPERATIVA ---
   {
     href: '/dashboard',
     label: 'Resumen',
     icon: LayoutDashboard,
-    roles: ['Administrador Principal', 'Gerente de Ventas', 'Gerente de Inventario', 'Vendedor', 'Almacenista'],
+    roles: ['Administrador Principal', 'Vendedor'],
+    category: 'General',
+  },
+  {
+    href: '/cash-control',
+    label: 'Arqueo de Caja',
+    icon: Calculator,
+    roles: ['Administrador Principal', 'Vendedor'],
     category: 'Operaciones',
+    moduleKey: 'sales',
+  },
+  {
+    href: '/quotes',
+    label: 'Cotizaciones',
+    icon: ClipboardList,
+    roles: ['Administrador Principal', 'Vendedor'],
+    category: 'Operaciones',
+    moduleKey: 'sales',
   },
   {
     href: '/sales',
     label: 'Ventas / POS',
     icon: ShoppingCart,
-    roles: ['Administrador Principal', 'Gerente de Ventas', 'Vendedor'],
+    roles: ['Administrador Principal', 'Vendedor'],
+    category: 'Operaciones',
+    moduleKey: 'sales',
+  },
+  {
+    href: '/returns',
+    label: 'Devoluciones',
+    icon: RotateCcw,
+    roles: ['Administrador Principal'],
     category: 'Operaciones',
     moduleKey: 'sales',
   },
   {
     href: '/inventory',
-    label: 'Inventario',
+    label: 'Existencias',
     icon: Boxes,
-    roles: ['Administrador Principal', 'Gerente de Inventario', 'Almacenista'],
+    roles: ['Administrador Principal', 'Almacenista'],
+    category: 'Inventario',
+    moduleKey: 'inventory',
+  },
+  {
+    href: '/purchases',
+    label: 'Compras (Entradas)',
+    icon: Truck,
+    roles: ['Administrador Principal', 'Almacenista'],
     category: 'Inventario',
     moduleKey: 'inventory',
   },
   {
     href: '/expenses',
-    label: 'Gastos',
+    label: 'Gastos de Negocio',
     icon: Receipt,
-    roles: ['Administrador Principal', 'Gerente de Ventas'],
+    roles: ['Administrador Principal'],
     category: 'Finanzas',
     moduleKey: 'expenses',
   },
   {
     href: '/accounts',
-    label: 'Cuentas x Cobrar/Pagar',
-    icon: BookUser,
-    roles: ['Administrador Principal', 'Gerente de Ventas'],
+    label: 'Cuentas x Cobrar',
+    icon: Wallet,
+    roles: ['Administrador Principal'],
     category: 'Finanzas',
     moduleKey: 'expenses',
   },
   {
-    href: '/reports',
-    label: 'Reportes y Kardex',
-    icon: BarChart3,
-    roles: ['Administrador Principal', 'Gerente de Ventas', 'Gerente de Inventario'],
-    category: 'Administración',
-    moduleKey: 'reports',
-  },
-  {
-    href: '/ai-insights',
-    label: 'AI Insights',
-    icon: Sparkles,
+    href: '/audit-logs',
+    label: 'Logs de Auditoría',
+    icon: Fingerprint,
     roles: ['Administrador Principal'],
-    category: 'Administración',
+    category: 'Seguridad',
     moduleKey: 'reports',
   },
   {
     href: '/settings',
-    label: 'Configuración Fiscal',
+    label: 'Configuración',
     icon: Settings,
-    roles: ['Administrador Principal', 'Gerente de Ventas', 'Gerente de Inventario', 'Vendedor', 'Almacenista'],
-    category: 'Administración',
+    roles: ['Administrador Principal'],
+    category: 'Seguridad',
   },
 ];
