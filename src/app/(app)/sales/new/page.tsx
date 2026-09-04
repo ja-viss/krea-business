@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -16,8 +15,6 @@ import {
     Loader2, 
     ChevronLeft, 
     Printer, 
-    Monitor,
-    UserCheck,
     X,
     Smartphone,
     CreditCard,
@@ -26,16 +23,15 @@ import {
     Zap,
     CheckCircle2,
     ShieldCheck,
-    Hash,
     Plus,
     Minus,
-    AlertCircle
+    QrCode
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
 import Link from 'next/link';
-import { Form } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { CustomerSearch } from '@/components/sales/customer-search';
 import { ICustomer } from '@/models/Customer';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
@@ -183,7 +179,7 @@ export default function NewSalePage() {
   const handleFinalizeSale = async () => {
     if (watchItems.length === 0) return;
     
-    if ((parseFloat(watchAmountReceived) || 0) < targetAmount * 0.999) {
+    if (parseFloat(watchAmountReceived) < targetAmount * 0.99) {
         toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago recibido es menor al total.' });
         return;
     }
@@ -230,190 +226,204 @@ export default function NewSalePage() {
 
   return (
     <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
-       <main className="flex-1 p-2 md:p-6 overflow-y-auto lg:overflow-hidden flex flex-col gap-4">
+       <main className="flex-1 p-3 md:p-6 overflow-y-auto lg:overflow-hidden flex flex-col gap-4">
+            {/* Header POS */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 md:gap-4">
-                    <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
+                <div className="flex items-center gap-3">
+                    <Button variant="ghost" size="icon" asChild className="rounded-full h-10 w-10 border"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
                     <div>
-                        <h2 className="text-lg md:text-xl font-black uppercase tracking-tight text-primary">Nueva Venta</h2>
+                        <h2 className="text-xl font-black uppercase tracking-tighter text-primary">Nueva Venta</h2>
                         <div className="flex items-center gap-2">
-                             <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase bg-green-50 text-green-600 border-green-200">
-                                <Zap className="h-2 w-2 mr-1 fill-green-600" /> Online
+                             <Badge variant="outline" className="text-[10px] font-black uppercase bg-green-50 text-green-600 border-green-200 py-0">
+                                <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> Online
                              </Badge>
                         </div>
                     </div>
                 </div>
-                <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-black uppercase opacity-40">Tasa BCV</span>
-                    <span className="text-xs md:text-sm font-black text-primary">Bs. {rates.usd?.usd.toFixed(2)}</span>
+                <div className="text-right">
+                    <span className="text-[10px] font-black uppercase opacity-40 block">Tasa Oficial</span>
+                    <span className="text-sm font-black text-primary">Bs. {formatCurrency(rates.usd?.usd || 0)}</span>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 flex-1 lg:overflow-hidden">
-                {/* CARRITO RESPONSIVO */}
+                {/* ÁREA DE PRODUCTOS (IZQUIERDA) */}
                 <div className="lg:col-span-7 flex flex-col gap-4 lg:overflow-hidden">
                     <Card className='immersive-card rounded-2xl'>
-                        <CardContent className="p-2 md:p-3">
+                        <CardContent className="p-3">
                             <ProductSearch inputRef={productSearchRef} onProductSelect={handleProductSelect} />
                         </CardContent>
                     </Card>
 
-                    <Card className="immersive-card rounded-2xl flex-1 lg:overflow-hidden flex flex-col">
+                    <Card className="immersive-card rounded-2xl flex-1 lg:overflow-hidden flex flex-col overflow-hidden">
                         <CardContent className="p-0 flex-1 overflow-x-auto">
-                            <div className="min-w-[600px] lg:min-w-full">
-                                <Table>
-                                    <TableHeader className='bg-muted/30 sticky top-0 z-10'>
-                                        <TableRow>
-                                            <TableHead className="pl-4 font-black uppercase text-[10px]">Producto</TableHead>
-                                            <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
-                                            <TableHead className="text-right pr-4 font-black uppercase text-[10px]">Total</TableHead>
-                                            <TableHead className="w-[40px]"></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {fields.length > 0 ? fields.map((item, index) => {
-                                            const currentItem = watchItems[index];
-                                            return (
-                                            <TableRow key={item.id} className="hover:bg-muted/20 border-b group">
-                                                <TableCell className="pl-4 py-3">
-                                                    <div className='flex flex-col'>
-                                                        <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight'>{item.name}</span>
-                                                        <span className='text-[8px] md:text-[9px] text-muted-foreground font-mono'>Bs. {formatCurrency(item.price)}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className='text-center'>
-                                                    <div className="flex items-center justify-center gap-1 md:gap-2">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 rounded-full border-2"
-                                                            onClick={() => handleAdjustQuantity(index, -1)}
-                                                        >
-                                                            <Minus className="h-3 w-3" />
-                                                        </Button>
-                                                        <span className="w-8 text-center font-black text-sm">{currentItem?.quantity}</span>
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 rounded-full border-2 border-primary/20 text-primary"
-                                                            onClick={() => handleAdjustQuantity(index, 1)}
-                                                        >
-                                                            <Plus className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-4 font-black text-xs md:text-sm">
-                                                    {currentItem ? formatCurrency(currentItem.price * currentItem.quantity * (1 + (currentItem.taxRate || 0))) : '0,00'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => remove(index)}>
-                                                        <X className="h-4 w-4" />
+                            <Table>
+                                <TableHeader className='bg-muted/30 sticky top-0 z-10'>
+                                    <TableRow>
+                                        <TableHead className="pl-4 font-black uppercase text-[10px] py-4">Ítem</TableHead>
+                                        <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
+                                        <TableHead className="text-right pr-4 font-black uppercase text-[10px]">Total</TableHead>
+                                        <TableHead className="w-[40px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {fields.length > 0 ? fields.map((item, index) => {
+                                        const currentItem = watchItems[index];
+                                        return (
+                                        <TableRow key={item.id} className="hover:bg-muted/20 border-b group">
+                                            <TableCell className="pl-4 py-4">
+                                                <div className='flex flex-col'>
+                                                    <span className='font-black uppercase text-xs md:text-sm leading-tight'>{item.name}</span>
+                                                    <span className='text-[10px] text-muted-foreground font-mono'>Bs. {formatCurrency(item.price)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className='text-center'>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="icon" 
+                                                        className="h-9 w-9 rounded-xl border-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                                        onClick={() => handleAdjustQuantity(index, -1)}
+                                                    >
+                                                        <Minus className="h-4 w-4" />
                                                     </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className='h-40 text-center'>
-                                                    <p className="font-black uppercase text-[10px] opacity-20 tracking-widest">Sin productos</p>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                                    <span className="w-8 text-center font-black text-sm">{currentItem?.quantity}</span>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="icon" 
+                                                        className="h-9 w-9 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary/5"
+                                                        onClick={() => handleAdjustQuantity(index, 1)}
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right pr-4 font-black text-sm md:text-base">
+                                                {formatCurrency(currentItem.price * currentItem.quantity * (1 + (currentItem.taxRate || 0)))}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button variant="ghost" size="icon" className="h-9 w-9 text-red-400 hover:text-red-600" onClick={() => remove(index)}>
+                                                    <X className="h-5 w-5" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className='h-64 text-center'>
+                                                <div className="flex flex-col items-center opacity-20 grayscale">
+                                                    <QrCode className="h-16 w-16 mb-4" />
+                                                    <p className="font-black uppercase text-xs tracking-[0.2em]">Esperando Productos</p>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* LIQUIDACIÓN RESPONSIVA */}
+                {/* PANEL DE PAGO (DERECHA) */}
                 <div className="lg:col-span-5 flex flex-col gap-4">
-                    <Card className="immersive-card rounded-2xl bg-white border-2 border-primary/10">
-                        <CardContent className="p-3 grid grid-cols-3 gap-1 md:gap-2">
-                             <div className="flex flex-col border-r pr-1">
-                                <span className="text-[8px] md:text-[9px] font-black uppercase opacity-40">Bolívares</span>
-                                <span className="text-sm md:text-lg font-black truncate">Bs. {formatCurrency(totals.ves)}</span>
-                             </div>
-                             <div className="flex flex-col border-r px-1 text-primary">
-                                <span className="text-[8px] md:text-[9px] font-black uppercase opacity-60 text-primary">Dólares</span>
-                                <span className="text-sm md:text-lg font-black truncate">${formatCurrency(totals.usd)}</span>
-                             </div>
-                             <div className="flex flex-col pl-1">
-                                <span className="text-[8px] md:text-[9px] font-black uppercase opacity-40">Pesos</span>
-                                <span className="text-sm md:text-lg font-black truncate">{totals.cop.toLocaleString()}</span>
-                             </div>
+                    {/* Visualización de Totales */}
+                    <Card className="immersive-card rounded-2xl bg-white border-2 border-primary/10 overflow-hidden">
+                        <CardContent className="p-0">
+                            <div className="grid grid-cols-3 divide-x">
+                                <div className="p-4 text-center">
+                                    <span className="text-[10px] font-black uppercase opacity-40 block mb-1">Dólares</span>
+                                    <span className="text-xl font-black text-primary">${formatCurrency(totals.usd)}</span>
+                                </div>
+                                <div className="p-4 text-center bg-primary/[0.02]">
+                                    <span className="text-[10px] font-black uppercase text-primary block mb-1">Bolívares</span>
+                                    <span className="text-xl font-black">Bs. {formatCurrency(totals.ves)}</span>
+                                </div>
+                                <div className="p-4 text-center">
+                                    <span className="text-[10px] font-black uppercase opacity-40 block mb-1">Pesos (COP)</span>
+                                    <span className="text-xl font-black">{totals.cop.toLocaleString()}</span>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="immersive-card rounded-2xl flex-1 flex flex-col">
+                    {/* Formulario de Pago */}
+                    <Card className="immersive-card rounded-2xl flex-1 flex flex-col overflow-hidden">
                         <CardContent className="p-4 space-y-4 flex-1">
-                            <CustomerSearch onCustomerSelect={(c) => {
-                                form.setValue('customerId', c._id);
-                                form.setValue('customerName', c.name);
-                                setSelectedCustomer(c);
-                            }} />
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-black uppercase ml-1 opacity-50">Cliente</Label>
+                                <CustomerSearch onCustomerSelect={(c) => {
+                                    form.setValue('customerId', c._id);
+                                    form.setValue('customerName', c.name);
+                                    setSelectedCustomer(c);
+                                }} />
+                            </div>
+
+                            <Separator />
 
                             <div className="grid grid-cols-3 gap-2">
                                 {[
-                                    { id: 'Pago Móvil', icon: Smartphone },
-                                    { id: 'Tarjeta', icon: CreditCard },
-                                    { id: 'Efectivo', icon: Banknote },
-                                    { id: 'Zelle', icon: CheckCircle2 },
-                                    { id: 'Binance', icon: Coins },
-                                    { id: 'Biopago', icon: ShieldCheck },
+                                    { id: 'Pago Móvil', icon: Smartphone, color: 'text-blue-500' },
+                                    { id: 'Tarjeta', icon: CreditCard, color: 'text-purple-500' },
+                                    { id: 'Efectivo', icon: Banknote, color: 'text-green-600' },
+                                    { id: 'Zelle', icon: CheckCircle2, color: 'text-blue-600' },
+                                    { id: 'Binance', icon: Coins, color: 'text-amber-500' },
+                                    { id: 'Biopago', icon: ShieldCheck, color: 'text-red-500' },
                                 ].map((m) => (
                                     <button 
                                         key={m.id}
                                         type="button"
                                         className={cn(
-                                            "h-12 flex flex-col items-center justify-center gap-1 rounded-xl transition-all font-black text-[8px] uppercase border-2",
+                                            "h-16 flex flex-col items-center justify-center gap-1 rounded-2xl transition-all font-black text-[9px] uppercase border-2",
                                             watchMethod === m.id 
-                                                ? "border-primary bg-primary/5 text-primary" 
-                                                : "border-transparent bg-muted/40 text-muted-foreground"
+                                                ? "border-primary bg-primary/5 text-primary shadow-inner" 
+                                                : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted"
                                         )}
                                         onClick={() => form.setValue('paymentMethod', m.id)}
                                     >
-                                        <m.icon className="h-4 w-4" />
+                                        <m.icon className={cn("h-5 w-5", watchMethod === m.id ? "text-primary" : m.color)} />
                                         {m.id}
                                     </button>
                                 ))}
                             </div>
 
-                            <div className="bg-muted/20 rounded-2xl p-4 border-2 border-dashed">
+                            <div className="bg-muted/30 rounded-3xl p-5 border-2 border-dashed">
                                 {watchMethod === 'Pago Móvil' ? (
-                                    <div className="space-y-4">
-                                        <div className="flex gap-4 items-center">
-                                            <div className="bg-white p-1 rounded-lg border shrink-0">
-                                                {qrPayload && (
-                                                    <img 
-                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrPayload)}&ecc=L`} 
-                                                        alt="QR" className="w-24 h-24"
-                                                    />
-                                                )}
-                                            </div>
-                                            <div className="text-[9px] font-bold space-y-1">
-                                                <p className="font-black text-primary">MONTO: {formatCurrency(totals.ves)} Bs.</p>
-                                                <p>BANCO: {storeConfig?.pagoMovil?.bankCode || '---'}</p>
-                                                <p>RIF: {storeConfig?.pagoMovil?.idNumber || '---'}</p>
-                                                <p>TEL: {storeConfig?.pagoMovil?.phone || '---'}</p>
-                                            </div>
+                                    <div className="flex gap-5 items-center">
+                                        <div className="bg-white p-2 rounded-2xl border-2 border-primary/10 shadow-lg shrink-0">
+                                            {qrPayload ? (
+                                                <img 
+                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrPayload)}&ecc=L`} 
+                                                    alt="QR Suiche 7B" className="w-28 h-24"
+                                                />
+                                            ) : <div className="w-28 h-24 flex items-center justify-center text-[8px] font-black text-center uppercase opacity-20">Configurar Datos PM</div>}
                                         </div>
-                                        <Input placeholder="Referencia" className="h-10 font-black uppercase text-center" {...form.register('referenceNumber')} />
+                                        <div className="flex-1 space-y-3">
+                                            <div className="text-[10px] font-bold space-y-1">
+                                                <p className="font-black text-primary text-xs">Monto: {formatCurrency(totals.ves)} Bs.</p>
+                                                <p className="opacity-60">Banco: {storeConfig?.pagoMovil?.bankCode || '---'}</p>
+                                                <p className="opacity-60">Tel: {storeConfig?.pagoMovil?.phone || '---'}</p>
+                                            </div>
+                                            <Input 
+                                                placeholder="Referencia (últimos 6)" 
+                                                className="h-11 font-black uppercase text-center rounded-xl bg-white border-2 focus:ring-primary" 
+                                                {...form.register('referenceNumber')} 
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="space-y-4">
-                                        <div className="flex gap-2">
+                                    <div className="space-y-5">
+                                        <div className="flex gap-2 p-1 bg-white/50 rounded-xl border">
                                             {['USD', 'VES', 'COP'].map((curr: any) => (
-                                                <button key={curr} type="button" className={cn("flex-1 h-8 rounded-lg font-black text-[10px] border-2", watchCurrency === curr ? "bg-white border-primary text-primary" : "bg-transparent border-transparent")} onClick={() => form.setValue('paymentCurrency', curr)}>{curr}</button>
+                                                <button key={curr} type="button" className={cn("flex-1 h-9 rounded-lg font-black text-[11px] transition-all", watchCurrency === curr ? "bg-white text-primary shadow-sm border-2 border-primary/20" : "bg-transparent text-muted-foreground opacity-50")} onClick={() => form.setValue('paymentCurrency', curr)}>{curr}</button>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1">
-                                                <Label className="text-[9px] font-black uppercase opacity-60">Recibido</Label>
-                                                <Input type="number" className="h-10 text-xl font-black text-center" {...form.register('amountReceived')} />
+                                                <Label className="text-[10px] font-black uppercase opacity-40 ml-1">Recibido</Label>
+                                                <Input type="number" className="h-12 text-2xl font-black text-center rounded-2xl border-2" {...form.register('amountReceived')} />
                                             </div>
-                                            <div className={cn("rounded-xl p-2 flex flex-col justify-center text-center", change > 0 ? "bg-green-500 text-white" : "bg-muted")}>
-                                                <span className="text-[8px] font-black uppercase">Vuelto</span>
-                                                <span className="text-lg font-black">{formatCurrency(change)}</span>
+                                            <div className={cn("rounded-2xl p-2 flex flex-col justify-center text-center border-2 transition-all", change > 0 ? "bg-green-600 text-white border-green-700 shadow-lg" : "bg-muted border-transparent")}>
+                                                <span className="text-[10px] font-black uppercase opacity-60">Vuelto</span>
+                                                <span className="text-xl font-black">{formatCurrency(change)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -421,14 +431,14 @@ export default function NewSalePage() {
                             </div>
                         </CardContent>
 
-                        <div className="p-4 bg-muted/20 border-t mt-auto">
+                        <div className="p-4 bg-white border-t mt-auto">
                              <Button 
                                 type="button"
                                 onClick={handleFinalizeSale}
                                 disabled={isSubmitting || watchItems.length === 0 || (isDigitalPayment && !watchReference?.trim())}
-                                className="w-full h-14 text-base font-black uppercase shadow-xl rounded-2xl bg-primary text-white"
+                                className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all"
                             >
-                                {isSubmitting ? <Loader2 className="animate-spin mr-2 h-5 w-5" /> : <Printer className="mr-2 h-5 w-5" />}
+                                {isSubmitting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <Printer className="mr-3 h-6 w-6" />}
                                 FACTURAR VENTA (F4)
                             </Button>
                         </div>
@@ -436,6 +446,17 @@ export default function NewSalePage() {
                 </div>
             </div>
        </main>
+
+       <style jsx global>{`
+           @media (max-width: 1024px) {
+               .immersive-card { border-radius: 1.5rem; }
+           }
+           input::-webkit-outer-spin-button,
+           input::-webkit-inner-spin-button {
+             -webkit-appearance: none;
+             margin: 0;
+           }
+       `}</style>
     </div>
   );
 }

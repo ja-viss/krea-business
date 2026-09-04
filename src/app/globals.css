@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
+    --background: 0 0% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -23,7 +23,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221 83% 53%;
-    --radius: 1rem;
+    --radius: 0.75rem;
   }
 }
 
@@ -38,20 +38,26 @@
 
 /* Efecto de inmersión para tarjetas */
 .immersive-card {
-  @apply bg-white border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300;
+  @apply bg-white border border-border/50 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300;
 }
 
 .immersive-card:hover {
-  @apply shadow-[0_8px_30px_rgb(0,0,0,0.08)];
+  @apply shadow-[0_8px_30px_rgb(0,0,0,0.06)];
 }
 
 /* Scrollbar elegante */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
   @apply bg-muted-foreground/20 rounded-full;
+}
+
+/* Estilos POS Específicos */
+.pos-table-row {
+  @apply border-b last:border-0 transition-colors hover:bg-muted/30;
 }
