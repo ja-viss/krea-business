@@ -8,7 +8,8 @@ import { IProduct } from '@/models/Product';
 import { Button } from '@/components/ui/button';
 import { BarcodeScanner } from '../inventory/barcode-scanner';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '../ui/badge';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface ProductSearchProps {
   onProductSelect: (product: IProduct, quantity?: number) => void;
@@ -129,7 +130,10 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
             <Input
                 ref={inputRef}
                 placeholder="Escanea barras o escribe (ej: 12*Leche)..."
-                className={`h-12 text-lg font-bold pl-${multiplier > 1 ? '16' : '10'} transition-all`}
+                className={cn(
+                    "h-12 text-lg font-bold transition-all",
+                    multiplier > 1 ? "pl-16" : "pl-10"
+                )}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
