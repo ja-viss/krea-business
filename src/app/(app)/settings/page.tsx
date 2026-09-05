@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode } from 'lucide-react';
+import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode, Calculator } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 const VENEZUELAN_BANKS = [
     { code: '0102', name: 'Banco de Venezuela' },
@@ -40,18 +42,12 @@ export default function SettingsPage() {
     email: '',
     seniatCondition: '',
     footerMessage: '',
+    enforceCashControl: true,
     pagoMovil: {
         bankCode: '0102',
         phone: '',
         idNumber: ''
     }
-  });
-
-  const [masterSecurity, setMasterSecurity] = useState({
-    newPassword: '',
-    masterUser: '',
-    masterKeyAlpha: '',
-    masterKeyBeta: '',
   });
 
   useEffect(() => {
@@ -77,6 +73,7 @@ export default function SettingsPage() {
             email: data.email || '',
             seniatCondition: data.seniatCondition || 'Contribuyente Ordinario del IVA',
             footerMessage: data.footerMessage || 'Gracias por su compra',
+            enforceCashControl: data.enforceCashControl !== false,
             pagoMovil: {
                 bankCode: data.pagoMovil?.bankCode || '0102',
                 phone: data.pagoMovil?.phone || '',
@@ -118,7 +115,7 @@ export default function SettingsPage() {
           throw new Error(err.message || 'No se pudo guardar la configuración.');
       }
 
-      toast({ title: "Configuración Guardada", description: "Datos actualizados correctamente en el servidor." });
+      toast({ title: "Configuración Guardada", description: "Datos actualizados correctamente." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error al Guardar", description: error.message });
     } finally {
@@ -138,19 +135,19 @@ export default function SettingsPage() {
 
         <Tabs defaultValue="fiscal" className="space-y-6">
           <TabsList className="grid grid-cols-3 bg-muted/50 p-1 border-2 w-full lg:w-[500px] h-12">
-            <TabsTrigger value="fiscal" className="font-black text-[10px] uppercase">Fiscal</TabsTrigger>
-            <TabsTrigger value="payments" className="font-black text-[10px] uppercase">Cobros</TabsTrigger>
+            <TabsTrigger value="fiscal" className="font-black text-[10px] uppercase">Fiscal / Operación</TabsTrigger>
+            <TabsTrigger value="payments" className="font-black text-[10px] uppercase">Cobros QR</TabsTrigger>
             <TabsTrigger value="security" className="font-black text-[10px] uppercase">Acceso</TabsTrigger>
           </TabsList>
 
           <TabsContent value="fiscal">
             <Card className="border-2 shadow-lg">
                 <CardHeader className="bg-muted/10 border-b">
-                    <CardTitle className="text-lg font-black uppercase italic">Identidad Empresarial</CardTitle>
-                    <CardDescription className="font-bold">Encabezado legal de tus facturas y documentos.</CardDescription>
+                    <CardTitle className="text-lg font-black uppercase italic">Identidad y Operación</CardTitle>
+                    <CardDescription className="font-bold">Datos legales y modo de trabajo del punto de venta.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Razón Social</Label>
                             <Input value={storeData.name} onChange={(e) => setStoreData({...storeData, name: e.target.value})} className="font-bold" />
@@ -159,6 +156,27 @@ export default function SettingsPage() {
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">RIF Principal</Label>
                             <Input placeholder="J-00000000-0" value={storeData.rif} onChange={(e) => setStoreData({...storeData, rif: e.target.value})} className="font-mono font-bold" />
                         </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="p-4 rounded-xl border-2 border-primary/20 bg-primary/[0.02] flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-primary text-white p-2 rounded-lg">
+                                <Calculator className="h-5 w-5" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-black uppercase">Control de Turnos (Caja Registradora)</Label>
+                                <p className="text-[10px] text-muted-foreground font-medium italic">Activa o desactiva la obligación de abrir/cerrar caja para operar.</p>
+                            </div>
+                        </div>
+                        <Switch 
+                            checked={storeData.enforceCashControl}
+                            onCheckedChange={(checked) => setStoreData({...storeData, enforceCashControl: checked})}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Teléfono de Contacto</Label>
                             <Input value={storeData.phone} onChange={(e) => setStoreData({...storeData, phone: e.target.value})} />
@@ -170,13 +188,13 @@ export default function SettingsPage() {
                     </div>
                     <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-muted-foreground">Dirección Fiscal</Label>
-                        <Textarea value={storeData.address} onChange={(e) => setStoreData({...storeData, address: e.target.value})} className="min-h-[100px]" />
+                        <Textarea value={storeData.address} onChange={(e) => setStoreData({...storeData, address: e.target.value})} className="min-h-[80px]" />
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
                     <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-xl">
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Actualizar Datos
+                        Actualizar Entidad
                     </Button>
                 </CardFooter>
             </Card>
@@ -194,7 +212,7 @@ export default function SettingsPage() {
                     <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl flex items-start gap-3">
                         <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                         <p className="text-[11px] font-bold text-blue-800 leading-tight">
-                            Asegúrese de que el número telefónico y RIF coincidan exactamente con los registrados en su banca en línea para que el cliente pueda escanear y pagar sin errores.
+                            Asegúrese de que el número telefónico y RIF coincidan exactamente con los registrados en su banca en línea.
                         </p>
                     </div>
 

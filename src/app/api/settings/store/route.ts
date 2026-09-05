@@ -35,11 +35,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'ID de tienda inválido.' }, { status: 400 });
     }
 
-    // Aplanamiento manual para asegurar que MongoDB procese correctamente la actualización
-    // Esto garantiza que el objeto pagoMovil se guarde campo por campo
     const flatUpdate: any = {};
     
-    // Campos de texto simples
     if (updateData.name) flatUpdate.name = updateData.name;
     if (updateData.rif) flatUpdate.rif = updateData.rif;
     if (updateData.address) flatUpdate.address = updateData.address;
@@ -47,8 +44,12 @@ export async function PUT(req: NextRequest) {
     if (updateData.email) flatUpdate.email = updateData.email;
     if (updateData.seniatCondition) flatUpdate.seniatCondition = updateData.seniatCondition;
     if (updateData.footerMessage) flatUpdate.footerMessage = updateData.footerMessage;
+    
+    // Nueva opción de modo de operación
+    if (updateData.enforceCashControl !== undefined) {
+        flatUpdate.enforceCashControl = updateData.enforceCashControl;
+    }
 
-    // Campos anidados de Pago Móvil (Dot Notation)
     if (updateData.pagoMovil) {
         flatUpdate['pagoMovil.bankCode'] = updateData.pagoMovil.bankCode || '0102';
         flatUpdate['pagoMovil.phone'] = updateData.pagoMovil.phone || '';
@@ -65,14 +66,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'Tienda no encontrada.' }, { status: 404 });
     }
 
-    // AUDITORÍA: Registrar cambio
     await createLog({
         store: storeId,
         user: userId || 'SISTEMA',
         userName: userName || 'Admin',
         action: 'CONFIG_SISTEMA_ACTUALIZADA',
         module: 'Configuración',
-        details: `Actualización de parámetros generales y datos de recaudación dinámica.`,
+        details: `Actualización de parámetros generales y modo de operación: ${updateData.enforceCashControl ? 'Control Activado' : 'Modo Libre'}`,
         targetId: storeId,
         newState: flatUpdate
     });

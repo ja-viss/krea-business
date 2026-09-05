@@ -24,12 +24,14 @@ import {
     ShieldCheck,
     ArrowRightLeft,
     CheckCircle2,
-    XCircle
-} from 'lucide-react';
+    XCircle,
+    Store
+} from 'lucide-center';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 const USD_DENOMINATIONS = [100, 50, 20, 10, 5, 1];
 const VES_DENOMINATIONS = [100, 50, 20, 10, 5];
@@ -40,6 +42,7 @@ export default function CashControlPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [session, setSession] = useState<any>(null);
     const [viewResults, setViewResults] = useState<any>(null);
+    const [storeConfig, setStoreConfig] = useState<any>(null);
     
     // Estados de Apertura
     const [openingUsd, setOpeningUsd] = useState('0');
@@ -57,17 +60,27 @@ export default function CashControlPage() {
     const [closingNotes, setClosingNotes] = useState('');
 
     useEffect(() => {
-        fetchSession();
+        fetchSessionAndConfig();
     }, []);
 
-    const fetchSession = async () => {
+    const fetchSessionAndConfig = async () => {
         try {
             setLoading(true);
             const storeId = localStorage.getItem('storeId');
-            const res = await fetch(`/api/cash-control?storeId=${storeId}`);
-            if (res.ok) {
-                const data = await res.json();
+            
+            const [sessionRes, configRes] = await Promise.all([
+                fetch(`/api/cash-control?storeId=${storeId}`),
+                fetch(`/api/settings/store?storeId=${storeId}`)
+            ]);
+
+            if (sessionRes.ok) {
+                const data = await sessionRes.json();
                 setSession(data.activeSession);
+            }
+            
+            if (configRes.ok) {
+                const configData = await configRes.json();
+                setStoreConfig(configData);
             }
         } catch (e) {
             console.error(e);
@@ -92,10 +105,10 @@ export default function CashControlPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ storeId, userId, userName, openingBalances: balances, action: 'OPEN' })
             });
-            if (!res.ok) throw new Error('Error al abrir');
+            if (!res.ok) throw new Error('Error al abrir caja');
             
-            toast({ title: "Turno Iniciado", description: "Fondo de caja registrado con éxito." });
-            fetchSession();
+            toast({ title: "Turno Iniciado", description: "Fondo de caja registrado." });
+            fetchSessionAndConfig();
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error", description: e.message });
         } finally {
@@ -128,7 +141,7 @@ export default function CashControlPage() {
             if (!res.ok) throw new Error(resultData.message);
 
             setViewResults(resultData);
-            toast({ title: "Arqueo Procesado", description: "La jornada ha sido cerrada digitalmente." });
+            toast({ title: "Arqueo Procesado", description: "La jornada ha sido cerrada." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error crítico", description: e.message });
         } finally {
@@ -144,7 +157,34 @@ export default function CashControlPage() {
 
     if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
-    // Si acabamos de cerrar, mostrar pantalla de resultados
+    // --- MODO SIN CAJA REGISTRADORA ---
+    if (storeConfig && storeConfig.enforceCashControl === false) {
+        return (
+            <div className="flex flex-1 flex-col">
+                <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-6xl mx-auto w-full">
+                    <PageHeader 
+                        title="Estado de Operación" 
+                        description="Modo Libre: El sistema no requiere apertura ni cierre de turnos."
+                    />
+                    <Card className="border-4 border-dashed border-primary/20 bg-muted/20">
+                        <CardContent className="py-20 text-center space-y-6">
+                            <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
+                                <Store className="h-10 w-10 text-primary" />
+                            </div>
+                            <div className="max-w-md mx-auto space-y-2">
+                                <h3 className="text-2xl font-black uppercase italic">Punto de Venta Independiente</h3>
+                                <p className="text-sm font-medium text-muted-foreground">
+                                    Tienes desactivado el **Control de Caja**. Todas las ventas se procesan directamente. Puedes cambiar esto en la pestaña de Configuración > Fiscal.
+                                </p>
+                            </div>
+                            <Button variant="outline" className="font-bold h-12 px-8 uppercase" onClick={() => window.location.href = '/settings'}>Ir a Configuración</Button>
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        );
+    }
+
     if (viewResults) {
         return (
             <div className="flex flex-1 flex-col p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
@@ -182,7 +222,7 @@ export default function CashControlPage() {
                         </Table>
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full h-14 font-black uppercase" onClick={() => { setViewResults(null); setSession(null); fetchSession(); }}>
+                        <Button className="w-full h-14 font-black uppercase" onClick={() => { setViewResults(null); setSession(null); fetchSessionAndConfig(); }}>
                             Finalizar y Volver
                         </Button>
                     </CardFooter>
@@ -318,7 +358,9 @@ export default function CashControlPage() {
                                                         <Input type="number" className="font-black border-2" value={electronicDeclarations.puntoVes.amount} onChange={e => setElectronicDeclarations({...electronicDeclarations, puntoVes: {...electronicDeclarations.puntoVes, amount: e.target.value}})} />
                                                         <Label className="text-[10px] font-black uppercase">Nº de Lote / Turno POS</Label>
                                                         <Input className="font-mono text-xs" placeholder="Ej: 0145" value={electronicDeclarations.puntoVes.batch} onChange={e => setElectronicDeclarations({...electronicDeclarations, puntoVes: {...electronicDeclarations.puntoVes, batch: e.target.value}})} />
+                                                        
                                                         <Separator />
+                                                        
                                                         <Label className="text-[10px] font-black uppercase">Pago Móvil (Suma Total)</Label>
                                                         <Input type="number" className="font-black border-2" value={electronicDeclarations.pagoMovilVes.amount} onChange={e => setElectronicDeclarations({...electronicDeclarations, pagoMovilVes: {...electronicDeclarations.pagoMovilVes, amount: e.target.value}})} />
                                                     </div>
@@ -339,7 +381,7 @@ export default function CashControlPage() {
                                 <CardFooter className="bg-muted/50 p-8 border-t-2 border-black flex flex-col gap-4">
                                     <div className="w-full space-y-2">
                                         <Label className="text-[10px] font-black uppercase text-muted-foreground">Observaciones / Comentarios de Cierre</Label>
-                                        <Input className="bg-white" placeholder="Ej: Faltó un billete de $5, se retuvo para revisión..." value={closingNotes} onChange={e => setClosingNotes(e.target.value)} />
+                                        <Input className="bg-white" placeholder="Ej: Faltó un billete de $5..." value={closingNotes} onChange={e => setClosingNotes(e.target.value)} />
                                     </div>
                                     <Button variant="destructive" onClick={handleCloseBox} disabled={isProcessing} className="w-full h-16 text-xl font-black uppercase shadow-2xl">
                                         {isProcessing ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-3 h-6 w-6" />}

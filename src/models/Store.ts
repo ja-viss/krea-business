@@ -16,6 +16,8 @@ export interface IStore extends Document {
   maxUsers: number;
   maxInvoicesPerMonth: number;
   storageLimitMB: number;
+  // Operación
+  enforceCashControl: boolean; 
   // Pago Móvil Config (Suiche 7B)
   pagoMovil: {
     bankCode: string;
@@ -54,6 +56,7 @@ const StoreSchema: Schema = new Schema({
   maxUsers: { type: Number, default: 3 },
   maxInvoicesPerMonth: { type: Number, default: 500 },
   storageLimitMB: { type: Number, default: 500 },
+  enforceCashControl: { type: Boolean, default: true },
   // Configuración Pago Móvil
   pagoMovil: {
     bankCode: { type: String, default: '0102' },
