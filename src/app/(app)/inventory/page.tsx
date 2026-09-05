@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3 } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -29,6 +29,7 @@ import { getInventoryOptimizationRecommendations, InventoryOptimizationInput } f
 import { TopStockChart } from '@/components/inventory/top-stock-chart';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface InventoryMetrics {
   totalValue: number;
@@ -136,7 +138,7 @@ export default function InventoryPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Inventario"
-          description="Gestión integral de stock."
+          description="Gestión integral de stock e imágenes."
           actions={
             <>
               <Button variant="outline" asChild>
@@ -195,17 +197,39 @@ export default function InventoryPage() {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
                 <Table>
-                    <TableHeader className="bg-muted/50"><TableRow><TableHead className="pl-6 font-black text-[10px] uppercase">Producto / Identidad</TableHead><TableHead className='text-right font-black text-[10px] uppercase'>Precio (Bs)</TableHead><TableHead className='text-right font-black text-[10px] uppercase'>Existencia</TableHead><TableHead className="hidden md:table-cell font-black text-[10px] uppercase">Estado</TableHead><TableHead className="w-[50px] pr-6"></TableHead></TableRow></TableHeader>
+                    <TableHeader className="bg-muted/50"><TableRow><TableHead className="pl-6 font-black text-[10px] uppercase">Imagen / Identidad</TableHead><TableHead className='text-right font-black text-[10px] uppercase'>Precio (Bs)</TableHead><TableHead className='text-right font-black text-[10px] uppercase'>Existencia</TableHead><TableHead className="hidden md:table-cell font-black text-[10px] uppercase">Estado</TableHead><TableHead className="w-[50px] pr-6"></TableHead></TableRow></TableHeader>
                     <TableBody>
                         {loading ? Array.from({ length: 5 }).map((_, i) => (
                             <TableRow key={i}><TableCell className="pl-6"><Skeleton className="h-4 w-[150px]" /></TableCell><TableCell className="text-right"><Skeleton className="h-4 w-[80px]" /></TableCell><TableCell className='text-right'><Skeleton className="h-4 w-[40px]" /></TableCell><TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell><TableCell className="pr-6"><Skeleton className="h-8 w-8 ml-auto" /></TableCell></TableRow>
                         )) : filteredProducts.length > 0 ? filteredProducts.map((p) => (
                             <TableRow key={p._id} className="hover:bg-primary/[0.02]">
-                            <TableCell className="pl-6 py-4"><div className="font-black text-xs md:text-sm uppercase">{p.name}</div><div className="text-[9px] font-mono text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div></TableCell>
+                            <TableCell className="pl-6 py-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-lg bg-muted relative overflow-hidden flex-shrink-0 border">
+                                        {p.imageUrl ? (
+                                            <Image 
+                                                src={p.imageUrl} 
+                                                alt={p.name} 
+                                                fill 
+                                                className="object-cover"
+                                                sizes="48px"
+                                            />
+                                        ) : (
+                                            <div className="h-full w-full flex items-center justify-center text-primary/30">
+                                                <Package className="h-6 w-6" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <div className="font-black text-xs md:text-sm uppercase">{p.name}</div>
+                                        <div className="text-[9px] font-mono text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div>
+                                    </div>
+                                </div>
+                            </TableCell>
                             <TableCell className="text-right text-xs md:text-sm font-black">{formatCurrency(p.price)}</TableCell>
                             <TableCell className='text-right font-black text-xs md:text-sm text-primary'>{p.stock}</TableCell>
                             <TableCell className="hidden md:table-cell"><Badge variant={p.status === 'En Stock' ? 'secondary' : p.status === 'Stock Bajo' ? 'outline' : 'destructive'} className="text-[9px] font-black uppercase">{p.status}</Badge></TableCell>
-                            <TableCell className="pr-6 text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-auto"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <TableCell className="pr-6 text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-auto rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48"><DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => router.push(`/inventory/${p._id}`)}>Ver Detalle</DropdownMenuItem><DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => router.push(`/inventory/${p._id}/edit`)}>Editar Datos</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600 font-black text-xs uppercase" onSelect={() => setProductToDelete(p)}>Eliminar Producto</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>
                         )) : <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic font-medium">Sin resultados para tu búsqueda.</TableCell></TableRow>}
                     </TableBody>
