@@ -26,7 +26,8 @@ import {
     Plus,
     Minus,
     QrCode,
-    UserCheck
+    UserCheck,
+    Package
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -38,6 +39,7 @@ import { ICustomer } from '@/models/Customer';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
@@ -48,7 +50,8 @@ const saleSchema = z.object({
     price: z.number(), 
     quantity: z.coerce.number().min(0.001),
     stock: z.number(),
-    taxRate: z.number()
+    taxRate: z.number(),
+    imageUrl: z.string().optional()
   })).min(1),
   paymentMethod: z.string().default('Efectivo'),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).default('USD'),
@@ -184,7 +187,8 @@ export default function NewSalePage() {
             price: product.price, 
             quantity: quantity,
             stock: product.stock,
-            taxRate: product.taxRate
+            taxRate: product.taxRate,
+            imageUrl: product.imageUrl
         });
     }
   };
@@ -278,7 +282,7 @@ export default function NewSalePage() {
                                 <Table>
                                     <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                                         <TableRow>
-                                            <TableHead className="pl-4 font-black uppercase text-[10px]">Producto</TableHead>
+                                            <TableHead className="pl-4 font-black uppercase text-[10px]">Item / Imagen</TableHead>
                                             <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
                                             <TableHead className="text-right pr-4 font-black uppercase text-[10px]">Total</TableHead>
                                             <TableHead className="w-[40px]"></TableHead>
@@ -288,9 +292,20 @@ export default function NewSalePage() {
                                         {fields.length > 0 ? fields.map((item, index) => (
                                             <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b">
                                                 <TableCell className="pl-4 py-2 md:py-3">
-                                                    <div className='flex flex-col'>
-                                                        <span className='font-black uppercase text-[11px] md:text-xs leading-tight line-clamp-1'>{item.name}</span>
-                                                        <span className='text-[9px] md:text-[10px] text-muted-foreground font-mono'>Bs. {formatCurrency(item.price)}</span>
+                                                    <div className='flex items-center gap-3'>
+                                                        <div className='h-10 w-10 rounded-lg bg-muted relative overflow-hidden shrink-0 border'>
+                                                            {item.imageUrl ? (
+                                                                <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="40px" />
+                                                            ) : (
+                                                                <div className='flex h-full w-full items-center justify-center opacity-20'>
+                                                                    <Package className='h-5 w-5' />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className='flex flex-col'>
+                                                            <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight line-clamp-1'>{item.name}</span>
+                                                            <span className='text-[8px] md:text-[9px] text-muted-foreground font-mono'>Bs. {formatCurrency(item.price)}</span>
+                                                        </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className='text-center'>

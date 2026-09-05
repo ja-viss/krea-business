@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import StoreModel from '@/models/Store';
@@ -8,11 +7,13 @@ import mongoose from 'mongoose';
 
 /**
  * Endpoint de Productos (Híbrido: Central + Tenant DB).
+ * Soporta filtrado por búsqueda en el servidor.
  */
 export async function GET(req: NextRequest) {
   try {
     await dbConnect();
     const storeId = req.nextUrl.searchParams.get('storeId');
+    const search = req.nextUrl.searchParams.get('search');
 
     if (!storeId || storeId === 'SYSTEM_MASTER') {
       return NextResponse.json({ message: 'Acceso no permitido.' }, { status: 400 });
@@ -38,14 +39,23 @@ export async function GET(req: NextRequest) {
     }
 
     let products;
+    const query: any = {};
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { sku: { $regex: search, $options: 'i' } },
+            { barcode: { $regex: search, $options: 'i' } }
+        ];
+    }
 
     // Si tiene una base de datos aislada, usar el Tenant Manager
     if (store.tenantDbUri) {
       const { models } = await getTenantDb(String(store._id), store.tenantDbUri);
-      products = await models.Product.find().sort({ createdAt: -1 });
+      products = await models.Product.find(query).sort({ createdAt: -1 });
     } else {
-      // Fallback a base de datos central (para registros nuevos o sin Atlas propio)
-      products = await ProductModel.find({ store: storeId }).sort({ createdAt: -1 });
+      // Fallback a base de datos central
+      const centralQuery = { ...query, store: storeId };
+      products = await ProductModel.find(centralQuery).sort({ createdAt: -1 });
     }
 
     return NextResponse.json(products || [], { status: 200 });

@@ -1,15 +1,15 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
-import { Search, Camera, Zap } from 'lucide-react';
+import { Search, Camera, Zap, Package } from 'lucide-react';
 import { IProduct } from '@/models/Product';
 import { Button } from '@/components/ui/button';
 import { BarcodeScanner } from '../inventory/barcode-scanner';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 interface ProductSearchProps {
   onProductSelect: (product: IProduct, quantity?: number) => void;
@@ -51,7 +51,8 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
       setLoading(true);
       try {
         const storeId = localStorage.getItem('storeId');
-        const response = await fetch(`/api/products?storeId=${storeId}&search=${searchQuery}`);
+        // El backend ahora filtra por la query de búsqueda
+        const response = await fetch(`/api/products?storeId=${storeId}&search=${encodeURIComponent(searchQuery)}`);
         if (response.ok) {
           const data = await response.json();
           setResults(data);
@@ -66,7 +67,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
       }
     };
 
-    const debounce = setTimeout(fetchProducts, 150); // Reducido para mayor velocidad
+    const debounce = setTimeout(fetchProducts, 150);
     return () => clearTimeout(debounce);
   }, [query]);
   
@@ -111,7 +112,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
   const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && results.length > 0) {
           e.preventDefault();
-          handleSelect(results[0]); // Seleccionar el primero por defecto al dar Enter
+          handleSelect(results[0]);
       }
   };
 
@@ -159,20 +160,32 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
               <li
                 key={product._id}
                 className={cn(
-                    "p-3 border-b cursor-pointer flex justify-between items-center transition-all",
+                    "p-2 border-b cursor-pointer flex justify-between items-center transition-all",
                     idx === 0 ? "bg-primary/5 border-l-4 border-l-primary" : "hover:bg-muted"
                 )}
                 onClick={() => handleSelect(product)}
               >
-                <div className='flex flex-col'>
-                    <span className="font-black uppercase text-xs">{product.name}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                        SKU: {product.sku || 'N/A'} | STOCK: <span className={cn("font-bold", product.stock < product.minStock ? "text-red-500" : "text-green-600")}>{product.stock}</span>
-                    </span>
+                <div className='flex items-center gap-3'>
+                    {/* MINIATURA VISUAL */}
+                    <div className='h-10 w-10 rounded bg-muted relative overflow-hidden shrink-0 border'>
+                        {product.imageUrl ? (
+                            <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="40px" />
+                        ) : (
+                            <div className='flex h-full w-full items-center justify-center opacity-20'>
+                                <Package className='h-5 w-5' />
+                            </div>
+                        )}
+                    </div>
+                    <div className='flex flex-col'>
+                        <span className="font-black uppercase text-[11px] leading-tight line-clamp-1">{product.name}</span>
+                        <span className="text-[9px] text-muted-foreground font-mono">
+                            STOCK: <span className={cn("font-bold", product.stock < product.minStock ? "text-red-500" : "text-green-600")}>{product.stock}</span>
+                        </span>
+                    </div>
                 </div>
-                <div className='text-right'>
+                <div className='text-right shrink-0'>
                     <span className='font-black text-primary text-sm'>Bs. {product.price.toLocaleString('es-VE')}</span>
-                    {idx === 0 && <span className='block text-[8px] font-black uppercase text-primary/40'>[Presiona Enter]</span>}
+                    {idx === 0 && <span className='block text-[7px] font-black uppercase text-primary/40'>[Enter]</span>}
                 </div>
               </li>
             ))}
