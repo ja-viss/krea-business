@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -98,7 +97,7 @@ export default function SalesPage() {
         day: '2-digit' 
       });
     } catch (e) {
-      return 'Fecha inválida';
+      return 'N/A';
     }
   };
   
@@ -109,73 +108,73 @@ export default function SalesPage() {
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title="Ventas"
-          description="Gestión de transacciones y facturación."
+          description="Historial de facturación y movimientos POS."
           actions={
-            <div className='flex flex-wrap gap-2 w-full sm:w-auto'>
-              <Button variant="outline" className='flex-1 sm:flex-none' onClick={() => window.print()}>
+            <>
+              <Button variant="outline" className='shadow-sm' onClick={() => window.print()}>
                 <FileDown className="mr-2 h-4 w-4" />
-                Imprimir Lista
+                Listado PDF
               </Button>
-              <Button asChild className='flex-1 sm:flex-none'>
+              <Button asChild className="font-black uppercase shadow-lg shadow-primary/20">
                 <Link href="/sales/new">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Nueva Venta
+                  Nueva Operación
                 </Link>
               </Button>
-            </div>
+            </>
           }
         />
 
         {error && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="border-4 shadow-xl">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error de Datos</AlertTitle>
-            <AlertDescription>
+            <AlertTitle className="font-black">Error de Conectividad</AlertTitle>
+            <AlertDescription className="font-bold">
               {error}
-              <Button variant="link" className="p-0 h-auto ml-2 text-destructive underline" onClick={fetchSales}>
+              <Button variant="link" className="p-0 h-auto ml-2 text-destructive underline font-black" onClick={fetchSales}>
                 Reintentar
               </Button>
             </AlertDescription>
           </Alert>
         )}
 
-        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-2xl border-2 bg-card shadow-xl overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="pl-4">Factura</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="hidden sm:table-cell">Fecha</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Total (Bs.)</TableHead>
-                    <TableHead className="w-[50px] pr-4"></TableHead>
+                    <TableHead className="pl-6 font-black text-[10px] uppercase">Nº Documento</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Titular / Cliente</TableHead>
+                    <TableHead className="hidden sm:table-cell font-black text-[10px] uppercase">Fecha</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Estado</TableHead>
+                    <TableHead className="text-right font-black text-[10px] uppercase">Importe Total</TableHead>
+                    <TableHead className="w-[50px] pr-6"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                 {loading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        <TableCell className="pl-4"><Skeleton className="h-4 w-[60px]" /></TableCell>
+                        <TableCell className="pl-6"><Skeleton className="h-4 w-[60px]" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
                         <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-4 w-[80px]" /></TableCell>
-                        <TableCell className="pr-4"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                        <TableCell className="pr-6"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                       </TableRow>
                     ))
                 ) : sales.length > 0 ? (
                     sales.map((sale) => (
-                    <TableRow key={sale._id}>
-                        <TableCell className="font-mono text-xs pl-4">Nº {String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
-                        <TableCell className="text-sm font-bold uppercase truncate max-w-[150px]">
+                    <TableRow key={sale._id} className="hover:bg-primary/[0.02]">
+                        <TableCell className="font-mono text-xs font-bold pl-6 text-primary"># {String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
+                        <TableCell className="text-xs md:text-sm font-black uppercase truncate max-w-[150px]">
                           {sale.customerName}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-xs">{formatDate(String(sale.createdAt))}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs font-medium">{formatDate(String(sale.createdAt))}</TableCell>
                         <TableCell>
                           <Badge 
                             variant={sale.status === 'Pagado' ? 'secondary' : 'outline'} 
-                            className={sale.status === 'Pagado' ? 'bg-green-100 text-green-800' : ''}
+                            className={cn("text-[9px] font-black uppercase", sale.status === 'Pagado' ? 'bg-green-100 text-green-800' : '')}
                           >
                             {sale.status}
                           </Badge>
@@ -183,23 +182,23 @@ export default function SalesPage() {
                         <TableCell className="text-right font-black text-sm">
                           {formatCurrency(sale.totalAmount)}
                         </TableCell>
-                        <TableCell className="pr-4">
+                        <TableCell className="pr-6 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0 ml-auto">
+                              <Button variant="ghost" className="h-8 w-8 p-0 ml-auto rounded-full">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => router.push(`/sales/${sale._id}/invoice`)}>
-                                <Eye className="mr-2 h-4 w-4" /> Ver Factura
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => router.push(`/sales/${sale._id}/invoice`)}>
+                                <Eye className="mr-2 h-4 w-4" /> Visualizar Ticket
                               </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
-                                <Printer className="mr-2 h-4 w-4" /> Imprimir
+                              <DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
+                                <Printer className="mr-2 h-4 w-4" /> Imprimir POS
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600 font-bold" onSelect={() => setSaleToDelete(sale)}>
-                                Anular Venta
+                              <DropdownMenuItem className="text-red-600 font-black text-xs uppercase" onSelect={() => setSaleToDelete(sale)}>
+                                Anular Operación
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -208,8 +207,8 @@ export default function SalesPage() {
                     ))
                 ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">
-                        No se encontraron registros de ventas.
+                      <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic font-medium">
+                        No se detectaron movimientos en el historial.
                       </TableCell>
                     </TableRow>
                 )}
@@ -219,16 +218,16 @@ export default function SalesPage() {
         </div>
         
         <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
-            <AlertDialogContent>
+            <AlertDialogContent className="border-4">
               <AlertDialogHeader>
-                <AlertDialogTitle>¿Deseas anular esta venta?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Se eliminará permanentemente la factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} y el stock de los productos será restaurado al inventario.
+                <AlertDialogTitle className="text-xl font-black uppercase italic">¿Anular transacción?</AlertDialogTitle>
+                <AlertDialogDescription className="font-bold">
+                  La factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} será eliminada. El inventario se restaurará automáticamente.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 text-white hover:bg-red-700">
+                <AlertDialogCancel className="font-bold">Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 font-black uppercase shadow-lg shadow-red-200">
                   Confirmar Anulación
                 </AlertDialogAction>
               </AlertDialogFooter>

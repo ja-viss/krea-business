@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -139,14 +138,14 @@ export default function InventoryPage() {
           title="Inventario"
           description="Gestión integral de stock."
           actions={
-            <div className='flex flex-wrap gap-2 w-full sm:w-auto'>
-              <Button variant="outline" className='flex-1 sm:flex-none' asChild>
+            <>
+              <Button variant="outline" asChild>
                 <Link href="/reports"><BarChart3 className="mr-2 h-4 w-4" />Reportes</Link>
               </Button>
-              <Button asChild className='flex-1 sm:flex-none'>
-                <Link href="/inventory/new-product"><PlusCircle className="mr-2 h-4 w-4" />Nuevo</Link>
+              <Button asChild>
+                <Link href="/inventory/new-product"><PlusCircle className="mr-2 h-4 w-4" />Añadir Producto</Link>
               </Button>
-            </div>
+            </>
           }
         />
         
@@ -157,65 +156,67 @@ export default function InventoryPage() {
                 <Card key={i}><CardHeader className='pb-2'><Skeleton className='h-4 w-1/2' /></CardHeader><CardContent><Skeleton className='h-7 w-1/3' /></CardContent></Card>
             )) : metrics && (
                 <>
-                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Valor Total</CardTitle><Boxes className="h-4 w-4 text-muted-foreground" /></CardHeader>
-                    <CardContent><div className="text-lg md:text-2xl font-bold">{formatCurrency(metrics.totalValue)}</div></CardContent></Card>
-                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stock Bajo</CardTitle><TrendingDown className="h-4 w-4 text-yellow-500" /></CardHeader>
-                    <CardContent><div className="text-lg md:text-2xl font-bold">{metrics.lowStockCount}</div></CardContent></Card>
-                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Agotados</CardTitle><Ban className="h-4 w-4 text-red-500" /></CardHeader>
-                    <CardContent><div className="text-lg md:text-2xl font-bold">{metrics.outOfStockCount}</div></CardContent></Card>
+                    <Card className="border-2 shadow-sm"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-xs font-black uppercase text-muted-foreground">Valor Total</CardTitle><Boxes className="h-4 w-4 text-primary" /></CardHeader>
+                    <CardContent><div className="text-xl md:text-2xl font-black">{formatCurrency(metrics.totalValue)}</div></CardContent></Card>
+                    <Card className="border-2 shadow-sm border-amber-100 bg-amber-50/10"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-xs font-black uppercase text-amber-700">Stock Bajo</CardTitle><TrendingDown className="h-4 w-4 text-amber-600" /></CardHeader>
+                    <CardContent><div className="text-xl md:text-2xl font-black text-amber-800">{metrics.lowStockCount}</div></CardContent></Card>
+                    <Card className="border-2 shadow-sm border-red-100 bg-red-50/10"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-xs font-black uppercase text-red-700">Agotados</CardTitle><Ban className="h-4 w-4 text-red-600" /></CardHeader>
+                    <CardContent><div className="text-xl md:text-2xl font-black text-red-800">{metrics.outOfStockCount}</div></CardContent></Card>
                 </>
             )}
         </div>
         
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="lg:col-span-3">
-              <Card className="h-full">
-                  <CardHeader><CardTitle>IA: Optimización</CardTitle></CardHeader>
-                  <CardContent className="overflow-x-auto">
+              <Card className="h-full border-2">
+                  <CardHeader className="bg-muted/5 border-b"><CardTitle className="text-sm font-black uppercase">IA: Sugerencia de Reposición</CardTitle></CardHeader>
+                  <CardContent className="pt-6">
                       {loadingRecommendations ? <div className='space-y-2'><Skeleton className='h-8 w-full' /><Skeleton className='h-8 w-full' /></div> : aiRecommendations.length > 0 ? (
-                         <Table><TableHeader><TableRow><TableHead>Producto</TableHead><TableHead className='text-center'>Reponer</TableHead></TableRow></TableHeader>
+                         <div className="overflow-x-auto"><Table><TableHeader className="bg-muted/50"><TableRow><TableHead className="font-black text-[10px] uppercase">Producto</TableHead><TableHead className='text-center font-black text-[10px] uppercase'>Cant. Recomendada</TableHead></TableRow></TableHeader>
                                 <TableBody>{aiRecommendations.slice(0, 5).map(rec => (
-                                        <TableRow key={rec.productId}><TableCell><div>{products.find(p => String(p._id) === rec.productId)?.name}</div></TableCell><TableCell className='text-center font-bold text-primary'>{rec.reorderQuantity}</TableCell></TableRow>
-                                    ))}</TableBody></Table>
-                      ) : <div className="text-center py-8 border-dashed border-2 rounded-lg bg-muted/20"><Button onClick={handleGetRecommendations} size="sm">Generar Análisis</Button></div>}
+                                        <TableRow key={rec.productId}><TableCell><div className="font-bold text-xs uppercase">{products.find(p => String(p._id) === rec.productId)?.name}</div></TableCell><TableCell className='text-center font-black text-sm text-primary'>{rec.reorderQuantity}</TableCell></TableRow>
+                                    ))}</TableBody></Table></div>
+                      ) : <div className="text-center py-10 border-dashed border-4 rounded-2xl bg-muted/20"><Button onClick={handleGetRecommendations} variant="outline" className="font-black uppercase shadow-sm">Iniciar Análisis de IA</Button></div>}
                   </CardContent>
               </Card>
           </div>
-          <div className="lg:col-span-2">{loading ? <Skeleton className="h-[300px] w-full" /> : <TopStockChart data={products} />}</div>
+          <div className="lg:col-span-2">{loading ? <Skeleton className="h-[300px] w-full rounded-2xl" /> : <TopStockChart data={products} />}</div>
         </div>
 
-        <Card>
-          <CardHeader className="pb-4">
+        <Card className="border-2 shadow-lg overflow-hidden">
+          <CardHeader className="pb-4 border-b bg-muted/10">
             <div className='flex flex-col sm:flex-row justify-between sm:items-center gap-4'>
-              <CardTitle>Productos</CardTitle>
+              <CardTitle className="text-lg font-black uppercase">Catálogo de Productos</CardTitle>
               <div className="relative w-full sm:max-w-xs"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar..." className="pl-9 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                <Input placeholder="Buscar por nombre o SKU..." className="pl-9 w-full h-10 font-bold" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6 overflow-x-auto">
-            <Table>
-                <TableHeader><TableRow><TableHead className="pl-4">Producto</TableHead><TableHead className='text-right'>Precio</TableHead><TableHead className='text-right'>Stock</TableHead><TableHead className="hidden md:table-cell">Estado</TableHead><TableHead className="w-[50px] pr-4"></TableHead></TableRow></TableHeader>
-                <TableBody>
-                    {loading ? Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}><TableCell><Skeleton className="h-4 w-[150px] ml-4" /></TableCell><TableCell className="text-right"><Skeleton className="h-4 w-[80px]" /></TableCell><TableCell className='text-right'><Skeleton className="h-4 w-[40px]" /></TableCell><TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell><TableCell className="pr-4"><Skeleton className="h-8 w-8 ml-auto" /></TableCell></TableRow>
-                    )) : filteredProducts.length > 0 ? filteredProducts.map((p) => (
-                        <TableRow key={p._id}>
-                        <TableCell className="pl-4"><div className="font-medium text-xs md:text-sm">{p.name}</div><div className="text-[8px] md:text-[10px] text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div></TableCell>
-                        <TableCell className="text-right text-xs md:text-sm">{formatCurrency(p.price)}</TableCell>
-                        <TableCell className='text-right font-medium text-xs md:text-sm'>{p.stock}</TableCell>
-                        <TableCell className="hidden md:table-cell"><Badge variant={p.status === 'En Stock' ? 'secondary' : p.status === 'Stock Bajo' ? 'outline' : 'destructive'} className="text-[10px]">{p.status}</Badge></TableCell>
-                        <TableCell className="pr-4 text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-auto"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => router.push(`/inventory/${p._id}`)}>Ver</DropdownMenuItem><DropdownMenuItem onSelect={() => router.push(`/inventory/${p._id}/edit`)}>Editar</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600" onSelect={() => setProductToDelete(p)}>Eliminar</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>
-                    )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">Sin resultados.</TableCell></TableRow>}
-                </TableBody>
-            </Table>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader className="bg-muted/50"><TableRow><TableHead className="pl-6 font-black text-[10px] uppercase">Producto / Identidad</TableHead><TableHead className='text-right font-black text-[10px] uppercase'>Precio (Bs)</TableHead><TableHead className='text-right font-black text-[10px] uppercase'>Existencia</TableHead><TableHead className="hidden md:table-cell font-black text-[10px] uppercase">Estado</TableHead><TableHead className="w-[50px] pr-6"></TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {loading ? Array.from({ length: 5 }).map((_, i) => (
+                            <TableRow key={i}><TableCell className="pl-6"><Skeleton className="h-4 w-[150px]" /></TableCell><TableCell className="text-right"><Skeleton className="h-4 w-[80px]" /></TableCell><TableCell className='text-right'><Skeleton className="h-4 w-[40px]" /></TableCell><TableCell className="hidden md:table-cell"><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell><TableCell className="pr-6"><Skeleton className="h-8 w-8 ml-auto" /></TableCell></TableRow>
+                        )) : filteredProducts.length > 0 ? filteredProducts.map((p) => (
+                            <TableRow key={p._id} className="hover:bg-primary/[0.02]">
+                            <TableCell className="pl-6 py-4"><div className="font-black text-xs md:text-sm uppercase">{p.name}</div><div className="text-[9px] font-mono text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div></TableCell>
+                            <TableCell className="text-right text-xs md:text-sm font-black">{formatCurrency(p.price)}</TableCell>
+                            <TableCell className='text-right font-black text-xs md:text-sm text-primary'>{p.stock}</TableCell>
+                            <TableCell className="hidden md:table-cell"><Badge variant={p.status === 'En Stock' ? 'secondary' : p.status === 'Stock Bajo' ? 'outline' : 'destructive'} className="text-[9px] font-black uppercase">{p.status}</Badge></TableCell>
+                            <TableCell className="pr-6 text-right"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 ml-auto"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48"><DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => router.push(`/inventory/${p._id}`)}>Ver Detalle</DropdownMenuItem><DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => router.push(`/inventory/${p._id}/edit`)}>Editar Datos</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem className="text-red-600 font-black text-xs uppercase" onSelect={() => setProductToDelete(p)}>Eliminar Producto</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>
+                        )) : <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic font-medium">Sin resultados para tu búsqueda.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+            </div>
           </CardContent>
         </Card>
         
         <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
-            <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle><AlertDialogDescription>Se borrará permanentemente "{productToDelete?.name}".</AlertDialogDescription></AlertDialogHeader>
-            <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600">Eliminar</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+            <AlertDialogContent className="border-4"><AlertDialogHeader><AlertDialogTitle className="text-xl font-black uppercase">¿Eliminar producto?</AlertDialogTitle><AlertDialogDescription className="font-bold">Se borrará permanentemente "{productToDelete?.name}". Esta acción no se puede deshacer.</AlertDialogDescription></AlertDialogHeader>
+            <AlertDialogFooter><AlertDialogCancel className="font-bold">Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600 font-black uppercase">Confirmar Eliminación</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
         </AlertDialog>
       </main>
     </div>
