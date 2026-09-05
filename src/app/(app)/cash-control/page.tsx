@@ -26,7 +26,7 @@ import {
     CheckCircle2,
     XCircle,
     Store
-} from 'lucide-center';
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -174,7 +174,7 @@ export default function CashControlPage() {
                             <div className="max-w-md mx-auto space-y-2">
                                 <h3 className="text-2xl font-black uppercase italic">Punto de Venta Independiente</h3>
                                 <p className="text-sm font-medium text-muted-foreground">
-                                    Tienes desactivado el **Control de Caja**. Todas las ventas se procesan directamente. Puedes cambiar esto en la pestaña de Configuración > Fiscal.
+                                    Tienes desactivado el **Control de Caja**. Todas las ventas se procesan directamente. Puedes cambiar esto en la pestaña de Configuración {" > "} Fiscal.
                                 </p>
                             </div>
                             <Button variant="outline" className="font-bold h-12 px-8 uppercase" onClick={() => window.location.href = '/settings'}>Ir a Configuración</Button>
