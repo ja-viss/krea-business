@@ -86,7 +86,24 @@ export async function PUT(req: NextRequest) {
                 amount: s.total
             }));
 
-            // 2. Calcular Discrepancias contra lo declarado por el cajero
+            // 2. Resumen de Ventas Totales por Moneda (Independiente del método)
+            const currencySummary = await SaleModel.aggregate([
+                { $match: { 
+                    cashSession: session._id,
+                    status: 'Pagado'
+                }},
+                { $group: { 
+                    _id: '$paymentCurrency', 
+                    total: { $sum: '$totalAmount' } 
+                }}
+            ]);
+
+            const salesByCurrency = currencySummary.map(c => ({
+                currency: c._id || 'VES',
+                amount: c.total
+            }));
+
+            // 3. Calcular Discrepancias contra lo declarado por el cajero
             const discrepancies = declaredBalances.map((decl: any) => {
                 const theory = theoretical.find(t => t.method === decl.method && t.currency === decl.currency)?.amount || 0;
                 let base = 0;
@@ -117,10 +134,15 @@ export async function PUT(req: NextRequest) {
                 userName: session.userName,
                 action: 'CIERRE_CAJA',
                 module: 'Ventas',
-                details: `Cierre de turno (${session.closureMode}) en ${session.terminalName}. Auditoría automática completada.`
+                details: `Cierre de turno (${session.closureMode}) en ${session.terminalName}. Auditoría automática completada.`,
+                newState: { salesByCurrency }
             });
 
-            return NextResponse.json(session);
+            // Devolvemos la sesión y el resumen extra de ventas
+            return NextResponse.json({
+                ...session.toObject(),
+                salesByCurrency
+            });
         }
 
         return NextResponse.json({ message: 'Acción inválida' }, { status: 400 });

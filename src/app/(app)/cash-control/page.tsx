@@ -29,7 +29,8 @@ import {
     LayoutGrid,
     EyeOff,
     FileText,
-    Receipt
+    Receipt,
+    Wallet
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -159,7 +160,6 @@ export default function CashControlPage() {
                     { currency: 'USD', method: 'Zelle', amount: parseFloat(manualDeclarations.zelleUsd) || 0 },
                 ];
             } else {
-                // Modo Manual o Fiscal
                 declared = [
                     { currency: 'USD', method: 'Efectivo', amount: parseFloat(manualDeclarations.efectivoUsd) || 0 },
                     { currency: 'VES', method: 'Efectivo', amount: parseFloat(manualDeclarations.efectivoVes) || 0 },
@@ -205,53 +205,93 @@ export default function CashControlPage() {
 
     if (viewResults) {
         return (
-            <div className="flex flex-1 flex-col p-4 md:p-8 max-w-4xl mx-auto w-full space-y-6">
-                <Card className="border-4 border-primary shadow-2xl">
-                    <CardHeader className="bg-primary/5 text-center">
+            <div className="flex flex-1 flex-col p-4 md:p-8 max-w-5xl mx-auto w-full space-y-6">
+                <Card className="border-4 border-primary shadow-2xl overflow-hidden rounded-3xl">
+                    <CardHeader className="bg-primary/5 text-center py-10">
                         <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
-                        <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Resumen de {viewResults.closureMode === 'fiscal' ? 'Corte Fiscal' : 'Cierre de Turno'}</CardTitle>
-                        <CardDescription className="font-bold">Taquilla: {viewResults.terminalName} • Cajero: {viewResults.userName}</CardDescription>
+                        <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Resumen de Cierre de Caja</CardTitle>
+                        <CardDescription className="font-bold text-xs uppercase tracking-widest">Taquilla: {viewResults.terminalName} • Cajero: {viewResults.userName}</CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-6">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="font-black text-[10px] uppercase">Método / Moneda</TableHead>
-                                    <TableHead className="text-right font-black text-[10px] uppercase">Declarado</TableHead>
-                                    <TableHead className="text-right font-black text-[10px] uppercase">Diferencia</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {viewResults.discrepancies.map((d: any, idx: number) => {
-                                    const decl = viewResults.declaredBalances[idx]?.amount || 0;
+                    <CardContent className="p-6 md:p-10 space-y-10">
+                        
+                        {/* SECCIÓN 1: VENTAS TOTALES POR MONEDA */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-black uppercase text-primary flex items-center gap-2">
+                                <Wallet className="h-4 w-4" /> Facturación Total por Divisa
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {['VES', 'USD', 'COP'].map(curr => {
+                                    const val = viewResults.salesByCurrency?.find((c: any) => c.currency === curr)?.amount || 0;
                                     return (
-                                        <TableRow key={idx}>
-                                            <TableCell>
-                                                <span className="font-bold text-xs uppercase">{d.method} ({d.currency})</span>
-                                            </TableCell>
-                                            <TableCell className="text-right font-black text-sm">{decl.toLocaleString()}</TableCell>
-                                            <TableCell className={cn("text-right font-black text-sm", Math.abs(d.difference) < 0.01 ? "text-green-600" : "text-red-600")}>
-                                                {d.difference > 0 ? '+' : ''}{d.difference.toLocaleString()}
-                                            </TableCell>
-                                        </TableRow>
+                                        <div key={curr} className="bg-muted/30 p-4 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center">
+                                            <span className="text-[10px] font-black uppercase opacity-40">{curr}</span>
+                                            <span className="text-xl font-black">{curr === 'USD' ? '$' : ''} {val.toLocaleString()}</span>
+                                        </div>
                                     );
                                 })}
-                            </TableBody>
-                        </Table>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground font-bold italic text-center uppercase tracking-widest">Monto neto facturado durante este turno</p>
+                        </div>
+
+                        <Separator />
+
+                        {/* SECCIÓN 2: AUDITORÍA DE DIFERENCIAS */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-black uppercase flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4" /> Resultados de Arqueo y Conciliación
+                            </h3>
+                            <div className="rounded-2xl border-2 overflow-hidden">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Método / Moneda</TableHead>
+                                            <TableHead className="text-right font-black text-[10px] uppercase">Ventas + Fondo</TableHead>
+                                            <TableHead className="text-right font-black text-[10px] uppercase">Declarado</TableHead>
+                                            <TableHead className="text-right font-black text-[10px] uppercase pr-6">Diferencia</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {viewResults.discrepancies.map((d: any, idx: number) => {
+                                            const decl = viewResults.declaredBalances[idx]?.amount || 0;
+                                            const theory = decl - d.difference;
+                                            return (
+                                                <TableRow key={idx} className="hover:bg-muted/20">
+                                                    <TableCell className="pl-6">
+                                                        <span className="font-bold text-xs uppercase">{d.method} ({d.currency})</span>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-bold text-sm opacity-60">{theory.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right font-black text-sm">{decl.toLocaleString()}</TableCell>
+                                                    <TableCell className={cn("text-right font-black text-sm pr-6", Math.abs(d.difference) < 0.01 ? "text-green-600" : "text-red-600")}>
+                                                        {d.difference > 0 ? '+' : ''}{d.difference.toLocaleString()}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+
                         {viewResults.closureMode === 'fiscal' && (
-                            <div className="mt-8 p-4 bg-muted/20 border-2 border-dashed rounded-xl">
-                                <h4 className="text-xs font-black uppercase mb-4 flex items-center gap-2"><Receipt className="h-4 w-4" /> Consolidado Fiscal del Turno</h4>
-                                <div className="grid grid-cols-2 gap-4 text-[10px] font-bold">
-                                    <div className="flex justify-between"><span>Base Imponible (16%):</span><span>{viewResults.theoreticalBalances.reduce((a:any, b:any) => a + (b.amount * 0.84), 0).toFixed(2)}</span></div>
-                                    <div className="flex justify-between"><span>IVA Recaudado:</span><span className="text-primary">{viewResults.theoreticalBalances.reduce((a:any, b:any) => a + (b.amount * 0.16), 0).toFixed(2)}</span></div>
-                                    <div className="flex justify-between border-t pt-2 col-span-2"><span>TOTAL FISCAL:</span><span className="text-lg font-black">Bs. {viewResults.theoreticalBalances.reduce((a:any, b:any) => a + b.amount, 0).toLocaleString()}</span></div>
+                            <div className="p-6 bg-black text-white rounded-3xl border-4 border-primary/20 shadow-xl">
+                                <h4 className="text-xs font-black uppercase mb-6 flex items-center gap-2 italic tracking-widest"><Receipt className="h-5 w-5 text-primary" /> Consolidado Fiscal del Turno (Z)</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-[11px] font-bold">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between border-b border-white/10 pb-1"><span>Base Imponible (16%):</span><span>{viewResults.theoreticalBalances.reduce((a:any, b:any) => a + (b.amount * 0.84), 0).toFixed(2)}</span></div>
+                                        <div className="flex justify-between border-b border-white/10 pb-1"><span>IVA Recaudado:</span><span className="text-primary">{viewResults.theoreticalBalances.reduce((a:any, b:any) => a + (b.amount * 0.16), 0).toFixed(2)}</span></div>
+                                        <div className="flex justify-between border-b border-white/10 pb-1 opacity-50"><span>Exento:</span><span>0.00</span></div>
+                                    </div>
+                                    <div className="flex flex-col justify-center items-center md:items-end">
+                                        <span className="text-[10px] font-black uppercase opacity-60">Total Bruto Fiscal</span>
+                                        <span className="text-4xl font-black text-primary tracking-tighter">Bs. {viewResults.theoreticalBalances.reduce((a:any, b:any) => a + b.amount, 0).toLocaleString()}</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </CardContent>
-                    <CardFooter>
-                        <Button className="w-full h-14 font-black uppercase shadow-xl" onClick={() => { setViewResults(null); setSession(null); fetchSessionAndConfig(); }}>
-                            Finalizar y Archivar
+                    <CardFooter className="bg-muted/10 p-6 md:p-10 border-t">
+                        <Button className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl" onClick={() => { setViewResults(null); setSession(null); fetchSessionAndConfig(); }}>
+                            Confirmar y Archivar Reporte
                         </Button>
                     </CardFooter>
                 </Card>
@@ -352,7 +392,7 @@ export default function CashControlPage() {
                                             <Receipt className="h-5 w-5" />
                                             <div className="text-left">
                                                 <p className="text-xs font-black uppercase leading-none">Corte Fiscal</p>
-                                                <p className="text-[9px] font-bold opacity-70">Reporte Z y Auditoría IVA</p>
+                                                <p className="text-[9px] font-bold opacity-70">Reporte Z e IVA</p>
                                             </div>
                                         </div>
                                         {closureMode === 'fiscal' && <CheckCircle2 className="h-4 w-4" />}
