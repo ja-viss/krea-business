@@ -25,10 +25,19 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { storeId, vendor, lotReference, expectedDeliveryDate, items, notes } = body;
+        const { 
+            storeId, 
+            vendor, 
+            lotReference, 
+            expectedDeliveryDate, 
+            items, 
+            notes,
+            providerCoords,
+            destinationCoords
+        } = body;
 
-        if (!storeId || !vendor || !items || items.length === 0) {
-            throw new Error("Datos del pedido incompletos");
+        if (!storeId || !vendor || !items || items.length === 0 || !providerCoords || !destinationCoords) {
+            throw new Error("Datos del pedido o geolocalización incompletos");
         }
 
         // 1. Generar número correlativo (REQ-XXXX)
@@ -47,6 +56,9 @@ export async function POST(req: NextRequest) {
             vendor,
             expectedDeliveryDate: new Date(expectedDeliveryDate),
             status: 'En camino',
+            logisticsStatus: 'In Transit',
+            providerCoords,
+            destinationCoords,
             items,
             totalAmount,
             notes

@@ -17,6 +17,10 @@ export interface IPurchaseOrder extends Document {
     lat: number;
     lng: number;
   };
+  destinationCoords: {
+    lat: number;
+    lng: number;
+  };
   currentLocationCoords?: {
     lat: number;
     lng: number;
@@ -44,11 +48,15 @@ const PurchaseOrderSchema: Schema = new Schema({
   receivedAt: { type: Date },
   status: { type: String, enum: ['Pendiente', 'En camino', 'Recibido', 'Anulado'], default: 'Pendiente' },
   
-  // Logística
+  // Logística Snapshotted
   logisticsStatus: { type: String, enum: ['Factory', 'In Transit', 'Delivered'], default: 'Factory' },
   providerCoords: {
-    lat: { type: Number, default: 10.4910 }, 
-    lng: { type: Number, default: -66.8200 }
+    lat: { type: Number, required: true }, 
+    lng: { type: Number, required: true }
+  },
+  destinationCoords: {
+    lat: { type: Number, required: true }, 
+    lng: { type: Number, required: true }
   },
   currentLocationCoords: {
     lat: { type: Number },
