@@ -62,6 +62,10 @@ export default function NewProductPage() {
       isWeightable: false,
       barcode: '',
       sku: '',
+      brand: '',
+      vendor: '',
+      category: '',
+      location: '',
       stock: 0,
       minStock: 0,
       cost: 0,
@@ -138,13 +142,13 @@ export default function NewProductPage() {
                         <FormField control={form.control} name="name" render={({ field }) => (
                           <FormItem className='md:col-span-2'>
                             <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Nombre del Producto</FormLabel>
-                            <FormControl><Input placeholder="Ej: Harina de Maíz Precocida" className="h-11 text-base font-bold rounded-xl border-slate-200" {...field} /></FormControl>
+                            <FormControl><Input placeholder="Ej: Harina de Maíz Precocida" className="h-11 text-base font-bold rounded-xl border-slate-200" {...field} value={field.value ?? ''} /></FormControl>
                           </FormItem>
                         )} />
                         
                         <FormField control={form.control} name="category" render={({ field }) => (
                             <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-500'>Categoría</FormLabel>
-                            <FormControl><Input placeholder="Ej: Alimentos" className="h-11 font-bold rounded-xl border-slate-200" {...field} /></FormControl></FormItem>
+                            <FormControl><Input placeholder="Ej: Alimentos" className="h-11 font-bold rounded-xl border-slate-200" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                         )} />
 
                         <FormField control={form.control} name="productType" render={({ field }) => (
@@ -182,13 +186,13 @@ export default function NewProductPage() {
                       <FormField control={form.control} name="stock" render={({ field }) => (
                           <FormItem>
                               <FormLabel className='text-[10px] font-black uppercase text-slate-500'>{watchIsWeightable ? 'Disponible (Kg)' : 'Disponible (Und)'}</FormLabel>
-                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-slate-200 text-center bg-slate-50/50" {...field} /></FormControl>
+                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-slate-200 text-center bg-slate-50/50" {...field} value={field.value ?? 0} /></FormControl>
                           </FormItem>
                       )} />
                       <FormField control={form.control} name="minStock" render={({ field }) => (
                           <FormItem>
                               <FormLabel className='text-[10px] font-black uppercase text-red-500'>Mínimo (Alerta)</FormLabel>
-                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-red-100 bg-red-50/10 text-center" {...field} /></FormControl>
+                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-red-100 bg-red-50/10 text-center" {...field} value={field.value ?? 0} /></FormControl>
                           </FormItem>
                       )} />
                     </div>
@@ -200,7 +204,7 @@ export default function NewProductPage() {
                                 <FormControl>
                                     <div className="relative flex-1 group">
                                         <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-30" />
-                                        <Input placeholder="Escriba o escanee código" className="h-12 pl-11 font-mono font-bold rounded-xl border-slate-200" {...field} />
+                                        <Input placeholder="Escriba o escanee código" className="h-12 pl-11 font-mono font-bold rounded-xl border-slate-200" {...field} value={field.value ?? ''} />
                                     </div>
                                 </FormControl>
                                 <Button type="button" variant="outline" size="icon" className='h-12 w-12 rounded-xl border-2' onClick={() => setShowScanner(true)}>
@@ -233,7 +237,7 @@ export default function NewProductPage() {
                     </div>
                     <FormField control={form.control} name="imageUrl" render={({ field }) => (
                         <FormItem><div className="relative"><Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                            <FormControl><Input placeholder="Enlace URL de imagen" className="h-8 pl-8 font-mono text-[9px] rounded-lg border-slate-100 bg-slate-50/50" {...field} /></FormControl>
+                            <FormControl><Input placeholder="Enlace URL de imagen" className="h-8 pl-8 font-mono text-[9px] rounded-lg border-slate-100 bg-slate-50/50" {...field} value={field.value ?? ''} /></FormControl>
                         </div></FormItem>
                     )} />
                   </CardContent>
@@ -248,13 +252,13 @@ export default function NewProductPage() {
                   </div>
                   <CardContent className='pt-6 space-y-5 px-6'>
                       <FormField control={form.control} name="cost" render={({ field }) => (
-                          <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-400'>Costo de Compra (Bs.)</FormLabel><FormControl><Input type="number" step="0.01" className='h-11 border-slate-100 font-bold text-center text-base rounded-xl bg-slate-50/50' {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-400'>Costo de Compra (Bs.)</FormLabel><FormControl><Input type="number" step="0.01" className='h-11 border-slate-100 font-bold text-center text-base rounded-xl bg-slate-50/50' {...field} value={field.value ?? 0} /></FormControl></FormItem>
                       )} />
 
                       <FormField control={form.control} name="price" render={({ field }) => (
                           <FormItem>
                             <div className='flex justify-between items-end mb-1'><FormLabel className='text-[10px] font-black uppercase text-primary'>Precio Venta (PVP)</FormLabel><Badge variant="secondary" className="font-black text-[9px] text-green-600 bg-green-50 border-green-100 px-2 py-0.5 rounded-full flex gap-1"><TrendingUp className='h-3 w-3' /> {margin}%</Badge></div>
-                            <FormControl><Input type="number" step="0.01" className='text-3xl font-black h-16 border-2 border-primary/10 rounded-2xl text-center text-primary shadow-inner' {...field} /></FormControl>
+                            <FormControl><Input type="number" step="0.01" className='text-3xl font-black h-16 border-2 border-primary/10 rounded-2xl text-center text-primary shadow-inner' {...field} value={field.value ?? 0} /></FormControl>
                           </FormItem>
                       )} />
 
