@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, MapPin, Calculator, Printer, DollarSign, Lock, QrCode, ShieldAlert } from 'lucide-react';
+import { Loader2, Save, MapPin, Calculator, Printer, DollarSign, Lock, QrCode, ShieldAlert, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -194,7 +194,6 @@ export default function SettingsPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className='text-[8px] font-bold text-muted-foreground italic uppercase'>Esta ciudad se usará como destino final en el mapa de pedidos.</p>
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Teléfono de Contacto</Label>
@@ -219,11 +218,6 @@ export default function SettingsPage() {
                             onCheckedChange={(checked) => setStoreData({...storeData, enforceCashControl: checked})}
                         />
                     </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Dirección Fiscal Exacta</Label>
-                        <Textarea value={storeData.address} onChange={(e) => setStoreData({...storeData, address: e.target.value})} className="min-h-[80px]" />
-                    </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
                     <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-xl h-12">
@@ -238,25 +232,27 @@ export default function SettingsPage() {
             <Card className="border-2 shadow-xl border-primary/10">
                 <CardHeader className="bg-primary/5 border-b">
                     <CardTitle className="text-lg font-black uppercase flex items-center gap-2 text-primary italic">
-                        <QrCode className="h-5 w-5" /> Cobros QR (Suiche 7B)
+                        <QrCode className="h-5 w-5" /> Cobros QR (Estándar Suiche 7B)
                     </CardTitle>
-                    <CardDescription className="font-bold">Datos para la generación automática de Pago Móvil en el POS.</CardDescription>
+                    <CardDescription className="font-bold">Configuración técnica para la red interbancaria nacional.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <div className="p-4 bg-blue-50 border-2 border-blue-100 rounded-xl flex items-start gap-3">
-                        <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                        <div className="text-[11px] font-bold text-blue-800 leading-tight space-y-2">
-                            <p>IMPORTANTE: Para que el QR sea válido en apps bancarias, ingrese los datos EXACTAMENTE como están en el banco.</p>
+                    <div className="p-4 bg-amber-50 border-2 border-amber-100 rounded-xl flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-[11px] font-bold text-amber-800 leading-tight space-y-2">
+                            <p className="uppercase font-black">Guía del QR Perfecto:</p>
                             <ul className="list-disc pl-4 space-y-1">
-                                <li><strong>Teléfono:</strong> 11 dígitos (ej: 04120000000).</li>
-                                <li><strong>ID/RIF:</strong> Letra + Número, sin puntos ni guiones (ej: V12345678 o J123456789).</li>
+                                <li><strong>Teléfono:</strong> 11 dígitos exactos sin guiones (ej: 04141234567).</li>
+                                <li><strong>ID/RIF:</strong> Letra + Número. Sin puntos ni guiones (ej: V12345678).</li>
+                                <li><strong>Banco:</strong> Use el código de 4 dígitos proporcionado en la lista.</li>
                             </ul>
+                            <p className="italic opacity-70">El sistema sanitizará estos datos automáticamente antes de generar el QR.</p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-primary">Banco Receptor</Label>
+                            <Label className="text-[10px] font-black uppercase text-primary">Banco Destino</Label>
                             <Select 
                                 value={storeData.pagoMovil.bankCode} 
                                 onValueChange={(val) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, bankCode: val }})}
@@ -274,20 +270,21 @@ export default function SettingsPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-primary">Teléfono Afiliado</Label>
+                            <Label className="text-[10px] font-black uppercase text-primary">Teléfono Pago Móvil</Label>
                             <Input 
-                                placeholder="Ej: 04121234567" 
+                                placeholder="04140000000" 
                                 value={storeData.pagoMovil.phone}
-                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, phone: e.target.value }})}
+                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, phone: e.target.value.replace(/[^0-9]/g, '') }})}
                                 className="font-mono font-bold h-12 border-2"
+                                maxLength={11}
                             />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
-                            <Label className="text-[10px] font-black uppercase text-primary">Cédula o RIF del Titular (Sin puntos)</Label>
+                            <Label className="text-[10px] font-black uppercase text-primary">RIF o Cédula (Sin puntos ni guiones)</Label>
                             <Input 
-                                placeholder="Ej: V12345678 o J123456789" 
+                                placeholder="V12345678" 
                                 value={storeData.pagoMovil.idNumber}
-                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, idNumber: e.target.value.toUpperCase() }})}
+                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, idNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }})}
                                 className="font-mono font-bold uppercase h-12 border-2"
                             />
                         </div>
@@ -303,39 +300,35 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="printing">
-            <Card className="border-2 shadow-lg border-primary/10">
+            <Card className="border-2 shadow-lg">
                 <CardHeader className="bg-primary/5 border-b">
                     <CardTitle className="text-lg font-black uppercase flex items-center gap-2 text-primary italic">
-                        <Printer className="h-5 w-5" /> Parámetros de Impresión
+                        <Printer className="h-5 w-5" /> Formato de Ticket
                     </CardTitle>
-                    <CardDescription className="font-bold">Ajusta el formato de salida de tus tickets térmicos.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                     <div className="space-y-3">
-                        <Label className="text-[10px] font-black uppercase text-primary">Tamaño de Letra en Factura (Ticket)</Label>
+                        <Label className="text-[10px] font-black uppercase text-primary">Tamaño de Letra POS</Label>
                         <Select 
                             value={storeData.ticketFontSize} 
                             onValueChange={(val: any) => setStoreData({...storeData, ticketFontSize: val})}
                         >
                             <SelectTrigger className="font-bold h-12 border-2">
-                                <SelectValue placeholder="Seleccionar tamaño" />
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="sm" className="font-bold text-xs uppercase">Pequeño (Económico - 8px)</SelectItem>
-                                <SelectItem value="md" className="font-bold text-xs uppercase">Mediano (Estándar - 10px)</SelectItem>
-                                <SelectItem value="lg" className="font-bold text-xs uppercase">Grande (Alta Visibilidad - 12px)</SelectItem>
+                                <SelectItem value="sm" className="font-bold text-xs uppercase">Económico (8px)</SelectItem>
+                                <SelectItem value="md" className="font-bold text-xs uppercase">Estándar (10px)</SelectItem>
+                                <SelectItem value="lg" className="font-bold text-xs uppercase">Largo (12px)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-
-                    <Separator />
 
                     <div className="p-4 rounded-xl border-2 border-dashed bg-muted/20 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <DollarSign className="h-5 w-5 text-primary" />
                             <div className="space-y-0.5">
-                                <Label className="text-xs font-black uppercase">Mostrar Ref. Multimoneda en Factura</Label>
-                                <p className="text-[9px] text-muted-foreground font-medium italic">Incluye el total en USD y COP como guía para el cliente.</p>
+                                <Label className="text-xs font-black uppercase">Ref. Multimoneda en Ticket</Label>
                             </div>
                         </div>
                         <Switch 
@@ -343,21 +336,9 @@ export default function SettingsPage() {
                             onCheckedChange={(checked) => setStoreData({...storeData, showOtherCurrenciesOnInvoice: checked})}
                         />
                     </div>
-
-                    <Separator />
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase">Mensaje al Pie del Ticket</Label>
-                        <Input 
-                            value={storeData.footerMessage} 
-                            onChange={(e) => setStoreData({...storeData, footerMessage: e.target.value})} 
-                            placeholder="Ej: ¡Gracias por preferirnos!" 
-                            className="h-11 font-medium"
-                        />
-                    </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
-                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-xl h-12">
+                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase h-12">
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Guardar Formato
                     </Button>
@@ -369,20 +350,13 @@ export default function SettingsPage() {
             <Card className="border-2 shadow-md">
                 <CardHeader className="bg-muted/10 border-b">
                     <CardTitle className="text-lg font-black uppercase flex items-center gap-2 italic">
-                        <Lock className="h-5 w-5" /> Seguridad de Acceso
+                        <Lock className="h-5 w-5" /> Seguridad
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                     <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase">Nueva Contraseña del Perfil</Label>
-                            <Input 
-                                type="password" 
-                                placeholder="Solo para cambiar" 
-                                className="h-12"
-                            />
-                            <p className="text-[10px] text-muted-foreground italic font-medium">Recomendamos al menos 8 caracteres con números y símbolos.</p>
-                        </div>
+                        <Label className="text-[10px] font-black uppercase">Cambio de Contraseña</Label>
+                        <Input type="password" placeholder="Nueva contraseña" className="h-12" />
                     </div>
                 </CardContent>
                 <CardFooter className="border-t py-4 justify-end">
@@ -408,5 +382,4 @@ const VENEZUELAN_BANKS = [
     { code: '0191', name: 'BNC' },
     { code: '0114', name: 'Bancaribe' },
     { code: '0163', name: 'Banco del Tesoro' },
-    { code: '0128', name: 'Banco Caroní' },
 ];

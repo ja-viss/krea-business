@@ -130,7 +130,6 @@ export default function NewSalePage() {
     return () => window.removeEventListener('keydown', handleGlobalKeys);
   }, []);
 
-  // Sincronizar moneda de vuelto con moneda de pago por defecto
   useEffect(() => {
     form.setValue('changeCurrency', watchCurrency);
   }, [watchCurrency, form]);
@@ -221,14 +220,12 @@ export default function NewSalePage() {
     const received = parseFloat(watchAmountReceived) || 0;
     if (received <= targetAmount) return { amount: 0, currency: watchChangeCurrency };
     
-    // Convertir lo recibido a VES para unificar el cálculo de base
     const receivedInVES = watchCurrency === 'USD' ? received * (rates.usd?.usd || 0) : 
                          watchCurrency === 'COP' ? (received / (rates.cop?.rate || 1)) * (rates.usd?.usd || 0) : 
                          received;
     
     const changeInVES = receivedInVES - totals.ves;
     
-    // Convertir el vuelto de VES a la moneda de vuelto seleccionada
     let finalChange = 0;
     if (watchChangeCurrency === 'VES') {
         finalChange = changeInVES;
@@ -275,23 +272,26 @@ export default function NewSalePage() {
    * Formato: BANCO;TELEFONO;RIF;MONTO;CONCEPTO
    */
   const pagoMovilQR = useMemo(() => {
-      if (!storeConfig?.pagoMovil?.phone || !storeConfig?.pagoMovil?.idNumber) return null;
-      
-      const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
-      
-      // 1. Sanitizar Identificación (Mayúsculas, sin puntos ni guiones)
-      const cleanId = idNumber.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      
-      // 2. Sanitizar Teléfono (11 dígitos, solo números)
-      const cleanPhone = phone.replace(/[^0-9]/g, '');
-      
-      // 3. Formatear Monto (2 decimales, punto como separador)
-      const amount = totals.ves.toFixed(2);
-      
-      // 4. Construir cadena Suiche 7B
-      const qrData = `${bankCode};${cleanPhone};${cleanId};${amount};FacturaKrea`;
-      
-      return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}`;
+    if (!storeConfig?.pagoMovil?.phone || !storeConfig?.pagoMovil?.idNumber || totals.ves <= 0) return null;
+    
+    const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
+    
+    // 1. Sanitizar Identificación: Solo Letra (V,J,E,G) y Números. Sin espacios, puntos o guiones.
+    const cleanId = idNumber.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    
+    // 2. Sanitizar Teléfono: 11 dígitos puros (ej: 04121234567)
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    
+    // 3. Monto: 2 decimales con PUNTO (.) como separador financiero
+    const amount = totals.ves.toFixed(2);
+    
+    // 4. Concepto: Sin caracteres especiales para evitar rechazos en el validador bancario
+    const concept = "KreaPOS";
+    
+    // Cadena Estándar Suiche 7B
+    const qrData = `${bankCode};${cleanPhone};${cleanId};${amount};${concept}`;
+    
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
   }, [storeConfig, totals.ves]);
 
   return (
@@ -471,7 +471,7 @@ export default function NewSalePage() {
 
                              <div className="space-y-1">
                                 <Label className="text-[9px] font-black uppercase opacity-40">Monto Recibido ({watchCurrency})</Label>
-                                <Input type="number" className="h-12 text-2xl font-black text-center" {...form.register('amountReceived')} />
+                                <input type="number" step="0.01" className="h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-2xl font-black text-center" {...form.register('amountReceived')} onFocus={(e) => e.target.select()} />
                              </div>
 
                              <div className="space-y-2 pt-2 border-t border-dashed border-muted-foreground/20">
@@ -483,7 +483,7 @@ export default function NewSalePage() {
                                                 key={curr} 
                                                 type="button" 
                                                 variant={watchChangeCurrency === curr ? 'secondary' : 'ghost'} 
-                                                size="xs" 
+                                                size="sm" 
                                                 className="h-6 px-2 text-[8px] font-black uppercase" 
                                                 onClick={() => form.setValue('changeCurrency', curr as any)}
                                             >
@@ -526,7 +526,7 @@ export default function NewSalePage() {
                     </div>
                     <div className='space-y-2'>
                         <Label className='text-[10px] font-black uppercase text-center block'>Cantidad a Vender</Label>
-                        <Input type="number" value={inputWeight} onChange={e => setInputWeight(e.target.value)} className='h-20 text-5xl font-black text-center bg-primary/5 border-2 border-primary/20' autoFocus onKeyDown={e => e.key === 'Enter' && handleAddWeightedItem()} />
+                        <input type="number" step="0.001" value={inputWeight} onChange={e => setInputWeight(e.target.value)} className='h-20 w-full rounded-md border border-input bg-primary/5 border-2 border-primary/20 text-5xl font-black text-center' autoFocus onFocus={(e) => e.target.select()} onKeyDown={e => e.key === 'Enter' && handleAddWeightedItem()} />
                     </div>
                     {weightProduct && (
                         <div className='bg-primary/5 p-4 rounded-xl border-2 border-primary/10 space-y-2'>
