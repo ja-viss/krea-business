@@ -1,15 +1,9 @@
 
 import { Schema } from 'mongoose';
 
-const LotSchema = new Schema({
-    number: { type: String, required: true },
-    expiryDate: { type: Date },
-    quantity: { type: Number, required: true, default: 0 },
-});
-
 const ComponentSchema = new Schema({
     product: { type: Schema.Types.ObjectId, ref: 'Product' },
-    productName: { type: String }, // Redundancia para velocidad
+    productName: { type: String },
     quantity: { type: Number, required: true },
 });
 
@@ -23,20 +17,19 @@ export const ProductSchema = new Schema({
   vendor: { type: String },
   category: { type: String },
   
-  // Gestión de Unidades
+  // Gestión de Unidades y Pesaje
   baseUnit: { type: String, enum: ['Unidad', 'Kilogramos', 'Gramos', 'Litros'], default: 'Unidad' },
-  isWeightable: { type: Boolean, default: false }, // Dispara el modal de peso en POS
+  isWeightable: { type: Boolean, default: false },
 
   stock: { type: Number, required: true, default: 0 },
   minStock: { type: Number, required: true, default: 0 },
   cost: { type: Number, required: true, default: 0 },
-  price: { type: Number, required: true, min: 0 }, // Precio por unidad o por Kg
+  price: { type: Number, required: true, min: 0 }, 
   taxRate: { type: Number, required: true, default: 0.16 },
   location: { type: String },
   imageUrl: { type: String },
   status: { type: String, enum: ['En Stock', 'Stock Bajo', 'Sin Stock'], required: true },
   
-  // Receta para productos Compuestos (Combos)
   recipe: [ComponentSchema],
 }, {
   timestamps: true
