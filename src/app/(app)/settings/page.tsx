@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode, Calculator } from 'lucide-react';
+import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode, Calculator, Printer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
 const VENEZUELAN_BANKS = [
     { code: '0102', name: 'Banco de Venezuela' },
@@ -43,6 +44,7 @@ export default function SettingsPage() {
     seniatCondition: '',
     footerMessage: '',
     enforceCashControl: true,
+    ticketFontSize: 'sm' as 'sm' | 'md' | 'lg',
     pagoMovil: {
         bankCode: '0102',
         phone: '',
@@ -74,6 +76,7 @@ export default function SettingsPage() {
             seniatCondition: data.seniatCondition || 'Contribuyente Ordinario del IVA',
             footerMessage: data.footerMessage || 'Gracias por su compra',
             enforceCashControl: data.enforceCashControl !== false,
+            ticketFontSize: data.ticketFontSize || 'sm',
             pagoMovil: {
                 bankCode: data.pagoMovil?.bankCode || '0102',
                 phone: data.pagoMovil?.phone || '',
@@ -134,10 +137,11 @@ export default function SettingsPage() {
         />
 
         <Tabs defaultValue="fiscal" className="space-y-6">
-          <TabsList className="grid grid-cols-3 bg-muted/50 p-1 border-2 w-full lg:w-[500px] h-12">
-            <TabsTrigger value="fiscal" className="font-black text-[10px] uppercase">Fiscal / Operación</TabsTrigger>
-            <TabsTrigger value="payments" className="font-black text-[10px] uppercase">Cobros QR</TabsTrigger>
-            <TabsTrigger value="security" className="font-black text-[10px] uppercase">Acceso</TabsTrigger>
+          <TabsList className="grid grid-cols-4 bg-muted/50 p-1 border-2 w-full lg:w-[600px] h-12">
+            <TabsTrigger value="fiscal" className="font-black text-[9px] uppercase">Fiscal / Operación</TabsTrigger>
+            <TabsTrigger value="payments" className="font-black text-[9px] uppercase">Cobros QR</TabsTrigger>
+            <TabsTrigger value="printing" className="font-black text-[9px] uppercase">Impresión</TabsTrigger>
+            <TabsTrigger value="security" className="font-black text-[9px] uppercase">Acceso</TabsTrigger>
           </TabsList>
 
           <TabsContent value="fiscal">
@@ -150,11 +154,11 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Razón Social</Label>
-                            <Input value={storeData.name} onChange={(e) => setStoreData({...storeData, name: e.target.value})} className="font-bold" />
+                            <Input value={storeData.name} onChange={(e) => setStoreData({...storeData, name: e.target.value})} className="font-bold h-11" />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">RIF Principal</Label>
-                            <Input placeholder="J-00000000-0" value={storeData.rif} onChange={(e) => setStoreData({...storeData, rif: e.target.value})} className="font-mono font-bold" />
+                            <Input placeholder="J-00000000-0" value={storeData.rif} onChange={(e) => setStoreData({...storeData, rif: e.target.value})} className="font-mono font-bold h-11" />
                         </div>
                     </div>
 
@@ -179,11 +183,11 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Teléfono de Contacto</Label>
-                            <Input value={storeData.phone} onChange={(e) => setStoreData({...storeData, phone: e.target.value})} />
+                            <Input value={storeData.phone} onChange={(e) => setStoreData({...storeData, phone: e.target.value})} className="h-11" />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground">Condición SENIAT</Label>
-                            <Input value={storeData.seniatCondition} onChange={(e) => setStoreData({...storeData, seniatCondition: e.target.value})} />
+                            <Input value={storeData.seniatCondition} onChange={(e) => setStoreData({...storeData, seniatCondition: e.target.value})} className="h-11" />
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -192,7 +196,7 @@ export default function SettingsPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
-                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-xl">
+                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-xl h-12">
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Actualizar Entidad
                     </Button>
@@ -209,7 +213,7 @@ export default function SettingsPage() {
                     <CardDescription className="font-bold">Datos para la generación automática de Pago Móvil en el POS.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl flex items-start gap-3">
+                    <div className="p-4 bg-blue-50 border-2 border-blue-100 rounded-xl flex items-start gap-3">
                         <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                         <p className="text-[11px] font-bold text-blue-800 leading-tight">
                             Asegúrese de que el número telefónico y RIF coincidan exactamente con los registrados en su banca en línea.
@@ -223,7 +227,7 @@ export default function SettingsPage() {
                                 value={storeData.pagoMovil.bankCode} 
                                 onValueChange={(val) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, bankCode: val }})}
                             >
-                                <SelectTrigger className="font-bold h-11">
+                                <SelectTrigger className="font-bold h-12">
                                     <SelectValue placeholder="Elegir banco" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -241,7 +245,7 @@ export default function SettingsPage() {
                                 placeholder="Ej: 04121234567" 
                                 value={storeData.pagoMovil.phone}
                                 onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, phone: e.target.value }})}
-                                className="font-mono font-bold h-11 border-2"
+                                className="font-mono font-bold h-12 border-2"
                             />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
@@ -250,15 +254,65 @@ export default function SettingsPage() {
                                 placeholder="Ej: J-12345678-9" 
                                 value={storeData.pagoMovil.idNumber}
                                 onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, idNumber: e.target.value }})}
-                                className="font-mono font-bold uppercase h-11 border-2"
+                                className="font-mono font-bold uppercase h-12 border-2"
                             />
                         </div>
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
-                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-lg shadow-primary/20">
+                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-lg shadow-primary/20 h-12">
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Sincronizar Cobros
+                    </Button>
+                </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="printing">
+            <Card className="border-2 shadow-lg border-primary/10">
+                <CardHeader className="bg-primary/5 border-b">
+                    <CardTitle className="text-lg font-black uppercase flex items-center gap-2 text-primary italic">
+                        <Printer className="h-5 w-5" /> Parámetros de Impresión
+                    </CardTitle>
+                    <CardDescription className="font-bold">Ajusta el formato de salida de tus tickets térmicos.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-6">
+                    <div className="space-y-3">
+                        <Label className="text-[10px] font-black uppercase text-primary">Tamaño de Letra en Factura (Ticket)</Label>
+                        <Select 
+                            value={storeData.ticketFontSize} 
+                            onValueChange={(val: any) => setStoreData({...storeData, ticketFontSize: val})}
+                        >
+                            <SelectTrigger className="font-bold h-12 border-2">
+                                <SelectValue placeholder="Seleccionar tamaño" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="sm" className="font-bold text-xs uppercase">Pequeño (Económico - 8px)</SelectItem>
+                                <SelectItem value="md" className="font-bold text-xs uppercase">Mediano (Estándar - 10px)</SelectItem>
+                                <SelectItem value="lg" className="font-bold text-xs uppercase">Grande (Alta Visibilidad - 12px)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground italic font-medium">
+                            * El tamaño pequeño permite tickets más cortos y ahorra papel térmico.
+                        </p>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase">Mensaje al Pie del Ticket</Label>
+                        <Input 
+                            value={storeData.footerMessage} 
+                            onChange={(e) => setStoreData({...storeData, footerMessage: e.target.value})} 
+                            placeholder="Ej: ¡Gracias por preferirnos!" 
+                            className="h-11 font-medium"
+                        />
+                    </div>
+                </CardContent>
+                <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
+                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-xl h-12">
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Guardar Formato
                     </Button>
                 </CardFooter>
             </Card>
@@ -278,14 +332,14 @@ export default function SettingsPage() {
                             <Input 
                                 type="password" 
                                 placeholder="Solo para cambiar" 
-                                className="h-11"
+                                className="h-12"
                             />
                             <p className="text-[10px] text-muted-foreground italic font-medium">Recomendamos al menos 8 caracteres con números y símbolos.</p>
                         </div>
                     </div>
                 </CardContent>
                 <CardFooter className="border-t py-4 justify-end">
-                    <Button variant="outline" className="w-full sm:w-auto font-black uppercase">
+                    <Button variant="outline" className="w-full sm:w-auto font-black uppercase h-12">
                         Actualizar Perfil
                     </Button>
                 </CardFooter>

@@ -44,6 +44,7 @@ export async function PUT(req: NextRequest) {
     if (updateData.email) flatUpdate.email = updateData.email;
     if (updateData.seniatCondition) flatUpdate.seniatCondition = updateData.seniatCondition;
     if (updateData.footerMessage) flatUpdate.footerMessage = updateData.footerMessage;
+    if (updateData.ticketFontSize) flatUpdate.ticketFontSize = updateData.ticketFontSize;
     
     // Nueva opción de modo de operación
     if (updateData.enforceCashControl !== undefined) {

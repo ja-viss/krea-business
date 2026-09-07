@@ -24,6 +24,8 @@ export interface IStore extends Document {
     phone: string;
     idNumber: string;
   };
+  // Configuración de Impresión
+  ticketFontSize: 'sm' | 'md' | 'lg';
   // Feature Flags (Módulos Modulares)
   enabledModules: {
     inventory: boolean;
@@ -63,6 +65,8 @@ const StoreSchema: Schema = new Schema({
     phone: { type: String, default: '' },
     idNumber: { type: String, default: '' },
   },
+  // Impresión
+  ticketFontSize: { type: String, enum: ['sm', 'md', 'lg'], default: 'sm' },
   enabledModules: {
     inventory: { type: Boolean, default: true },
     sales: { type: Boolean, default: true },

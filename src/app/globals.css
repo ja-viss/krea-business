@@ -40,7 +40,9 @@
     @apply border-border;
   }
   body {
-    @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans;
+    @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans text-[15px] leading-relaxed;
+    min-height: 100svh;
+    overflow-x: hidden;
   }
 }
 
@@ -55,11 +57,15 @@ input::-webkit-inner-spin-button {
   margin: 0;
 }
 
+/* Fix para errores de scroll en móviles */
+.flex-1 {
+  min-width: 0;
+}
+
 /* Estilos de Impresión Térmica POS */
 @media print {
     @page { margin: 0; size: 58mm auto; }
     body { background: white !important; font-family: 'Courier New', Courier, monospace !important; margin: 0; padding: 0; width: 58mm; }
     header, nav, aside, button, .print\:hidden { display: none !important; }
     main { padding: 0 !important; margin: 0 !important; width: 58mm !important; }
-    .card-pos-thermal { border: none !important; width: 58mm !important; padding: 1mm !important; margin: 0 !important; border-radius: 0 !important; font-size: 10px; line-height: 1.1; }
 }
