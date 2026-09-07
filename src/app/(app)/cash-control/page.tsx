@@ -26,7 +26,10 @@ import {
     CheckCircle2,
     XCircle,
     Store,
-    LayoutGrid
+    LayoutGrid,
+    EyeOff,
+    FileText,
+    Receipt
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,6 +39,7 @@ import { Separator } from '@/components/ui/separator';
 
 const USD_DENOMINATIONS = [100, 50, 20, 10, 5, 1];
 const VES_DENOMINATIONS = [100, 50, 20, 10, 5];
+const COP_DENOMINATIONS = [100000, 50000, 20000, 10000, 5000, 2000];
 
 export default function CashControlPage() {
     const { toast } = useToast();
@@ -45,19 +49,29 @@ export default function CashControlPage() {
     const [viewResults, setViewResults] = useState<any>(null);
     const [storeConfig, setStoreConfig] = useState<any>(null);
     
+    // Configuración de Cierre
+    const [closureMode, setClosureMode] = useState<'blind' | 'manual' | 'fiscal'>('blind');
+
     // Estados de Apertura
     const [openingUsd, setOpeningUsd] = useState('0');
     const [openingVes, setOpeningVes] = useState('0');
+    const [openingCop, setOpeningCop] = useState('0');
     const [terminalName, setTerminalName] = useState('Caja 1');
 
-    // Estados de Cierre (Arqueo a Ciegas)
+    // Estados de Arqueo (Blindado)
     const [cashUsdCount, setCashUsdCount] = useState<Record<number, number>>({});
     const [cashVesCount, setCashVesCount] = useState<Record<number, number>>({});
-    const [electronicDeclarations, setElectronicDeclarations] = useState({
-        puntoVes: { amount: '0', batch: '' },
-        pagoMovilVes: { amount: '0', batch: '' },
-        zelleUsd: { amount: '0', batch: '' },
-        binanceUsd: { amount: '0', batch: '' }
+    const [cashCopCount, setCashCopCount] = useState<Record<number, number>>({});
+
+    // Estados de Cierre Manual / Fiscal
+    const [manualDeclarations, setManualDeclarations] = useState({
+        efectivoUsd: '0',
+        efectivoVes: '0',
+        efectivoCop: '0',
+        puntoVes: '0',
+        pagoMovilVes: '0',
+        zelleUsd: '0',
+        binanceUsd: '0'
     });
     const [closingNotes, setClosingNotes] = useState('');
 
@@ -99,7 +113,8 @@ export default function CashControlPage() {
             const userName = localStorage.getItem('userName');
             const balances = [
                 { currency: 'USD', amount: parseFloat(openingUsd) || 0 },
-                { currency: 'VES', amount: parseFloat(openingVes) || 0 }
+                { currency: 'VES', amount: parseFloat(openingVes) || 0 },
+                { currency: 'COP', amount: parseFloat(openingCop) || 0 }
             ];
 
             const res = await fetch('/api/cash-control', {
@@ -128,29 +143,50 @@ export default function CashControlPage() {
     const handleCloseBox = async () => {
         setIsProcessing(true);
         try {
-            const totalCashUsd = Object.entries(cashUsdCount).reduce((acc, [den, qty]) => acc + (parseInt(den) * qty), 0);
-            const totalCashVes = Object.entries(cashVesCount).reduce((acc, [den, qty]) => acc + (parseInt(den) * qty), 0);
+            let declared = [];
 
-            const declared = [
-                { currency: 'USD', method: 'Efectivo', amount: totalCashUsd, denominations: cashUsdCount },
-                { currency: 'VES', method: 'Efectivo', amount: totalCashVes, denominations: cashVesCount },
-                { currency: 'VES', method: 'Tarjeta', amount: parseFloat(electronicDeclarations.puntoVes.amount) || 0, batchNumber: electronicDeclarations.puntoVes.batch },
-                { currency: 'VES', method: 'Pago Móvil', amount: parseFloat(electronicDeclarations.pagoMovilVes.amount) || 0 },
-                { currency: 'USD', method: 'Zelle', amount: parseFloat(electronicDeclarations.zelleUsd.amount) || 0, batchNumber: electronicDeclarations.zelleUsd.batch },
-                { currency: 'USD', method: 'Binance', amount: parseFloat(electronicDeclarations.binanceUsd.amount) || 0 },
-            ];
+            if (closureMode === 'blind') {
+                const totalCashUsd = Object.entries(cashUsdCount).reduce((acc, [den, qty]) => acc + (parseInt(den) * qty), 0);
+                const totalCashVes = Object.entries(cashVesCount).reduce((acc, [den, qty]) => acc + (parseInt(den) * qty), 0);
+                const totalCashCop = Object.entries(cashCopCount).reduce((acc, [den, qty]) => acc + (parseInt(den) * qty), 0);
+
+                declared = [
+                    { currency: 'USD', method: 'Efectivo', amount: totalCashUsd, denominations: cashUsdCount },
+                    { currency: 'VES', method: 'Efectivo', amount: totalCashVes, denominations: cashVesCount },
+                    { currency: 'COP', method: 'Efectivo', amount: totalCashCop, denominations: cashCopCount },
+                    { currency: 'VES', method: 'Tarjeta', amount: parseFloat(manualDeclarations.puntoVes) || 0 },
+                    { currency: 'VES', method: 'Pago Móvil', amount: parseFloat(manualDeclarations.pagoMovilVes) || 0 },
+                    { currency: 'USD', method: 'Zelle', amount: parseFloat(manualDeclarations.zelleUsd) || 0 },
+                ];
+            } else {
+                // Modo Manual o Fiscal
+                declared = [
+                    { currency: 'USD', method: 'Efectivo', amount: parseFloat(manualDeclarations.efectivoUsd) || 0 },
+                    { currency: 'VES', method: 'Efectivo', amount: parseFloat(manualDeclarations.efectivoVes) || 0 },
+                    { currency: 'COP', method: 'Efectivo', amount: parseFloat(manualDeclarations.efectivoCop) || 0 },
+                    { currency: 'VES', method: 'Tarjeta', amount: parseFloat(manualDeclarations.puntoVes) || 0 },
+                    { currency: 'VES', method: 'Pago Móvil', amount: parseFloat(manualDeclarations.pagoMovilVes) || 0 },
+                    { currency: 'USD', method: 'Zelle', amount: parseFloat(manualDeclarations.zelleUsd) || 0 },
+                ];
+            }
 
             const res = await fetch('/api/cash-control', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId: session._id, declaredBalances: declared, action: 'CLOSE', notes: closingNotes })
+                body: JSON.stringify({ 
+                    sessionId: session._id, 
+                    declaredBalances: declared, 
+                    action: 'CLOSE', 
+                    notes: closingNotes,
+                    closureMode 
+                })
             });
             
             const resultData = await res.json();
             if (!res.ok) throw new Error(resultData.message);
 
             setViewResults(resultData);
-            toast({ title: "Arqueo Procesado", description: "La jornada ha sido cerrada y las ventas bloqueadas." });
+            toast({ title: "Cierre Procesado", description: `Jornada finalizada en modo ${closureMode}.` });
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error crítico", description: e.message });
         } finally {
@@ -158,40 +194,14 @@ export default function CashControlPage() {
         }
     };
 
-    const updateCount = (currency: 'USD' | 'VES', denomination: number, value: string) => {
+    const updateCount = (currency: 'USD' | 'VES' | 'COP', denomination: number, value: string) => {
         const qty = parseInt(value) || 0;
         if (currency === 'USD') setCashUsdCount(prev => ({ ...prev, [denomination]: qty }));
-        else setCashVesCount(prev => ({ ...prev, [denomination]: qty }));
+        else if (currency === 'VES') setCashVesCount(prev => ({ ...prev, [denomination]: qty }));
+        else setCashCopCount(prev => ({ ...prev, [denomination]: qty }));
     };
 
     if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-
-    if (storeConfig && storeConfig.enforceCashControl === false) {
-        return (
-            <div className="flex flex-1 flex-col">
-                <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-6xl mx-auto w-full">
-                    <PageHeader 
-                        title="Operación Libre" 
-                        description="El sistema no requiere apertura ni cierre de turnos."
-                    />
-                    <Card className="border-4 border-dashed border-primary/20 bg-muted/20">
-                        <CardContent className="py-20 text-center space-y-6">
-                            <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-                                <Store className="h-10 w-10 text-primary" />
-                            </div>
-                            <div className="max-w-md mx-auto space-y-2">
-                                <h3 className="text-2xl font-black uppercase italic">Punto de Venta Independiente</h3>
-                                <p className="text-sm font-medium text-muted-foreground">
-                                    Tienes desactivado el **Control de Caja**. Todas las ventas se procesan directamente. Puedes cambiar esto en la pestaña de Configuración {" > "} Fiscal.
-                                </p>
-                            </div>
-                            <Button variant="outline" className="font-bold h-12 px-8 uppercase" onClick={() => window.location.href = '/settings'}>Ir a Configuración</Button>
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
-        );
-    }
 
     if (viewResults) {
         return (
@@ -199,14 +209,14 @@ export default function CashControlPage() {
                 <Card className="border-4 border-primary shadow-2xl">
                     <CardHeader className="bg-primary/5 text-center">
                         <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
-                        <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Resumen de Cierre</CardTitle>
+                        <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Resumen de {viewResults.closureMode === 'fiscal' ? 'Corte Fiscal' : 'Cierre de Turno'}</CardTitle>
                         <CardDescription className="font-bold">Taquilla: {viewResults.terminalName} • Cajero: {viewResults.userName}</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="font-black text-[10px] uppercase">Método de Cobro</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Método / Moneda</TableHead>
                                     <TableHead className="text-right font-black text-[10px] uppercase">Declarado</TableHead>
                                     <TableHead className="text-right font-black text-[10px] uppercase">Diferencia</TableHead>
                                 </TableRow>
@@ -220,7 +230,7 @@ export default function CashControlPage() {
                                                 <span className="font-bold text-xs uppercase">{d.method} ({d.currency})</span>
                                             </TableCell>
                                             <TableCell className="text-right font-black text-sm">{decl.toLocaleString()}</TableCell>
-                                            <TableCell className={cn("text-right font-black text-sm", d.difference === 0 ? "text-green-600" : "text-red-600")}>
+                                            <TableCell className={cn("text-right font-black text-sm", Math.abs(d.difference) < 0.01 ? "text-green-600" : "text-red-600")}>
                                                 {d.difference > 0 ? '+' : ''}{d.difference.toLocaleString()}
                                             </TableCell>
                                         </TableRow>
@@ -228,10 +238,20 @@ export default function CashControlPage() {
                                 })}
                             </TableBody>
                         </Table>
+                        {viewResults.closureMode === 'fiscal' && (
+                            <div className="mt-8 p-4 bg-muted/20 border-2 border-dashed rounded-xl">
+                                <h4 className="text-xs font-black uppercase mb-4 flex items-center gap-2"><Receipt className="h-4 w-4" /> Consolidado Fiscal del Turno</h4>
+                                <div className="grid grid-cols-2 gap-4 text-[10px] font-bold">
+                                    <div className="flex justify-between"><span>Base Imponible (16%):</span><span>{viewResults.theoreticalBalances.reduce((a:any, b:any) => a + (b.amount * 0.84), 0).toFixed(2)}</span></div>
+                                    <div className="flex justify-between"><span>IVA Recaudado:</span><span className="text-primary">{viewResults.theoreticalBalances.reduce((a:any, b:any) => a + (b.amount * 0.16), 0).toFixed(2)}</span></div>
+                                    <div className="flex justify-between border-t pt-2 col-span-2"><span>TOTAL FISCAL:</span><span className="text-lg font-black">Bs. {viewResults.theoreticalBalances.reduce((a:any, b:any) => a + b.amount, 0).toLocaleString()}</span></div>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full h-14 font-black uppercase" onClick={() => { setViewResults(null); setSession(null); fetchSessionAndConfig(); }}>
-                            Finalizar y Volver
+                        <Button className="w-full h-14 font-black uppercase shadow-xl" onClick={() => { setViewResults(null); setSession(null); fetchSessionAndConfig(); }}>
+                            Finalizar y Archivar
                         </Button>
                     </CardFooter>
                 </Card>
@@ -241,53 +261,105 @@ export default function CashControlPage() {
 
     return (
         <div className="flex flex-1 flex-col">
-            <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-6xl mx-auto w-full">
+            <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-7xl mx-auto w-full">
                 <PageHeader 
                     title="Control de Caja" 
-                    description="Gestión de turnos y arqueo automático por taquilla."
+                    description="Gestión de jornadas, arqueos ciegos y cumplimiento fiscal."
                 />
 
                 {!session ? (
                     <Card className="border-4 border-primary/10 shadow-2xl animate-in zoom-in-95">
                         <CardHeader className="text-center bg-primary/5 pb-8">
                             <Unlock className="h-12 w-12 text-primary mx-auto mb-4" />
-                            <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Apertura de Taquilla</CardTitle>
-                            <CardDescription className="font-bold">Identifica la caja e ingresa el fondo inicial.</CardDescription>
+                            <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Apertura de Jornada</CardTitle>
+                            <CardDescription className="font-bold">Define el fondo de sencillo para iniciar el turno.</CardDescription>
                         </CardHeader>
-                        <CardContent className="pt-10 space-y-8 max-w-2xl mx-auto">
-                            <div className="space-y-3">
-                                <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
-                                    <LayoutGrid className="h-4 w-4 text-primary" /> Nombre de Taquilla / Caja
-                                </Label>
-                                <Input className="text-xl font-black h-14 text-center border-2 uppercase" value={terminalName} onChange={e => setTerminalName(e.target.value)} />
-                            </div>
-                            
-                            <div className="grid gap-8 md:grid-cols-2">
+                        <CardContent className="pt-10 space-y-8 max-w-4xl mx-auto">
+                            <div className="grid gap-8 md:grid-cols-3">
                                 <div className="space-y-3">
                                     <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
-                                        <Banknote className="h-4 w-4 text-green-600" /> Fondo en Dólares ($)
+                                        <Banknote className="h-4 w-4 text-green-600" /> Fondo Dólares ($)
                                     </Label>
                                     <Input type="number" className="text-3xl font-black h-16 text-center bg-green-50/30 border-2" value={openingUsd} onChange={e => setOpeningUsd(e.target.value)} />
                                 </div>
                                 <div className="space-y-3">
                                     <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
-                                        <Coins className="h-4 w-4 text-primary" /> Fondo en Bolívares (Bs.)
+                                        <Coins className="h-4 w-4 text-primary" /> Fondo Bolívares (Bs)
                                     </Label>
                                     <Input type="number" className="text-3xl font-black h-16 text-center bg-primary/5 border-2" value={openingVes} onChange={e => setOpeningVes(e.target.value)} />
                                 </div>
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
+                                        <ArrowRightLeft className="h-4 w-4 text-amber-600" /> Fondo Pesos (COP)
+                                    </Label>
+                                    <Input type="number" className="text-3xl font-black h-16 text-center bg-amber-50/30 border-2" value={openingCop} onChange={e => setOpeningCop(e.target.value)} />
+                                </div>
+                            </div>
+                            <div className="space-y-3 max-w-md mx-auto">
+                                <Label className="text-xs font-black uppercase text-muted-foreground text-center block">Nombre / Nº de Caja</Label>
+                                <Input className="text-xl font-black h-14 text-center border-2 uppercase" value={terminalName} onChange={e => setTerminalName(e.target.value)} />
                             </div>
                         </CardContent>
                         <CardFooter className="pb-10 flex justify-center">
-                            <Button onClick={handleOpenBox} disabled={isProcessing} className="w-full max-w-md h-16 text-xl font-black uppercase shadow-xl">
+                            <Button onClick={handleOpenBox} disabled={isProcessing} className="w-full max-w-md h-16 text-xl font-black uppercase shadow-2xl">
                                 {isProcessing ? <Loader2 className="animate-spin mr-2" /> : <Unlock className="mr-3 h-6 w-6" />}
-                                Abrir Caja e Iniciar Turno
+                                Abrir Taquilla e Iniciar Turno
                             </Button>
                         </CardFooter>
                     </Card>
                 ) : (
                     <div className="grid gap-6 lg:grid-cols-12">
-                        {/* PANEL IZQUIERDO: ESTADO ACTUAL */}
+                        {/* PANEL IZQUIERDO: SELECCIÓN DE MODO */}
                         <div className="lg:col-span-4 space-y-6">
+                            <Card className="border-2 shadow-sm bg-muted/10">
+                                <CardHeader className="pb-3 border-b">
+                                    <CardTitle className="text-xs font-black uppercase">Protocolo de Cierre</CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-4 space-y-3">
+                                    <button 
+                                        className={cn("w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all", closureMode === 'blind' ? "bg-primary text-white border-primary shadow-lg" : "bg-white border-muted")}
+                                        onClick={() => setClosureMode('blind')}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <EyeOff className="h-5 w-5" />
+                                            <div className="text-left">
+                                                <p className="text-xs font-black uppercase leading-none">Arqueo a Ciegas</p>
+                                                <p className="text-[9px] font-bold opacity-70">Control de billetes (Seguro)</p>
+                                            </div>
+                                        </div>
+                                        {closureMode === 'blind' && <CheckCircle2 className="h-4 w-4" />}
+                                    </button>
+
+                                    <button 
+                                        className={cn("w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all", closureMode === 'manual' ? "bg-amber-500 text-white border-amber-600 shadow-lg" : "bg-white border-muted")}
+                                        onClick={() => setClosureMode('manual')}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <FileText className="h-5 w-5" />
+                                            <div className="text-left">
+                                                <p className="text-xs font-black uppercase leading-none">Cierre Manual</p>
+                                                <p className="text-[9px] font-bold opacity-70">Ingreso de totales directos</p>
+                                            </div>
+                                        </div>
+                                        {closureMode === 'manual' && <CheckCircle2 className="h-4 w-4" />}
+                                    </button>
+
+                                    <button 
+                                        className={cn("w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all", closureMode === 'fiscal' ? "bg-black text-white border-black shadow-lg" : "bg-white border-muted")}
+                                        onClick={() => setClosureMode('fiscal')}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Receipt className="h-5 w-5" />
+                                            <div className="text-left">
+                                                <p className="text-xs font-black uppercase leading-none">Corte Fiscal</p>
+                                                <p className="text-[9px] font-bold opacity-70">Reporte Z y Auditoría IVA</p>
+                                            </div>
+                                        </div>
+                                        {closureMode === 'fiscal' && <CheckCircle2 className="h-4 w-4" />}
+                                    </button>
+                                </CardContent>
+                            </Card>
+
                             <Card className="border-2 border-primary/20 bg-primary/[0.02]">
                                 <CardHeader className="bg-primary/5 border-b pb-4">
                                     <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -295,20 +367,16 @@ export default function CashControlPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-6 space-y-4">
-                                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2 border-dashed">
-                                        <span className="text-[10px] font-black uppercase opacity-50">Taquilla:</span>
-                                        <span className="font-black text-xs uppercase">{session.terminalName}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2 border-dashed">
-                                        <span className="text-[10px] font-black uppercase opacity-50">Iniciado:</span>
-                                        <span className="font-bold text-xs">{new Date(session.openedAt).toLocaleTimeString()}</span>
-                                    </div>
+                                    <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Caja:</span><span>{session.terminalName}</span></div>
+                                    <div className="flex justify-between text-[10px] font-black uppercase opacity-60"><span>Apertura:</span><span>{new Date(session.openedAt).toLocaleTimeString()}</span></div>
+                                    <Separator />
                                     <div className="space-y-2">
-                                        <p className="text-[10px] font-black uppercase opacity-50">Fondo Inicial:</p>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <p className="text-[9px] font-black uppercase opacity-40">Fondo Inicial Reportado:</p>
+                                        <div className="grid grid-cols-3 gap-2">
                                             {session.openingBalances.map((b: any) => (
                                                 <div key={b.currency} className="bg-white p-2 rounded border-2 text-center">
-                                                    <span className="text-[11px] font-black">{b.amount.toLocaleString()} {b.currency}</span>
+                                                    <p className="text-[7px] font-black opacity-40">{b.currency}</p>
+                                                    <p className="text-[10px] font-black">{b.amount.toLocaleString()}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -317,96 +385,96 @@ export default function CashControlPage() {
                             </Card>
                         </div>
 
-                        {/* PANEL DERECHO: ARQUEO A CIEGAS */}
+                        {/* PANEL DERECHO: FORMULARIO DINÁMICO */}
                         <div className="lg:col-span-8">
-                            <Card className="border-4 border-black shadow-2xl overflow-hidden">
+                            <Card className="border-4 border-black shadow-2xl overflow-hidden min-h-[600px] flex flex-col">
                                 <CardHeader className="bg-black text-white py-6">
                                     <CardTitle className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
-                                        <Lock className="h-6 w-6 text-primary" /> Arqueo a Ciegas (Paso Final)
+                                        <Lock className="h-6 w-6 text-primary" /> 
+                                        {closureMode === 'blind' ? 'Arqueo Físico de Efectivo' : closureMode === 'manual' ? 'Resumen de Recaudación' : 'Validación Fiscal'}
                                     </CardTitle>
                                     <CardDescription className="text-white/60 font-bold uppercase text-[10px]">
-                                        Al finalizar, las ventas se bloquearán para este cajero hasta una nueva apertura.
+                                        {closureMode === 'blind' ? 'Ingrese la cantidad de billetes contados.' : 'Ingrese los montos finales según sus comprobantes.'}
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="p-0">
-                                    <Tabs defaultValue="cash-usd">
-                                        <TabsList className="w-full grid grid-cols-3 rounded-none bg-muted h-14 border-b-2 border-black/10">
-                                            <TabsTrigger value="cash-usd" className="font-black uppercase text-[10px] h-full">Efectivo $</TabsTrigger>
-                                            <TabsTrigger value="cash-ves" className="font-black uppercase text-[10px] h-full">Efectivo Bs</TabsTrigger>
-                                            <TabsTrigger value="electronic" className="font-black uppercase text-[10px] h-full">Banca/Apps</TabsTrigger>
-                                        </TabsList>
+                                
+                                <CardContent className="p-0 flex-1 overflow-y-auto">
+                                    {closureMode === 'blind' ? (
+                                        <Tabs defaultValue="cash-ves">
+                                            <TabsList className="w-full grid grid-cols-3 rounded-none bg-muted h-14 border-b-2 border-black/10">
+                                                <TabsTrigger value="cash-ves" className="font-black uppercase text-[10px]">Efectivo Bs</TabsTrigger>
+                                                <TabsTrigger value="cash-usd" className="font-black uppercase text-[10px]">Efectivo $</TabsTrigger>
+                                                <TabsTrigger value="cash-cop" className="font-black uppercase text-[10px]">Efectivo Pesos</TabsTrigger>
+                                            </TabsList>
 
-                                        <TabsContent value="cash-usd" className="p-6 space-y-6">
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                                {USD_DENOMINATIONS.map(den => (
-                                                    <div key={den} className="space-y-1">
-                                                        <Label className="text-[10px] font-black uppercase opacity-60">${den}</Label>
-                                                        <Input type="number" placeholder="Cant." className="font-black text-center h-12" onChange={e => updateCount('USD', den, e.target.value)} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="bg-green-50 p-4 rounded-xl border-2 border-green-200 border-dashed text-center">
-                                                <p className="text-[11px] font-black uppercase text-green-800 opacity-60">Total Contado ($)</p>
-                                                <p className="text-3xl font-black text-green-900">
-                                                    ${Object.entries(cashUsdCount).reduce((acc, [den, qty]) => acc + (parseInt(den) * qty), 0)}
-                                                </p>
-                                            </div>
-                                        </TabsContent>
-
-                                        <TabsContent value="cash-ves" className="p-6 space-y-6">
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                                {VES_DENOMINATIONS.map(den => (
-                                                    <div key={den} className="space-y-1">
-                                                        <Label className="text-[10px] font-black uppercase opacity-60">{den} Bs</Label>
-                                                        <Input type="number" placeholder="Cant." className="font-black text-center h-12" onChange={e => updateCount('VES', den, e.target.value)} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/20 border-dashed text-center">
-                                                <p className="text-[11px] font-black uppercase text-primary opacity-60">Total Contado (Bs)</p>
-                                                <p className="text-3xl font-black text-primary">
-                                                    {Object.entries(cashVesCount).reduce((acc, [den, qty]) => acc + (parseInt(den) * qty), 0)} Bs
-                                                </p>
-                                            </div>
-                                        </TabsContent>
-
-                                        <TabsContent value="electronic" className="p-6 space-y-6">
-                                            <div className="grid sm:grid-cols-2 gap-6">
-                                                <div className="space-y-4">
-                                                    <h4 className="text-[11px] font-black uppercase text-blue-800 border-l-4 border-blue-600 pl-2">Banca Nacional (Cierres POS)</h4>
-                                                    <div className="space-y-3">
-                                                        <Label className="text-[10px] font-black uppercase">Punto de Venta (Total Lote)</Label>
-                                                        <Input type="number" className="font-black border-2" value={electronicDeclarations.puntoVes.amount} onChange={e => setElectronicDeclarations({...electronicDeclarations, puntoVes: {...electronicDeclarations.puntoVes, amount: e.target.value}})} />
-                                                        <Label className="text-[10px] font-black uppercase">Nº de Lote / Turno POS</Label>
-                                                        <Input className="font-mono text-xs" placeholder="Ej: 0145" value={electronicDeclarations.puntoVes.batch} onChange={e => setElectronicDeclarations({...electronicDeclarations, puntoVes: {...electronicDeclarations.puntoVes, batch: e.target.value}})} />
-                                                        
-                                                        <Separator />
-                                                        
-                                                        <Label className="text-[10px] font-black uppercase">Pago Móvil (Suma Total)</Label>
-                                                        <Input type="number" className="font-black border-2" value={electronicDeclarations.pagoMovilVes.amount} onChange={e => setElectronicDeclarations({...electronicDeclarations, pagoMovilVes: {...electronicDeclarations.pagoMovilVes, amount: e.target.value}})} />
-                                                    </div>
+                                            <TabsContent value="cash-ves" className="p-6 space-y-6">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                                    {VES_DENOMINATIONS.map(den => (
+                                                        <div key={den} className="space-y-1">
+                                                            <Label className="text-[10px] font-black uppercase opacity-60">Billete {den} Bs</Label>
+                                                            <Input type="number" placeholder="Cant." className="font-black text-center h-12" onChange={e => updateCount('VES', den, e.target.value)} />
+                                                        </div>
+                                                    ))}
                                                 </div>
+                                            </TabsContent>
+
+                                            <TabsContent value="cash-usd" className="p-6 space-y-6">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                                    {USD_DENOMINATIONS.map(den => (
+                                                        <div key={den} className="space-y-1">
+                                                            <Label className="text-[10px] font-black uppercase opacity-60">Billete ${den}</Label>
+                                                            <Input type="number" placeholder="Cant." className="font-black text-center h-12" onChange={e => updateCount('USD', den, e.target.value)} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </TabsContent>
+
+                                            <TabsContent value="cash-cop" className="p-6 space-y-6">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                                    {COP_DENOMINATIONS.map(den => (
+                                                        <div key={den} className="space-y-1">
+                                                            <Label className="text-[10px] font-black uppercase opacity-60">{den.toLocaleString()} Pesos</Label>
+                                                            <Input type="number" placeholder="Cant." className="font-black text-center h-12" onChange={e => updateCount('COP', den, e.target.value)} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </TabsContent>
+                                        </Tabs>
+                                    ) : (
+                                        <div className="p-8 grid gap-8 md:grid-cols-2">
+                                            <div className="space-y-6">
+                                                <h4 className="text-[11px] font-black uppercase text-primary border-l-4 border-primary pl-2 italic">Efectivo en Bóveda</h4>
                                                 <div className="space-y-4">
-                                                    <h4 className="text-[11px] font-black uppercase text-amber-800 border-l-4 border-amber-600 pl-2">Apps Digitales ($)</h4>
-                                                    <div className="space-y-3">
-                                                        <Label className="text-[10px] font-black uppercase">Zelle / Banesco Pan ($)</Label>
-                                                        <Input type="number" className="font-black border-2" value={electronicDeclarations.zelleUsd.amount} onChange={e => setElectronicDeclarations({...electronicDeclarations, zelleUsd: {...electronicDeclarations.zelleUsd, amount: e.target.value}})} />
-                                                        <Label className="text-[10px] font-black uppercase">Binance Pay (Total USDT)</Label>
-                                                        <Input type="number" className="font-black border-2" value={electronicDeclarations.binanceUsd.amount} onChange={e => setElectronicDeclarations({...electronicDeclarations, binanceUsd: {...electronicDeclarations.binanceUsd, amount: e.target.value}})} />
-                                                    </div>
+                                                    <div><Label className="text-[9px] font-black uppercase opacity-50">Total Bolívares (VES)</Label><Input type="number" value={manualDeclarations.efectivoVes} onChange={e => setManualDeclarations({...manualDeclarations, efectivoVes: e.target.value})} className="h-12 font-black border-2" /></div>
+                                                    <div><Label className="text-[9px] font-black uppercase opacity-50">Total Dólares (USD)</Label><Input type="number" value={manualDeclarations.efectivoUsd} onChange={e => setManualDeclarations({...manualDeclarations, efectivoUsd: e.target.value})} className="h-12 font-black border-2" /></div>
+                                                    <div><Label className="text-[9px] font-black uppercase opacity-50">Total Pesos (COP)</Label><Input type="number" value={manualDeclarations.efectivoCop} onChange={e => setManualDeclarations({...manualDeclarations, efectivoCop: e.target.value})} className="h-12 font-black border-2" /></div>
                                                 </div>
                                             </div>
-                                        </TabsContent>
-                                    </Tabs>
+                                            <div className="space-y-6">
+                                                <h4 className="text-[11px] font-black uppercase text-blue-700 border-l-4 border-blue-600 pl-2 italic">Medios Electrónicos</h4>
+                                                <div className="space-y-4">
+                                                    <div><Label className="text-[9px] font-black uppercase opacity-50">Punto de Venta (Tarjetas)</Label><Input type="number" value={manualDeclarations.puntoVes} onChange={e => setManualDeclarations({...manualDeclarations, puntoVes: e.target.value})} className="h-12 font-black border-2" /></div>
+                                                    <div><Label className="text-[9px] font-black uppercase opacity-50">Pago Móvil (Consolidado)</Label><Input type="number" value={manualDeclarations.pagoMovilVes} onChange={e => setManualDeclarations({...manualDeclarations, pagoMovilVes: e.target.value})} className="h-12 font-black border-2" /></div>
+                                                    <div><Label className="text-[9px] font-black uppercase opacity-50">Zelle / Otros ($)</Label><Input type="number" value={manualDeclarations.zelleUsd} onChange={e => setManualDeclarations({...manualDeclarations, zelleUsd: e.target.value})} className="h-12 font-black border-2" /></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
+
                                 <CardFooter className="bg-muted/50 p-8 border-t-2 border-black flex flex-col gap-4">
                                     <div className="w-full space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Observaciones / Comentarios de Cierre</Label>
-                                        <Input className="bg-white" placeholder="Ej: Faltó un billete de $5..." value={closingNotes} onChange={e => setClosingNotes(e.target.value)} />
+                                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Observaciones de Cierre (Justificación de faltantes/sobrantes)</Label>
+                                        <Input className="bg-white font-medium" placeholder="Ej: No se recibió billete de $1 solicitado..." value={closingNotes} onChange={e => setClosingNotes(e.target.value)} />
                                     </div>
-                                    <Button variant="destructive" onClick={handleCloseBox} disabled={isProcessing} className="w-full h-16 text-xl font-black uppercase shadow-2xl">
+                                    <Button 
+                                        variant="destructive" 
+                                        onClick={handleCloseBox} 
+                                        disabled={isProcessing} 
+                                        className="w-full h-16 text-xl font-black uppercase shadow-2xl rounded-2xl"
+                                    >
                                         {isProcessing ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-3 h-6 w-6" />}
-                                        Finalizar Turno y Bloquear Ventas
+                                        {closureMode === 'fiscal' ? 'Ejecutar Reporte Z y Cerrar' : 'Finalizar Turno'}
                                     </Button>
                                 </CardFooter>
                             </Card>

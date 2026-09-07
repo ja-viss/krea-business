@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
     try {
         await dbConnect();
-        const { sessionId, declaredBalances, action, notes, authorizedBy } = await req.json();
+        const { sessionId, declaredBalances, action, notes, authorizedBy, closureMode } = await req.json();
 
         if (action === 'CLOSE') {
             const session = await CashSessionModel.findById(sessionId);
@@ -103,6 +103,7 @@ export async function PUT(req: NextRequest) {
             session.theoreticalBalances = theoretical;
             session.discrepancies = discrepancies;
             session.declaredBalances = declaredBalances;
+            session.closureMode = closureMode || 'blind';
             session.status = 'Cerrada';
             session.closedAt = new Date();
             session.notes = notes;
@@ -116,7 +117,7 @@ export async function PUT(req: NextRequest) {
                 userName: session.userName,
                 action: 'CIERRE_CAJA',
                 module: 'Ventas',
-                details: `Cierre de turno en ${session.terminalName}. Auditoría automática completada.`
+                details: `Cierre de turno (${session.closureMode}) en ${session.terminalName}. Auditoría automática completada.`
             });
 
             return NextResponse.json(session);
