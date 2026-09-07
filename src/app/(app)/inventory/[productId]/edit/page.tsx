@@ -133,10 +133,10 @@ export default function EditProductPage() {
     if (!watchName || watchName.length < 3) return;
     setSearchingImage(true);
     try {
-      const cleanName = watchName.trim().replace(/[^a-zA-Z0-9 ]/g, "").split(' ').slice(0, 2).join(',');
-      const keyword = encodeURIComponent(cleanName);
+      // Usar solo la primera palabra clave para mayor éxito
+      const firstWord = watchName.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       const timestamp = new Date().getTime();
-      const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${timestamp}`;
+      const autoUrl = `https://loremflickr.com/400/400/${firstWord}?lock=${timestamp}`;
       form.setValue('imageUrl', autoUrl, { shouldDirty: true });
       setImgKey(timestamp);
     } catch (e) {
@@ -280,24 +280,29 @@ export default function EditProductPage() {
 
               {/* COLUMNA DERECHA (4/12) */}
               <div className="space-y-6 lg:col-span-4 lg:sticky lg:top-8">
+                
+                {/* CARD 3: IDENTIDAD VISUAL COMPACTA */}
                 <Card className='border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white'>
                   <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-3'>
                     <CardTitle className='text-xs font-black uppercase flex items-center gap-2 text-slate-500'>
                         <ImageIcon className='h-3 w-3' /> Identidad Visual
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-6 space-y-4">
-                    <div className="aspect-square w-full rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50 relative overflow-hidden group">
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="h-48 w-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50 relative overflow-hidden group">
                         {watchImageUrl ? (
-                            <Image key={imgKey} src={watchImageUrl} alt="Preview" fill className="object-contain p-4 transition-transform duration-500" unoptimized />
+                            <Image key={imgKey} src={watchImageUrl} alt="Preview" fill className="object-contain p-2 transition-transform duration-500" unoptimized />
                         ) : (
-                            <div className="flex flex-col items-center opacity-20"><ImageIcon className="h-12 w-12 mb-2" /><span className="text-[10px] font-black uppercase">Sin Imagen</span></div>
+                            <div className="flex flex-col items-center opacity-20">
+                                <ImageIcon className="h-8 w-8 mb-2" />
+                                <span className="text-[8px] font-black uppercase text-center">Sin Imagen</span>
+                            </div>
                         )}
-                        {searchingImage && <div className='absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center'><Loader2 className='h-8 w-8 text-primary animate-spin' /></div>}
+                        {searchingImage && <div className='absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center'><Loader2 className='h-6 w-6 text-primary animate-spin' /></div>}
                     </div>
                     <FormField control={form.control} name="imageUrl" render={({ field }) => (
                         <FormItem><div className="relative"><Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <FormControl><Input placeholder="URL de la imagen" className="h-10 pl-10 font-mono text-[10px] rounded-xl border-slate-100 bg-slate-50/50" {...field} /></FormControl>
+                            <FormControl><Input placeholder="Enlace de la imagen" className="h-9 pl-9 font-mono text-[9px] rounded-lg border-slate-100 bg-slate-50/50" {...field} /></FormControl>
                         </div></FormItem>
                     )} />
                   </CardContent>
@@ -306,7 +311,7 @@ export default function EditProductPage() {
                 <Card className='border-none shadow-2xl rounded-2xl overflow-hidden bg-white'>
                   <div className='bg-gradient-to-r from-primary to-purple-600 p-5 text-white'>
                     <div className='flex justify-between items-center'>
-                        <CardTitle className='text-xs font-black uppercase flex items-center gap-2 italic tracking-widest'><Coins className='h-4 w-4' /> Valorización</CardTitle>
+                        <CardTitle className='text-[10px] font-black uppercase flex items-center gap-2 italic tracking-widest'><Coins className='h-4 w-4' /> Valorización</CardTitle>
                         <Badge className='bg-white/20 text-white border-none font-black text-[8px]'>PRÉMIUM</Badge>
                     </div>
                   </div>
@@ -318,16 +323,16 @@ export default function EditProductPage() {
                       <FormField control={form.control} name="price" render={({ field }) => (
                           <FormItem>
                             <div className='flex justify-between items-end mb-1.5'><FormLabel className='text-[10px] font-black uppercase text-primary'>Precio PVP</FormLabel><Badge variant="secondary" className="font-black text-[10px] text-green-600 bg-green-50 border-green-100 px-2.5 py-0.5 rounded-full flex gap-1"><TrendingUp className='h-3 w-3' /> {margin}%</Badge></div>
-                            <FormControl><Input type="number" step="0.01" className='text-4xl font-black h-24 border-2 border-primary/10 rounded-2xl text-center text-primary' {...field} /></FormControl>
+                            <FormControl><Input type="number" step="0.01" className='text-4xl font-black h-20 border-2 border-primary/10 rounded-2xl text-center text-primary' {...field} /></FormControl>
                           </FormItem>
                       )} />
 
                       <FormField control={form.control} name="taxRate" render={({ field }) => (
                           <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-400'>Carga Fiscal (IVA)</FormLabel><Select onValueChange={(v) => field.onChange(parseFloat(v))} value={String(field.value)}><FormControl><SelectTrigger className='h-12 font-bold rounded-xl border-slate-100'><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className='rounded-xl'><SelectItem value="0.16" className="font-bold py-2 uppercase text-xs">General (16%)</SelectItem><SelectItem value="0.08" className="font-bold py-2 uppercase text-xs">Reducido (8%)</SelectItem><SelectItem value="0" className="font-bold py-2 uppercase text-xs">Exento (0%)</SelectItem></SelectContent></Select></FormItem>
+                          <SelectContent className='rounded-xl'><SelectItem value="0.16" className="font-bold py-2 uppercase text-[10px]">General (16%)</SelectItem><SelectItem value="0.08" className="font-bold py-2 uppercase text-[10px]">Reducido (8%)</SelectItem><SelectItem value="0" className="font-bold py-2 uppercase text-[10px]">Exento (0%)</SelectItem></SelectContent></Select></FormItem>
                       )} />
 
-                      <Button type="submit" disabled={isSubmitting} className='w-full h-16 text-lg font-black uppercase shadow-xl shadow-primary/20 rounded-2xl bg-primary'>
+                      <Button type="submit" disabled={isSubmitting} className='w-full h-14 text-lg font-black uppercase shadow-xl shadow-primary/20 rounded-2xl bg-primary'>
                           {isSubmitting ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Save className="mr-2 h-6 w-6" />}
                           ACTUALIZAR FICHA
                       </Button>
@@ -341,4 +346,3 @@ export default function EditProductPage() {
     </div>
   );
 }
-
