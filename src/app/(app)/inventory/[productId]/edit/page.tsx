@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -32,17 +31,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Camera, ChevronLeft, Loader2, AlertTriangle } from 'lucide-react';
+import { Camera, ChevronLeft, Loader2, AlertTriangle, Wand2, Link2, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
 import { IProduct } from '@/models/Product';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import Image from 'next/image';
 
 const productSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
-  productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio']),
+  productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio', 'Compuesto']),
   barcode: z.string().optional(),
   sku: z.string().optional(),
   brand: z.string().optional(),
@@ -54,7 +55,7 @@ const productSchema = z.object({
   price: z.coerce.number().min(0, 'El precio debe ser positivo.'),
   taxRate: z.coerce.number().min(0, "La tasa de impuesto no puede ser negativa."),
   location: z.string().optional(),
-  imageUrl: z.string().url('Debe ser una URL válida.').optional().or(z.literal('')),
+  imageUrl: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -70,6 +71,7 @@ export default function EditProductPage() {
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [searchingImage, setSearchingImage] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -87,13 +89,16 @@ export default function EditProductPage() {
       category: '',
       stock: 0,
       minStock: 0,
-      cost: undefined,
-      price: undefined,
+      cost: 0,
+      price: 0,
       taxRate: 0.16,
       location: '',
       imageUrl: '',
     },
   });
+
+  const watchName = form.watch('name');
+  const watchImageUrl = form.watch('imageUrl');
 
   useEffect(() => {
     if (productId) {
@@ -105,10 +110,9 @@ export default function EditProductPage() {
             throw new Error('No se pudo encontrar el producto.');
           }
           const data: IProduct = await response.json();
-          // Populate form with fetched data
           form.reset({
             name: data.name,
-            productType: data.productType,
+            productType: data.productType as any,
             barcode: data.barcode || '',
             sku: data.sku || '',
             brand: data.brand || '',
@@ -139,6 +143,25 @@ export default function EditProductPage() {
       description: `Se ha registrado el código: ${scannedCode}`,
     });
     setShowScanner(false);
+  };
+
+  const handleAutoSearchImage = async () => {
+    if (!watchName || watchName.length < 3) {
+      toast({ variant: 'destructive', title: 'Nombre requerido' });
+      return;
+    }
+
+    setSearchingImage(true);
+    try {
+      const keyword = encodeURIComponent(watchName.trim().split(' ')[0]);
+      const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${Math.floor(Math.random() * 1000)}`;
+      form.setValue('imageUrl', autoUrl);
+      toast({ title: 'Imagen Actualizada' });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error de búsqueda' });
+    } finally {
+      setSearchingImage(false);
+    }
   };
 
   const onSubmit = async (data: ProductFormValues) => {
@@ -257,12 +280,20 @@ export default function EditProductPage() {
                         render={({ field }) => (
                           <FormItem className="sm:col-span-2">
                             <FormLabel>Nombre del Producto</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Ej: Leche Entera 1L"
-                                {...field}
-                              />
-                            </FormControl>
+                            <div className="flex gap-2">
+                              <FormControl>
+                                <Input placeholder="Ej: Leche Entera 1L" {...field} />
+                              </FormControl>
+                              <Button 
+                                type="button" 
+                                variant="secondary" 
+                                onClick={handleAutoSearchImage}
+                                disabled={searchingImage}
+                                className="bg-amber-500 text-white hover:bg-amber-600"
+                              >
+                                {searchingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                              </Button>
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -342,54 +373,35 @@ export default function EditProductPage() {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle>Códigos y Almacén</CardTitle>
+                      <CardTitle>Identidad Visual</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-6 sm:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="barcode"
-                        render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Código de Barras (UPC/EAN)</FormLabel>
-                              <div className="flex gap-2">
-                                  <FormControl>
-                                      <Input placeholder="Escanea o ingresa el código" {...field} />
-                                  </FormControl>
-                                  <Button type="button" variant="outline" size="icon" onClick={() => setShowScanner(true)}>
-                                      <Camera className="h-4 w-4" />
-                                      <span className="sr-only">Escanear</span>
-                                  </Button>
-                              </div>
-                              <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="sku"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>SKU (Código Interno)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: LAC-001" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="location"
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-2">
-                            <FormLabel>Ubicación en Almacén</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: Pasillo 3, Estante B" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                        <FormField
+                            control={form.control}
+                            name="imageUrl"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>URL de la Imagen</FormLabel>
+                                <div className="relative">
+                                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
+                                    <FormControl>
+                                        <Input placeholder="https://..." className="pl-10" {...field} />
+                                    </FormControl>
+                                </div>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-xs font-bold uppercase opacity-60">Vista Previa</Label>
+                            <div className="h-32 w-full rounded-xl border-2 border-dashed bg-muted/20 relative overflow-hidden flex items-center justify-center">
+                                {watchImageUrl ? (
+                                    <Image src={watchImageUrl} alt="Preview" fill className="object-cover" />
+                                ) : (
+                                    <ImageIcon className="h-8 w-8 opacity-20" />
+                                )}
+                            </div>
+                        </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -419,7 +431,7 @@ export default function EditProductPage() {
                         name="minStock"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Stock Mínimo (Punto de Reorden)</FormLabel>
+                            <FormLabel>Stock Mínimo</FormLabel>
                             <FormControl>
                               <Input type="number" {...field} />
                             </FormControl>
@@ -432,9 +444,9 @@ export default function EditProductPage() {
                         name="cost"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Costo Unitario (VES)</FormLabel>
+                            <FormLabel>Costo Unitario (Bs)</FormLabel>
                             <FormControl>
-                              <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
+                              <Input type="number" step="0.01" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -445,57 +457,15 @@ export default function EditProductPage() {
                         name="price"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Precio de Venta (VES)</FormLabel>
+                            <FormLabel>Precio Venta (Bs)</FormLabel>
                             <FormControl>
-                              <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
+                              <Input type="number" step="0.01" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={form.control}
-                        name="taxRate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Impuesto (IVA)</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(parseFloat(value))} defaultValue={String(field.value)}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona un impuesto" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="0.16">Gravado (16%)</SelectItem>
-                                <SelectItem value="0.08">Reducido (8%)</SelectItem>
-                                <SelectItem value="0">Exento (0%)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </CardContent>
-                  </Card>
-                  <Card>
-                      <CardHeader>
-                          <CardTitle>Imagen del Producto</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                          <FormField
-                              control={form.control}
-                              name="imageUrl"
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel>URL de la Imagen</FormLabel>
-                                      <FormControl>
-                                          <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                              />
-                      </CardContent>
                   </Card>
                 </div>
               </div>
@@ -504,7 +474,7 @@ export default function EditProductPage() {
                   <Button type="button" variant="outline" onClick={() => router.push('/inventory')}>Cancelar</Button>
                   <Button type="submit" disabled={isSubmitting}>
                       {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {isSubmitting ? 'Guardando Cambios...' : 'Guardar Cambios'}
+                      {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
                   </Button>
               </div>
             </form>

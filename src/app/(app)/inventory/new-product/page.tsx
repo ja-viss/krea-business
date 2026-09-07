@@ -12,12 +12,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Camera, ScanLine, Plus } from 'lucide-react';
+import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Camera, ScanLine, Plus, Wand2, Link2, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 const productSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
@@ -46,6 +47,7 @@ export default function NewProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [searchingImage, setSearchingImage] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -65,10 +67,13 @@ export default function NewProductPage() {
       cost: 0,
       price: 0,
       taxRate: 0.16,
+      imageUrl: '',
     },
   });
 
   const watchIsWeightable = form.watch('isWeightable');
+  const watchName = form.watch('name');
+  const watchImageUrl = form.watch('imageUrl');
 
   const handleBarcodeScan = (scannedCode: string) => {
     form.setValue('barcode', scannedCode);
@@ -77,6 +82,36 @@ export default function NewProductPage() {
       description: `Se ha registrado: ${scannedCode}`,
     });
     setShowScanner(false);
+  };
+
+  const handleAutoSearchImage = async () => {
+    if (!watchName || watchName.length < 3) {
+      toast({ 
+        variant: 'destructive', 
+        title: 'Nombre requerido', 
+        description: 'Escribe el nombre del producto para buscar una imagen.' 
+      });
+      return;
+    }
+
+    setSearchingImage(true);
+    try {
+      // Usamos un servicio de placeholder profesional con búsqueda por palabra clave
+      // Limpiamos el nombre para la búsqueda
+      const keyword = encodeURIComponent(watchName.trim().split(' ')[0]);
+      const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${Math.floor(Math.random() * 1000)}`;
+      
+      form.setValue('imageUrl', autoUrl);
+      
+      toast({
+        title: 'Imagen Localizada',
+        description: `Se ha vinculado una imagen sugerida para "${watchName}".`
+      });
+    } catch (e) {
+      toast({ variant: 'destructive', title: 'Error de búsqueda' });
+    } finally {
+      setSearchingImage(false);
+    }
   };
 
   const onSubmit = async (data: ProductFormValues) => {
@@ -145,19 +180,74 @@ export default function NewProductPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6 pt-6">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className='text-[10px] font-black uppercase text-muted-foreground'>Nombre del Producto / Alimento</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Ej: Harina Pan o Tomate Perita" className="h-14 text-lg font-bold rounded-2xl border-2" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="flex flex-col gap-6">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className='text-[10px] font-black uppercase text-muted-foreground'>Nombre del Producto / Alimento</FormLabel>
+                            <div className="flex gap-2">
+                              <FormControl>
+                                <Input placeholder="Ej: Harina Pan o Tomate Perita" className="h-14 text-lg font-bold rounded-2xl border-2" {...field} />
+                              </FormControl>
+                              <Button 
+                                type="button" 
+                                variant="secondary" 
+                                className="h-14 px-4 rounded-2xl bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md group"
+                                onClick={handleAutoSearchImage}
+                                disabled={searchingImage}
+                                title="Buscar imagen automáticamente"
+                              >
+                                {searchingImage ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5 group-hover:rotate-12 transition-transform" />}
+                              </Button>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* URL DE IMAGEN */}
+                        <FormField
+                          control={form.control}
+                          name="imageUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className='text-[10px] font-black uppercase text-muted-foreground'>Enlace de Imagen (URL)</FormLabel>
+                              <div className="relative">
+                                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <FormControl>
+                                  <Input placeholder="https://..." className="h-12 pl-10 font-mono text-xs rounded-xl" {...field} />
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* PREVISUALIZACION DE IMAGEN */}
+                        <div className="flex flex-col gap-2">
+                           <Label className="text-[10px] font-black uppercase text-muted-foreground">Previsualización</Label>
+                           <div className="h-24 w-full rounded-2xl border-2 border-dashed flex items-center justify-center bg-muted/20 relative overflow-hidden">
+                              {watchImageUrl ? (
+                                <Image 
+                                  src={watchImageUrl} 
+                                  alt="Preview" 
+                                  fill 
+                                  className="object-cover"
+                                  onError={() => form.setValue('imageUrl', '')}
+                                />
+                              ) : (
+                                <div className="flex flex-col items-center opacity-20">
+                                  <ImageIcon className="h-8 w-8" />
+                                  <span className="text-[9px] font-black uppercase mt-1">Sin Imagen</span>
+                                </div>
+                              )}
+                           </div>
+                        </div>
+                      </div>
+                    </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                         <FormField
