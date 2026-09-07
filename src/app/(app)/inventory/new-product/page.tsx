@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Layers, Camera, QrCode, ScanLine } from 'lucide-react';
+import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Layers, Camera, QrCode, ScanLine, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,18 +28,18 @@ const productSchema = z.object({
   brand: z.string().optional(),
   vendor: z.string().optional(),
   category: z.string().optional(),
-  stock: z.coerce.number().min(0, 'La existencia no puede ser negativa.'),
-  minStock: z.coerce.number().min(0, 'El stock mínimo no puede ser negativo.'),
-  cost: z.coerce.number().min(0, 'El costo no puede ser negativo.'),
-  price: z.coerce.number().min(0, 'El precio no puede ser negativo.'),
-  taxRate: z.coerce.number().min(0).default(0.16),
+  stock: z.number().min(0, 'La existencia no puede ser negativa.'),
+  minStock: z.number().min(0, 'El stock mínimo no puede ser negativo.'),
+  cost: z.number().min(0, 'El costo no puede ser negativo.'),
+  price: z.number().min(0, 'El precio no puede ser negativo.'),
+  taxRate: z.number().min(0).default(0.16),
   location: z.string().optional(),
   imageUrl: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
-export default function NewProductPage() {
+export function NewProductPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -412,3 +411,5 @@ export default function NewProductPage() {
     </div>
   );
 }
+
+export default NewProductPage;
