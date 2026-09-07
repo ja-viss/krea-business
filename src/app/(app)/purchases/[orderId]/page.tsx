@@ -1,8 +1,8 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -12,8 +12,13 @@ import { ChevronLeft, CheckCircle2, Loader2, Truck, Calendar, Box, PackageCheck,
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { LogisticsMap } from '@/components/purchases/logistics-map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Importación dinámica del mapa para evitar errores de SSR
+const LogisticsMap = dynamic(() => import('@/components/purchases/logistics-map'), { 
+    ssr: false,
+    loading: () => <div className="h-[400px] w-full flex items-center justify-center bg-muted/20 rounded-2xl border-2 border-dashed"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>
+});
 
 export default function PurchaseDetail() {
     const params = useParams();
@@ -65,10 +70,6 @@ export default function PurchaseDetail() {
 
     if (loading) return <div className='p-12 flex justify-center'><Loader2 className='animate-spin h-10 w-10 text-primary'/></div>;
     if (!order) return <div className='p-12 text-center font-black'>Orden no encontrada.</div>;
-
-    // Usar coordenadas exclusivas de este pedido (SNAPSHOT)
-    const providerCoords = order.providerCoords;
-    const destinationCoords = order.destinationCoords;
 
     return (
         <div className="flex flex-1 flex-col">
@@ -126,8 +127,8 @@ export default function PurchaseDetail() {
                             <TabsContent value="logistics" className="animate-in zoom-in-95 duration-500">
                                 <LogisticsMap 
                                     status={order.status === 'Recibido' ? 'Delivered' : 'In Transit'} 
-                                    storeCoords={destinationCoords}
-                                    providerCoords={providerCoords}
+                                    storeCoords={order.destinationCoords}
+                                    providerCoords={order.providerCoords}
                                     vendorName={order.vendor}
                                 />
                             </TabsContent>

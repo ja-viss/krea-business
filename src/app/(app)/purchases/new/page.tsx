@@ -1,23 +1,29 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Trash2, ChevronLeft, Plus, Save, Truck, Package, Hash, MapPin, Navigation, Globe, Calculator, MousePointer2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProductSearch } from '@/components/sales/product-search';
 import { IProduct } from '@/models/Product';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
-import { LogisticsMap } from '@/components/purchases/logistics-map';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
+
+// Importación dinámica del mapa para evitar errores de SSR
+const LogisticsMap = dynamic(() => import('@/components/purchases/logistics-map'), { 
+    ssr: false,
+    loading: () => <div className="h-[400px] w-full flex items-center justify-center bg-muted/20 rounded-2xl border-2 border-dashed"><Loader2 className="h-8 w-8 animate-spin opacity-20" /></div>
+});
 
 const VENEZUELA_CITIES = [
     { name: 'Caracas (Centro)', lat: 10.4806, lng: -66.9036 },
@@ -227,7 +233,7 @@ export default function NewPurchaseOrderPage() {
                                     <h3 className="text-[10px] md:text-xs font-black uppercase tracking-tighter">Previsualización de Ruta y Logística</h3>
                                 </div>
                                 {editingPoint && (
-                                    <Badge className="bg-amber-500 text-white font-black text-[8px] md:text-[9px] uppercase animate-pulse">
+                                    <Badge className="bg-amber-500 text-white font-black text-[8px] md:text-[9px] uppercase animate-pulse shadow-md">
                                         Clic en mapa para mover {editingPoint === 'provider' ? 'Fábrica' : 'Empresa'}
                                     </Badge>
                                 )}
@@ -271,7 +277,7 @@ export default function NewPurchaseOrderPage() {
 
                                 <Separator className="my-1" />
 
-                                <div className={cn("space-y-3 bg-white p-3 md:p-4 rounded-xl border-2 shadow-inner transition-all", editingPoint === 'provider' && "border-amber-500 bg-amber-50/30")}>
+                                <div className={cn("space-y-3 bg-white p-3 md:p-4 rounded-xl border-2 shadow-inner transition-all", editingPoint === 'provider' ? "border-amber-500 bg-amber-50/50 shadow-md ring-2 ring-amber-500/20" : "border-muted-foreground/10")}>
                                     <div className="flex justify-between items-center">
                                         <Label className="text-[9px] md:text-[10px] font-black uppercase text-red-600 flex items-center gap-1"><MapPin className="h-3 w-3"/> Origen (Fábrica)</Label>
                                         <Button 
@@ -299,7 +305,7 @@ export default function NewPurchaseOrderPage() {
                                     </div>
                                 </div>
 
-                                <div className={cn("space-y-3 bg-white p-3 md:p-4 rounded-xl border-2 shadow-inner transition-all", editingPoint === 'destination' && "border-primary bg-primary/5")}>
+                                <div className={cn("space-y-3 bg-white p-3 md:p-4 rounded-xl border-2 shadow-inner transition-all", editingPoint === 'destination' ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20" : "border-muted-foreground/10")}>
                                     <div className="flex justify-between items-center">
                                         <Label className="text-[9px] md:text-[10px] font-black uppercase text-primary flex items-center gap-1"><Navigation className="h-3 w-3"/> Destino (Tu Empresa)</Label>
                                         <Button 
