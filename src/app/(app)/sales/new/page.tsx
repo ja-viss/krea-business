@@ -335,11 +335,43 @@ export default function NewSalePage() {
                     </Card>
 
                     <Card className="rounded-2xl flex-1 flex flex-col border-2 shadow-sm p-4 space-y-4">
-                        <CustomerSearch onCustomerSelect={(c) => { form.setValue('customerId', c._id); form.setValue('customerName', c.name); setSelectedCustomer(c); }} />
+                        {/* SECCIÓN DE CLIENTE MEJORADA */}
+                        {selectedCustomer ? (
+                            <div className="p-3 rounded-xl border-2 border-primary bg-primary/5 flex items-center justify-between animate-in fade-in zoom-in-95 duration-300">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                                        <UserCheck className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] font-black uppercase opacity-50 tracking-widest">Titular Seleccionado</span>
+                                        <span className="font-black text-[11px] uppercase text-primary leading-tight line-clamp-1">{selectedCustomer.name}</span>
+                                        <span className="text-[9px] font-mono font-bold opacity-60">{selectedCustomer.idNumber}</span>
+                                    </div>
+                                </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" 
+                                    onClick={() => {
+                                        setSelectedCustomer(null);
+                                        form.setValue('customerId', undefined);
+                                        form.setValue('customerName', 'Cliente Contado');
+                                    }}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <CustomerSearch onCustomerSelect={(c) => { 
+                                form.setValue('customerId', c._id); 
+                                form.setValue('customerName', c.name); 
+                                setSelectedCustomer(c); 
+                            }} />
+                        )}
                         
                         <div className="grid grid-cols-3 gap-2">
                             {['Pago Móvil', 'Tarjeta', 'Efectivo', 'Zelle', 'Binance', 'Biopago'].map(m => (
-                                <button key={m} type="button" className={cn("h-12 rounded-xl text-[9px] font-black uppercase border-2 transition-all", watchMethod === m ? "bg-primary text-white border-primary" : "bg-muted/40 border-transparent")} onClick={() => form.setValue('paymentMethod', m)}>{m}</button>
+                                <button key={m} type="button" className={cn("h-12 rounded-xl text-[9px] font-black uppercase border-2 transition-all", watchMethod === m ? "bg-primary text-white border-primary shadow-lg" : "bg-muted/40 border-transparent hover:bg-muted/60")} onClick={() => form.setValue('paymentMethod', m)}>{m}</button>
                             ))}
                         </div>
 
@@ -353,7 +385,7 @@ export default function NewSalePage() {
                                 <Label className="text-[9px] font-black uppercase opacity-40">Monto Recibido</Label>
                                 <Input type="number" className="h-12 text-2xl font-black text-center" {...form.register('amountReceived')} />
                              </div>
-                             <div className={cn("p-3 rounded-xl text-center border-2", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700" : "bg-muted opacity-40")}>
+                             <div className={cn("p-3 rounded-xl text-center border-2 transition-all", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700 shadow-lg scale-[1.02]" : "bg-muted opacity-40")}>
                                 <span className="text-[9px] font-black uppercase block">Vuelto ({changeInfo.currency})</span>
                                 <span className="text-xl font-black">{changeInfo.amount.toLocaleString()}</span>
                              </div>
@@ -378,7 +410,7 @@ export default function NewSalePage() {
                 <div className='py-6 space-y-6'>
                     <div className='flex gap-2 p-1 bg-muted rounded-xl border'>
                         <Button variant={weightUnit === 'GR' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('GR')}>Gramos (Gr)</Button>
-                        <Button variant={weightUnit === 'KG' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('KG')}>Kilos (Kg)</Button>
+                        <Button variant={weightUnit === 'KG' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('KG')}>Gilos (Kg)</Button>
                     </div>
                     <div className='space-y-2'>
                         <Label className='text-[10px] font-black uppercase text-center block'>Cantidad a Vender</Label>
