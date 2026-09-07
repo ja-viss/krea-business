@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Camera, ScanLine, Plus, Wand2, Link2, Image as ImageIcon, Briefcase, Boxes, Info } from 'lucide-react';
+import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Camera, ScanLine, Plus, Wand2, Link2, Image as ImageIcon, Briefcase, Boxes, Info, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,6 +51,7 @@ export default function NewProductPage() {
   const [isClient, setIsClient] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [searchingImage, setSearchingImage] = useState(false);
+  const [imgKey, setImgKey] = useState(0); // Para forzar re-render de la imagen
 
   useEffect(() => {
     setIsClient(true);
@@ -96,13 +97,18 @@ export default function NewProductPage() {
 
     setSearchingImage(true);
     try {
-      // Usar solo las palabras clave más importantes
-      const keywords = watchName.trim().split(' ').slice(0, 2).join(',');
-      const keyword = encodeURIComponent(keywords);
-      const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${Math.floor(Math.random() * 1000)}`;
+      // Limpiar el nombre para una búsqueda más efectiva
+      const cleanName = watchName.trim().replace(/[^a-zA-Z0-9 ]/g, "").split(' ').slice(0, 2).join(',');
+      const keyword = encodeURIComponent(cleanName);
       
-      form.setValue('imageUrl', autoUrl, { shouldDirty: true, shouldValidate: true, shouldTouch: true });
-      toast({ title: 'Imagen Sugerida', description: "Se ha vinculado un arte visual para el catálogo." });
+      // Usar un lock dinámico para evitar caché del navegador y forzar actualización visual
+      const timestamp = new Date().getTime();
+      const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${timestamp}`;
+      
+      form.setValue('imageUrl', autoUrl, { shouldDirty: true });
+      setImgKey(timestamp); // Cambiar la key fuerza al componente Image a recargarse
+      
+      toast({ title: 'Imagen Localizada', description: "Se ha vinculado un arte visual sugerido." });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error de búsqueda' });
     } finally {
@@ -139,11 +145,11 @@ export default function NewProductPage() {
   if (!isClient) return <div className="p-8"><Skeleton className="h-[600px] w-full rounded-3xl" /></div>;
 
   return (
-    <div className="flex flex-1 flex-col bg-slate-50/30">
-      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1400px] mx-auto w-full">
+    <div className="flex flex-1 flex-col bg-[#f1f5f9]/30">
+      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1500px] mx-auto w-full">
         <PageHeader
           title="Alta de Mercancía"
-          description="Completa la ficha técnica para integrar el artículo al stock comercial."
+          description="Consola de registro profesional para inventarios inteligentes."
           actions={
             <Button variant="outline" asChild className="rounded-full border-2 h-10 px-6 font-bold hover:bg-white transition-all shadow-sm">
               <Link href="/inventory"><ChevronLeft className='mr-1 h-4 w-4'/> Descartar</Link>
@@ -159,10 +165,10 @@ export default function NewProductPage() {
               
               {/* COLUMNA 1: IDENTIDAD Y VISUAL (4/12) */}
               <div className="space-y-6 xl:col-span-4">
-                <Card className='border-2 shadow-xl rounded-3xl overflow-hidden bg-white'>
+                <Card className='border-2 shadow-xl rounded-3xl overflow-hidden bg-white border-primary/5'>
                   <CardHeader className='bg-primary/5 border-b py-4'>
-                    <CardTitle className='text-xs font-black uppercase flex items-center gap-2 italic text-primary'>
-                        <Briefcase className="h-4 w-4" /> Identidad del Producto
+                    <CardTitle className='text-xs font-black uppercase flex items-center gap-2 italic text-primary tracking-widest'>
+                        <Briefcase className="h-4 w-4" /> Ficha de Identidad
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6 pt-6">
@@ -171,17 +177,18 @@ export default function NewProductPage() {
                         name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className='text-[10px] font-black uppercase text-muted-foreground'>Nombre Público</FormLabel>
+                            <FormLabel className='text-[10px] font-black uppercase text-muted-foreground'>Nombre Comercial</FormLabel>
                             <div className="flex gap-2">
                               <FormControl>
-                                <Input placeholder="Ej: Harina Pan 1kg" className="h-12 text-base font-bold rounded-xl border-2" {...field} />
+                                <Input placeholder="Ej: Harina Pan 1kg" className="h-12 text-base font-bold rounded-xl border-2 focus:border-primary transition-all" {...field} />
                               </FormControl>
                               <Button 
                                 type="button" 
                                 variant="secondary" 
-                                className="h-12 px-3 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md group"
+                                className="h-12 px-3 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-all shadow-md group shrink-0"
                                 onClick={handleAutoSearchImage}
                                 disabled={searchingImage}
+                                title="Buscar imagen automáticamente"
                               >
                                 {searchingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />}
                               </Button>
@@ -192,14 +199,30 @@ export default function NewProductPage() {
                       />
 
                       <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Previsualización en Catálogo</Label>
-                        <div className="aspect-square w-full rounded-2xl border-4 border-dashed flex items-center justify-center bg-muted/20 relative overflow-hidden group">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-2">
+                            <ImageIcon className='h-3 w-3' /> Identidad Visual
+                        </Label>
+                        <div className="aspect-square w-full rounded-2xl border-4 border-dashed border-muted flex items-center justify-center bg-slate-50 relative overflow-hidden group shadow-inner">
                             {watchImageUrl ? (
-                                <Image src={watchImageUrl} alt="Preview" fill className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized />
+                                <Image 
+                                    key={imgKey}
+                                    src={watchImageUrl} 
+                                    alt="Preview" 
+                                    fill 
+                                    className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                                    unoptimized 
+                                />
                             ) : (
-                                <div className="flex flex-col items-center opacity-20">
-                                    <ImageIcon className="h-12 w-12" />
-                                    <span className="text-[9px] font-black uppercase mt-2">Sin Arte Visual</span>
+                                <div className="flex flex-col items-center opacity-30">
+                                    <div className='p-4 bg-muted rounded-full mb-3'>
+                                        <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-tighter">Esperando Imagen...</span>
+                                </div>
+                            )}
+                            {searchingImage && (
+                                <div className='absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-10'>
+                                    <Loader2 className='h-8 w-8 text-primary animate-spin' />
                                 </div>
                             )}
                         </div>
@@ -212,7 +235,7 @@ export default function NewProductPage() {
                               <div className="relative">
                                 <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
                                 <FormControl>
-                                  <Input placeholder="URL de la imagen (Auto-completado)" className="h-10 pl-10 font-mono text-[10px] rounded-xl bg-muted/30" {...field} />
+                                  <Input placeholder="URL del recurso visual" className="h-10 pl-10 font-mono text-[10px] rounded-xl bg-muted/20 border-none focus:bg-white transition-all" {...field} />
                                 </FormControl>
                               </div>
                             </FormItem>
@@ -225,21 +248,21 @@ export default function NewProductPage() {
 
               {/* COLUMNA 2: LOGÍSTICA Y CONTROL (4/12) */}
               <div className="space-y-6 xl:col-span-4">
-                <Card className='border-2 shadow-xl rounded-3xl overflow-hidden bg-white'>
-                  <CardHeader className='bg-muted/10 border-b py-4'>
-                    <CardTitle className='text-xs font-black uppercase flex items-center gap-2 italic'>
-                        <Boxes className="h-4 w-4" /> Almacén y Tracking
+                <Card className='border-2 shadow-xl rounded-3xl overflow-hidden bg-white border-slate-100'>
+                  <CardHeader className='bg-slate-50 border-b py-4'>
+                    <CardTitle className='text-xs font-black uppercase flex items-center gap-2 italic tracking-widest'>
+                        <Boxes className="h-4 w-4" /> Gestión de Stock
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6 pt-6">
                     <div className="grid grid-cols-2 gap-4">
                         <FormField control={form.control} name="productType" render={({ field }) => (
                             <FormItem>
-                                <FormLabel className='text-[10px] font-black uppercase'>Tipo de Item</FormLabel>
+                                <FormLabel className='text-[10px] font-black uppercase'>Clasificación</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger className='h-11 font-bold rounded-xl'><SelectValue /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger className='h-11 font-bold rounded-xl border-2'><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        <SelectItem value="Inventariable" className="font-bold">STOCK</SelectItem>
+                                        <SelectItem value="Inventariable" className="font-bold">CON STOCK</SelectItem>
                                         <SelectItem value="No Inventariable" className="font-bold">SIMPLE</SelectItem>
                                         <SelectItem value="Servicio" className="font-bold">SERVICIO</SelectItem>
                                         <SelectItem value="Compuesto" className="font-bold">KIT / COMBO</SelectItem>
@@ -250,12 +273,12 @@ export default function NewProductPage() {
                         <FormField control={form.control} name="category" render={({ field }) => (
                             <FormItem>
                                 <FormLabel className='text-[10px] font-black uppercase'>Categoría</FormLabel>
-                                <FormControl><Input placeholder="Ej: Víveres" className="h-11 font-bold rounded-xl" {...field} /></FormControl>
+                                <FormControl><Input placeholder="Ej: Víveres" className="h-11 font-bold rounded-xl border-2" {...field} /></FormControl>
                             </FormItem>
                         )} />
                     </div>
 
-                    <Separator className="my-2" />
+                    <Separator className="opacity-50" />
 
                     {/* MODAL PESABLE RESALTADO */}
                     <FormField
@@ -263,47 +286,47 @@ export default function NewProductPage() {
                       name="isWeightable"
                       render={({ field }) => (
                         <FormItem className={cn(
-                            "flex flex-row items-center justify-between rounded-2xl border-2 p-4 transition-all",
-                            field.value ? "bg-amber-50 border-amber-300 ring-4 ring-amber-500/10" : "bg-muted/10 border-dashed"
+                            "flex flex-row items-center justify-between rounded-2xl border-2 p-4 transition-all duration-300",
+                            field.value ? "bg-amber-50/50 border-amber-300 shadow-lg shadow-amber-500/5 ring-4 ring-amber-500/5" : "bg-slate-50/50 border-dashed border-slate-300"
                         )}>
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
-                                <Scale className={cn("h-5 w-5", field.value ? "text-amber-600" : "text-muted-foreground")} />
-                                <FormLabel className='text-[11px] font-black uppercase'>Producto a Granel</FormLabel>
+                                <Scale className={cn("h-5 w-5 transition-colors", field.value ? "text-amber-600" : "text-slate-400")} />
+                                <FormLabel className={cn('text-[11px] font-black uppercase tracking-tight', field.value ? 'text-amber-900' : 'text-slate-600')}>Venta por Peso (Granel)</FormLabel>
                             </div>
-                            <p className='text-[9px] font-bold text-muted-foreground leading-tight'>Venta por Kg en el POS</p>
+                            <p className='text-[9px] font-bold text-muted-foreground leading-tight italic'>Habilita entrada de Kg/Gr en Caja</p>
                           </div>
                           <FormControl><Switch checked={field.value} onCheckedChange={(v) => { field.onChange(v); form.setValue('baseUnit', v ? 'Kilogramos' : 'Unidad'); }} /></FormControl>
                         </FormItem>
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 pt-2">
                       <FormField control={form.control} name="stock" render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase'>{watchIsWeightable ? 'Existencia (KG)' : 'Existencia (UND)'}</FormLabel>
-                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-2 text-center text-lg bg-primary/[0.02]" {...field} /></FormControl>
+                              <FormLabel className='text-[10px] font-black uppercase'>{watchIsWeightable ? 'Disponible (KG)' : 'Disponible (UND)'}</FormLabel>
+                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-2 text-center text-lg bg-slate-50 focus:bg-white transition-all" {...field} /></FormControl>
                           </FormItem>
                       )} />
                       <FormField control={form.control} name="minStock" render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase text-red-600'>Alerta Mínima</FormLabel>
-                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-2 text-center text-lg bg-red-50/30" {...field} /></FormControl>
+                              <FormLabel className='text-[10px] font-black uppercase text-red-500'>Mínimo Alerta</FormLabel>
+                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-2 text-center text-lg bg-red-50/20 border-red-100 focus:border-red-200 transition-all" {...field} /></FormControl>
                           </FormItem>
                       )} />
                     </div>
 
                     <FormField control={form.control} name="barcode" render={({ field }) => (
                         <FormItem>
-                            <FormLabel className='text-[10px] font-black uppercase'>Código de Escaneo (UPC/EAN)</FormLabel>
+                            <FormLabel className='text-[10px] font-black uppercase'>Identificador (EAN/UPC)</FormLabel>
                             <div className="flex gap-2">
                                 <FormControl>
-                                    <div className="relative flex-1">
-                                        <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                    <div className="relative flex-1 group">
+                                        <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                                         <Input placeholder="Código de Barras" className="h-12 pl-10 font-mono font-bold rounded-xl border-2" {...field} />
                                     </div>
                                 </FormControl>
-                                <Button type="button" variant="outline" size="icon" className='h-12 w-12 rounded-xl border-2 hover:bg-primary/10 transition-all' onClick={() => setShowScanner(true)}>
+                                <Button type="button" variant="outline" size="icon" className='h-12 w-12 rounded-xl border-2 hover:bg-primary/5 transition-all shrink-0' onClick={() => setShowScanner(true)}>
                                     <Camera className="h-6 w-6" />
                                 </Button>
                             </div>
@@ -314,21 +337,24 @@ export default function NewProductPage() {
               </div>
 
               {/* COLUMNA 3: FINANZAS Y PRECIOS (4/12 - STICKY) */}
-              <div className="space-y-6 xl:col-span-4 xl:sticky xl:top-4">
-                <Card className='border-4 border-primary bg-primary/[0.04] shadow-2xl rounded-3xl overflow-hidden'>
-                  <CardHeader className='bg-primary text-white p-5'>
-                    <CardTitle className='text-xs font-black uppercase italic tracking-widest flex items-center gap-2'>
-                        <Coins className='h-5 w-5' /> Estructura de Precios
-                    </CardTitle>
+              <div className="space-y-6 xl:col-span-4 xl:sticky xl:top-6">
+                <Card className='border-4 border-primary bg-primary/[0.03] shadow-2xl rounded-[2.5rem] overflow-hidden transition-all hover:shadow-primary/5'>
+                  <CardHeader className='bg-primary text-white p-6'>
+                    <div className='flex justify-between items-center'>
+                        <CardTitle className='text-xs font-black uppercase italic tracking-[0.2em] flex items-center gap-2'>
+                            <Coins className='h-5 w-5' /> Valorización
+                        </CardTitle>
+                        <Badge className='bg-white/20 text-white border-none font-black text-[9px]'>PRÉMIUM</Badge>
+                    </div>
                   </CardHeader>
-                  <CardContent className='pt-6 space-y-6'>
+                  <CardContent className='pt-8 space-y-8 px-8'>
                       <FormField
                           control={form.control}
                           name="cost"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase text-primary/60'>Costo de Compra (Bs.)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" className='h-14 border-2 font-black text-center text-xl rounded-2xl bg-white' {...field} /></FormControl>
+                              <FormLabel className='text-[10px] font-black uppercase text-primary/60 tracking-widest'>Costo de Inversión (Bs.)</FormLabel>
+                              <FormControl><Input type="number" step="0.01" className='h-14 border-2 border-primary/20 font-black text-center text-xl rounded-2xl bg-white shadow-sm focus:border-primary transition-all' {...field} /></FormControl>
                           </FormItem>
                           )}
                       />
@@ -338,12 +364,11 @@ export default function NewProductPage() {
                           name="price"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase text-primary'>Precio Venta (PVP)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" className='text-4xl font-black h-24 border-4 border-primary/30 rounded-2xl text-center bg-white shadow-inner text-primary' {...field} /></FormControl>
-                              <div className="flex justify-between items-center mt-2 px-1">
-                                <span className='text-[10px] font-black uppercase text-muted-foreground'>Margen de Ganancia:</span>
-                                <Badge variant="secondary" className="font-black text-xs text-green-600 bg-green-50">{margin}%</Badge>
+                              <div className='flex justify-between items-end mb-2'>
+                                <FormLabel className='text-[10px] font-black uppercase text-primary tracking-widest'>Precio de Venta Final</FormLabel>
+                                <Badge variant="secondary" className="font-black text-xs text-green-600 bg-green-100/50 px-3 py-1 rounded-full animate-pulse">MARGEN: {margin}%</Badge>
                               </div>
+                              <FormControl><Input type="number" step="0.01" className='text-5xl font-black h-28 border-[6px] border-primary/10 rounded-[2rem] text-center bg-white shadow-xl text-primary focus:border-primary/30 transition-all' {...field} /></FormControl>
                           </FormItem>
                           )}
                       />
@@ -353,28 +378,29 @@ export default function NewProductPage() {
                           name="taxRate"
                           render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase text-muted-foreground block mb-2'>Impuesto Aplicable (IVA)</FormLabel>
+                              <FormLabel className='text-[10px] font-black uppercase text-muted-foreground block mb-3 tracking-widest'>Carga Fiscal (IVA)</FormLabel>
                               <Select onValueChange={(v) => field.onChange(parseFloat(v))} defaultValue={String(field.value)}>
-                                  <FormControl><SelectTrigger className='h-11 font-black rounded-xl bg-white border-2'><SelectValue /></SelectTrigger></FormControl>
-                                  <SelectContent>
-                                      <SelectItem value="0.16" className="font-bold">IVA 16% (GENERAL)</SelectItem>
-                                      <SelectItem value="0.08" className="font-bold">IVA 8% (REDUCIDO)</SelectItem>
-                                      <SelectItem value="0" className="font-bold">EXENTO (0%)</SelectItem>
+                                  <FormControl><SelectTrigger className='h-12 font-black rounded-2xl bg-white border-2 border-slate-200'><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent className='rounded-2xl border-2'>
+                                      <SelectItem value="0.16" className="font-bold py-3 uppercase text-xs">General (16%)</SelectItem>
+                                      <SelectItem value="0.08" className="font-bold py-3 uppercase text-xs">Reducido (8%)</SelectItem>
+                                      <SelectItem value="0" className="font-bold py-3 uppercase text-xs">Exento (0%)</SelectItem>
                                   </SelectContent>
                               </Select>
                           </FormItem>
                           )}
                       />
 
-                      <div className="pt-4 flex flex-col gap-3">
-                        <div className="flex items-start gap-3 p-4 bg-white/60 rounded-2xl border-2 border-dashed">
-                            <Info className="h-5 w-5 text-primary shrink-0" />
-                            <p className="text-[10px] font-medium leading-tight italic">
-                                Al guardar, el producto estará disponible instantáneamente en la terminal de ventas para todos los cajeros autorizados.
+                      <div className="pt-4 flex flex-col gap-4">
+                        <div className="flex items-start gap-3 p-5 bg-white rounded-3xl border-2 border-dashed border-primary/10">
+                            <div className='p-2 bg-primary/10 rounded-full shrink-0'><Info className="h-4 w-4 text-primary" /></div>
+                            <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
+                                Al confirmar, el sistema propagará los cambios a todas las terminales de venta sincronizadas de forma inmediata.
                             </p>
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className='w-full h-16 text-lg font-black uppercase shadow-2xl shadow-primary/30 rounded-2xl'>
-                            {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> PROCESANDO...</> : <><Plus className="mr-2 h-5 w-5" /> ACTIVAR ARTÍCULO</>}
+                        <Button type="submit" disabled={isSubmitting} className='w-full h-20 text-xl font-black uppercase shadow-2xl shadow-primary/30 rounded-[2rem] bg-primary hover:scale-[1.02] transition-transform active:scale-[0.98]'>
+                            {isSubmitting ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <CheckCircle2 className="mr-2 h-6 w-6" />}
+                            ACTIVAR ARTÍCULO
                         </Button>
                       </div>
                   </CardContent>
