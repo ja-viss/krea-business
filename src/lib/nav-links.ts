@@ -32,7 +32,8 @@ import {
   Wallet,
   Scale,
   Printer,
-  Layers
+  Layers,
+  UserCheck
 } from 'lucide-react';
 
 export type NavLink = {
@@ -159,6 +160,20 @@ export const navLinks: NavLink[] = [
     roles: ['Administrador Principal'],
     category: 'Finanzas',
     moduleKey: 'expenses',
+  },
+  {
+    href: '/users',
+    label: 'Directorio Personal',
+    icon: Users,
+    roles: ['Administrador Principal'],
+    category: 'Seguridad',
+  },
+  {
+    href: '/roles',
+    label: 'Roles y Permisos',
+    icon: UserCheck,
+    roles: ['Administrador Principal'],
+    category: 'Seguridad',
   },
   {
     href: '/audit-logs',
