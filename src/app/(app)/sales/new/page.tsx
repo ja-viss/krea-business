@@ -17,19 +17,11 @@ import {
     ChevronLeft, 
     Printer, 
     X,
-    Smartphone,
-    CreditCard,
-    Banknote,
-    Coins,
-    Zap,
-    CheckCircle2,
-    ShieldCheck,
     Plus,
     Minus,
-    QrCode,
+    Zap,
     UserCheck,
     Package,
-    AlertCircle,
     Lock,
     Scale
 } from 'lucide-react';
@@ -126,7 +118,6 @@ export default function NewSalePage() {
     };
     fetchData();
 
-    // Event Listener para F4 (Facturar)
     const handleGlobalKeys = (e: KeyboardEvent) => {
         if (e.key === 'F4') {
             e.preventDefault();
@@ -166,7 +157,8 @@ export default function NewSalePage() {
 
     const existing = fields.findIndex(item => item.productId === String(product._id));
     if (existing > -1) {
-      update(existing, { ...fields[existing], quantity: parseFloat(watchItems[existing].quantity.toString()) + quantity });
+      const newQty = parseFloat(watchItems[existing].quantity.toString()) + quantity;
+      update(existing, { ...fields[existing], quantity: newQty });
     } else {
         append({
             productId: String(product._id),
@@ -193,7 +185,7 @@ export default function NewSalePage() {
 
       append({
           productId: String(weightProduct._id),
-          name: `${weightProduct.name} (${finalKg} Kg)`,
+          name: weightProduct.name,
           price: weightProduct.price,
           quantity: finalKg,
           stock: weightProduct.stock,
@@ -202,6 +194,20 @@ export default function NewSalePage() {
           isWeightable: true
       });
       setWeightProduct(null);
+  };
+
+  const incrementQty = (index: number) => {
+    const current = watchItems[index].quantity;
+    const step = watchItems[index].isWeightable ? 0.1 : 1;
+    update(index, { ...fields[index], quantity: Math.round((current + step) * 1000) / 1000 });
+  };
+
+  const decrementQty = (index: number) => {
+    const current = watchItems[index].quantity;
+    const step = watchItems[index].isWeightable ? 0.1 : 1;
+    if (current > step) {
+        update(index, { ...fields[index], quantity: Math.round((current - step) * 1000) / 1000 });
+    }
   };
 
   const changeInfo = useMemo(() => {
@@ -237,8 +243,8 @@ export default function NewSalePage() {
             throw new Error(err.message || "Error en facturación");
         }
         const result = await response.json();
-        toast({ title: "Factura Generada", description: "Imprimiendo comprobante..." });
-        router.push(`/sales/${result._id}/invoice?print=true`);
+        toast({ title: "Factura Generada", description: "Venta guardada en sistema." });
+        router.push(`/sales/${result._id}/invoice`);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Fallo POS', description: e.message });
         setIsSubmitting(false);
@@ -288,7 +294,7 @@ export default function NewSalePage() {
                                     <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                                         <TableRow>
                                             <TableHead className="pl-4 font-black uppercase text-[10px]">Item</TableHead>
-                                            <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
+                                            <TableHead className="text-center font-black uppercase text-[10px]">Cantidad</TableHead>
                                             <TableHead className="text-right pr-4 font-black uppercase text-[10px]">Total</TableHead>
                                             <TableHead className="w-[40px]"></TableHead>
                                         </TableRow>
@@ -299,7 +305,7 @@ export default function NewSalePage() {
                                                 <TableCell className="pl-4 py-3">
                                                     <div className='flex items-center gap-3'>
                                                         <div className='h-8 w-8 rounded bg-muted relative overflow-hidden shrink-0 border hidden sm:block'>
-                                                            {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="32px" /> : <Package className='h-4 w-4 m-auto opacity-20' />}
+                                                            {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="32px" unoptimized /> : <Package className='h-4 w-4 m-auto opacity-20' />}
                                                         </div>
                                                         <div className='flex flex-col'>
                                                             <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight line-clamp-1'>{item.name}</span>
@@ -308,8 +314,31 @@ export default function NewSalePage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className='text-center'>
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        <span className="font-black text-xs md:text-sm">{watchItems[index]?.quantity} {item.isWeightable ? 'Kg' : 'Und'}</span>
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="icon" 
+                                                                className="h-6 w-6 rounded-full border-2" 
+                                                                onClick={() => decrementQty(index)}
+                                                            >
+                                                                <Minus className="h-3 w-3" />
+                                                            </Button>
+                                                            <span className="font-black text-xs md:text-sm w-12 text-center">
+                                                                {watchItems[index]?.quantity}
+                                                            </span>
+                                                            <Button 
+                                                                variant="outline" 
+                                                                size="icon" 
+                                                                className="h-6 w-6 rounded-full border-2" 
+                                                                onClick={() => incrementQty(index)}
+                                                            >
+                                                                <Plus className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                        <span className="text-[7px] font-black uppercase text-muted-foreground">
+                                                            {item.isWeightable ? 'Kilogramos' : 'Unidades'}
+                                                        </span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right pr-4 font-black text-primary text-[11px]">
@@ -335,7 +364,6 @@ export default function NewSalePage() {
                     </Card>
 
                     <Card className="rounded-2xl flex-1 flex flex-col border-2 shadow-sm p-4 space-y-4">
-                        {/* SECCIÓN DE CLIENTE MEJORADA */}
                         {selectedCustomer ? (
                             <div className="p-3 rounded-xl border-2 border-primary bg-primary/5 flex items-center justify-between animate-in fade-in zoom-in-95 duration-300">
                                 <div className="flex items-center gap-3">
@@ -400,7 +428,6 @@ export default function NewSalePage() {
             </div>
        </main>
 
-       {/* MODAL DE PESO (Verduras/Frutas) */}
        <Dialog open={!!weightProduct} onOpenChange={() => setWeightProduct(null)}>
            <DialogContent className='sm:max-w-[400px] border-4 border-primary'>
                 <DialogHeader className='text-center'>
