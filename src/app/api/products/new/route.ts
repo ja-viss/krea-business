@@ -8,7 +8,7 @@ const productSchema = z.object({
   storeId: z.string().min(1),
   name: z.string().min(3),
   productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio', 'Compuesto']),
-  baseUnit: z.enum(['Unidad', 'Kilogramos', 'Gramos', 'Litros']).default('Unidad'),
+  baseUnit: z.enum(['Unidad', 'Kilogramos', 'Gramos', 'Litros', 'Mililitros']).default('Unidad'),
   isWeightable: z.boolean().default(false),
   barcode: z.string().optional(),
   sku: z.string().optional(),
@@ -23,6 +23,11 @@ const productSchema = z.object({
   location: z.string().optional(),
   imageUrl: z.string().optional(),
   expiryDate: z.coerce.date().optional(),
+  recipe: z.array(z.object({
+    product: z.string(),
+    quantity: z.number(),
+    productName: z.string().optional()
+  })).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -32,7 +37,10 @@ export async function POST(req: NextRequest) {
     const validation = productSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ message: 'Datos inválidos.', errors: validation.error.flatten().fieldErrors }, { status: 400 });
+      return NextResponse.json({ 
+        message: 'Datos del formulario inválidos.', 
+        errors: validation.error.flatten().fieldErrors 
+      }, { status: 400 });
     }
 
     const { storeId, stock, minStock, ...data } = validation.data;
@@ -67,6 +75,6 @@ export async function POST(req: NextRequest) {
       }, { status: 409 });
     }
     
-    return NextResponse.json({ message: 'Error interno del servidor al procesar el alta.' }, { status: 500 });
+    return NextResponse.json({ message: 'Error interno del servidor al procesar el alta: ' + error.message }, { status: 500 });
   }
 }
