@@ -40,7 +40,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans text-[15px] leading-relaxed;
+    @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans text-[16px] leading-relaxed;
     min-height: 100svh;
     overflow-x: hidden;
   }

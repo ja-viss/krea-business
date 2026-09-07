@@ -63,6 +63,7 @@ const MobileSidebar = () => (
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -70,7 +71,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     const storedUserId = localStorage.getItem('userId');
     const storedName = localStorage.getItem('userName');
+    const storedIsGlobal = localStorage.getItem('isGlobalAdmin') === 'true';
     
+    setIsGlobalAdmin(storedIsGlobal);
+
     if (storedUserId && storedName) {
         setUser({
             id: storedUserId,
@@ -93,7 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <MobileSidebar />
                 
                 <div className="flex items-center gap-4">
-                    {localStorage.getItem('isGlobalAdmin') === 'true' && (
+                    {isGlobalAdmin && (
                         <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
                             <ShieldCheck className="h-3 w-3 text-primary" />
                             <span className="text-[10px] font-black text-primary uppercase tracking-tight">Super Admin Mode</span>

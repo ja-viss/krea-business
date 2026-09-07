@@ -25,6 +25,7 @@ import {
 
 export default function HardwareSettingsPage() {
     const { toast } = useToast();
+    const [isClient, setIsClient] = useState(false);
     const [scanning, setScanning] = useState(false);
     const [devices, setDevices] = useState({
         printer: { connected: false, name: 'EPSON TM-T88V', port: 'USB001', auto: true },
@@ -32,6 +33,10 @@ export default function HardwareSettingsPage() {
         drawer: { connected: false, name: 'Gaveta Estándar', port: 'RJ11 via Printer', auto: true },
         display: { connected: false, name: 'Visor Pole', port: 'VGA/HDMI', auto: false }
     });
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const handleScan = () => {
         setScanning(true);
@@ -49,7 +54,7 @@ export default function HardwareSettingsPage() {
         }, 2000);
     };
 
-    const DeviceCard = ({ icon: Icon, title, data, type }: any) => (
+    const DeviceCard = ({ icon: Icon, title, data }: any) => (
         <Card className={`border-2 transition-all ${data.connected ? 'border-primary bg-primary/[0.02]' : 'border-muted opacity-60'}`}>
             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-3">
@@ -85,6 +90,8 @@ export default function HardwareSettingsPage() {
             </CardFooter>
         </Card>
     );
+
+    if (!isClient) return null;
 
     return (
         <div className="flex flex-1 flex-col">
