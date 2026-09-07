@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Camera, ScanLine, Plus, Wand2, Link2, Image as ImageIcon, Briefcase, Boxes, Info, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -51,7 +52,7 @@ export default function NewProductPage() {
   const [isClient, setIsClient] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [searchingImage, setSearchingImage] = useState(false);
-  const [imgKey, setImgKey] = useState(0); // Para forzar re-render de la imagen
+  const [imgKey, setImgKey] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
@@ -97,16 +98,13 @@ export default function NewProductPage() {
 
     setSearchingImage(true);
     try {
-      // Limpiar el nombre para una búsqueda más efectiva
       const cleanName = watchName.trim().replace(/[^a-zA-Z0-9 ]/g, "").split(' ').slice(0, 2).join(',');
       const keyword = encodeURIComponent(cleanName);
-      
-      // Usar un lock dinámico para evitar caché del navegador y forzar actualización visual
       const timestamp = new Date().getTime();
       const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${timestamp}`;
       
       form.setValue('imageUrl', autoUrl, { shouldDirty: true });
-      setImgKey(timestamp); // Cambiar la key fuerza al componente Image a recargarse
+      setImgKey(timestamp);
       
       toast({ title: 'Imagen Localizada', description: "Se ha vinculado un arte visual sugerido." });
     } catch (e) {
@@ -280,7 +278,6 @@ export default function NewProductPage() {
 
                     <Separator className="opacity-50" />
 
-                    {/* MODAL PESABLE RESALTADO */}
                     <FormField
                       control={form.control}
                       name="isWeightable"
@@ -366,7 +363,7 @@ export default function NewProductPage() {
                           <FormItem>
                               <div className='flex justify-between items-end mb-2'>
                                 <FormLabel className='text-[10px] font-black uppercase text-primary tracking-widest'>Precio de Venta Final</FormLabel>
-                                <Badge variant="secondary" className="font-black text-xs text-green-600 bg-green-100/50 px-3 py-1 rounded-full animate-pulse">MARGEN: {margin}%</Badge>
+                                <Badge variant="secondary" className="font-black text-xs text-green-600 bg-green-100/50 px-3 py-1 rounded-full">MARGEN: {margin}%</Badge>
                               </div>
                               <FormControl><Input type="number" step="0.01" className='text-5xl font-black h-28 border-[6px] border-primary/10 rounded-[2rem] text-center bg-white shadow-xl text-primary focus:border-primary/30 transition-all' {...field} /></FormControl>
                           </FormItem>
@@ -399,7 +396,7 @@ export default function NewProductPage() {
                             </p>
                         </div>
                         <Button type="submit" disabled={isSubmitting} className='w-full h-20 text-xl font-black uppercase shadow-2xl shadow-primary/30 rounded-[2rem] bg-primary hover:scale-[1.02] transition-transform active:scale-[0.98]'>
-                            {isSubmitting ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <CheckCircle2 className="mr-2 h-6 w-6" />}
+                            {isSubmitting ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Plus className="mr-2 h-6 w-6" />}
                             ACTIVAR ARTÍCULO
                         </Button>
                       </div>
