@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -6,7 +5,7 @@ import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Truck, MapPin, Loader2, Navigation, Clock } from 'lucide-react';
+import { Truck, MapPin, Loader2, Navigation, Clock, MousePointer2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Importación dinámica de Leaflet para evitar errores de SSR en Next.js
@@ -15,6 +14,8 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 const Polyline = dynamic(() => import('react-leaflet').then(mod => mod.Polyline), { ssr: false });
+const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false }) as any;
+
 const SetView = dynamic(() => import('react-leaflet').then(mod => {
   const { useMap } = mod;
   return function SetView({ center, zoom }: { center: [number, number], zoom: number }) {
@@ -26,14 +27,25 @@ const SetView = dynamic(() => import('react-leaflet').then(mod => {
   };
 }), { ssr: false });
 
+function MapClickHandler({ onMapClick }: { onMapClick?: (latlng: { lat: number, lng: number }) => void }) {
+  const map = useMapEvents({
+    click: (e: any) => {
+      if (onMapClick) onMapClick(e.latlng);
+    },
+  });
+  return null;
+}
+
 interface LogisticsMapProps {
   status: 'Factory' | 'In Transit' | 'Delivered';
   storeCoords: { lat: number; lng: number };
   providerCoords: { lat: number; lng: number };
   vendorName: string;
+  onMapClick?: (latlng: { lat: number, lng: number }) => void;
+  isEditing?: boolean;
 }
 
-export function LogisticsMap({ status, storeCoords, providerCoords, vendorName }: LogisticsMapProps) {
+export function LogisticsMap({ status, storeCoords, providerCoords, vendorName, onMapClick, isEditing }: LogisticsMapProps) {
   const [L, setL] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
   const [progress, setProgress] = useState(0); 
@@ -105,19 +117,21 @@ export function LogisticsMap({ status, storeCoords, providerCoords, vendorName }
   const centerPos: [number, number] = [ (storeCoords.lat + providerCoords.lat) / 2, (storeCoords.lng + providerCoords.lng) / 2 ];
 
   return (
-    <Card className="border-2 shadow-xl overflow-hidden h-[500px] flex flex-col relative group rounded-2xl">
-      <CardHeader className="bg-muted/5 border-b py-3 flex flex-row items-center justify-between z-10 bg-white/90 backdrop-blur-sm">
+    <Card className={cn("border-2 shadow-xl overflow-hidden h-[400px] md:h-[500px] flex flex-col relative group rounded-2xl", isEditing && "ring-2 ring-primary ring-offset-2")}>
+      <CardHeader className="bg-muted/5 border-b py-2 md:py-3 flex flex-row items-center justify-between z-10 bg-white/90 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Truck className="h-4 w-4 text-primary" />
-          <CardTitle className="text-xs font-black uppercase tracking-tight">Previsualización de Ruta</CardTitle>
+          <CardTitle className="text-[10px] md:text-xs font-black uppercase tracking-tight">Previsualización de Ruta</CardTitle>
         </div>
-        <div className='flex gap-2'>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-black text-[8px] uppercase">
-                <Navigation className='mr-1 h-2.5 w-2.5'/> {telemetria.distance} KM
+        <div className='flex gap-1 md:gap-2'>
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-black text-[7px] md:text-[8px] uppercase">
+                <Navigation className='mr-1 h-2 w-2 md:h-2.5 md:w-2.5'/> {telemetria.distance} KM
             </Badge>
-            <Badge className="uppercase font-black text-[9px] px-3 bg-amber-100 text-amber-800 border-amber-200 animate-pulse">
-                Sincronizando
-            </Badge>
+            {isEditing && (
+              <Badge className="bg-primary text-white font-black text-[7px] md:text-[8px] uppercase animate-pulse">
+                <MousePointer2 className="mr-1 h-2 w-2 md:h-2.5 md:w-2.5" /> Modo Clic Activo
+              </Badge>
+            )}
         </div>
       </CardHeader>
       <CardContent className="p-0 flex-1 relative z-0">
@@ -132,7 +146,8 @@ export function LogisticsMap({ status, storeCoords, providerCoords, vendorName }
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          <SetView center={centerPos} zoom={telemetria.distance > 400 ? 6 : 7} />
+          <MapClickHandler onMapClick={onMapClick} />
+          <SetView center={centerPos} zoom={telemetria.distance > 400 ? 5 : 7} />
 
           <Marker position={[providerCoords.lat, providerCoords.lng]} icon={providerIcon}>
             <Popup><span className="font-bold text-[10px] uppercase">ORIGEN: {vendorName}</span></Popup>
@@ -157,21 +172,21 @@ export function LogisticsMap({ status, storeCoords, providerCoords, vendorName }
           />
         </MapContainer>
 
-        <div className="absolute bottom-4 left-4 right-4 z-[500] grid grid-cols-2 gap-2 animate-in slide-in-from-bottom-2 duration-700">
-            <div className="bg-white/95 backdrop-blur p-3 rounded-xl border-2 border-primary/20 shadow-xl flex items-center gap-3">
-                <div className='bg-primary/10 p-2 rounded-lg'><Clock className='h-4 w-4 text-primary'/></div>
+        <div className="absolute bottom-2 md:bottom-4 left-2 right-2 md:left-4 md:right-4 z-[500] grid grid-cols-2 gap-2 animate-in slide-in-from-bottom-2 duration-700">
+            <div className="bg-white/95 backdrop-blur p-2 md:p-3 rounded-xl border-2 border-primary/20 shadow-xl flex items-center gap-2 md:gap-3">
+                <div className='bg-primary/10 p-1.5 md:p-2 rounded-lg'><Clock className='h-3 w-3 md:h-4 md:w-4 text-primary'/></div>
                 <div>
-                    <p className='text-[8px] font-black uppercase opacity-50 leading-none'>ETA Estimado</p>
-                    <p className='text-xs font-black uppercase'>
-                        {telemetria.time > 60 ? `${Math.floor(telemetria.time/60)}h ${telemetria.time%60}min` : `${telemetria.time} min`}
+                    <p className='text-[7px] md:text-[8px] font-black uppercase opacity-50 leading-none'>ETA Estimado</p>
+                    <p className='text-[10px] md:text-xs font-black uppercase'>
+                        {telemetria.time > 60 ? `${Math.floor(telemetria.time/60)}h ${telemetria.time%60}m` : `${telemetria.time} min`}
                     </p>
                 </div>
             </div>
-            <div className="bg-black/90 text-white p-3 rounded-xl border-2 border-white/10 shadow-xl flex items-center gap-3">
-                <div className='bg-white/10 p-2 rounded-lg'><Navigation className='h-4 w-4 text-primary'/></div>
+            <div className="bg-black/90 text-white p-2 md:p-3 rounded-xl border-2 border-white/10 shadow-xl flex items-center gap-2 md:gap-3">
+                <div className='bg-white/10 p-1.5 md:p-2 rounded-lg'><Navigation className='h-3 w-3 md:h-4 md:w-4 text-primary'/></div>
                 <div>
-                    <p className='text-[8px] font-black uppercase opacity-50 leading-none'>Distancia Total</p>
-                    <p className='text-xs font-black uppercase'>{telemetria.distance} KM</p>
+                    <p className='text-[7px] md:text-[8px] font-black uppercase opacity-50 leading-none'>Distancia Total</p>
+                    <p className='text-[10px] md:text-xs font-black uppercase'>{telemetria.distance} KM</p>
                 </div>
             </div>
         </div>
@@ -179,4 +194,3 @@ export function LogisticsMap({ status, storeCoords, providerCoords, vendorName }
     </Card>
   );
 }
-
