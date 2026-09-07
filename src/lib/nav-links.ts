@@ -1,4 +1,3 @@
-
 import {
   BarChart3,
   Boxes,
@@ -35,8 +34,7 @@ export type NavLink = {
 };
 
 /**
- * Mapa de Navegación Maestro
- * Filtra dinámicamente según el rol y los módulos habilitados por el SaaS.
+ * Mapa de Navegación Maestro con Seguridad RBAC Estricta.
  */
 export const navLinks: NavLink[] = [
   // --- SECCION GLOBAL (SÓLO SUPER ADMIN) ---
@@ -65,12 +63,12 @@ export const navLinks: NavLink[] = [
     category: 'Infraestructura',
   },
 
-  // --- SECCION OPERATIVA (NEGOCIO) ---
+  // --- SECCION OPERATIVA ---
   {
     href: '/dashboard',
     label: 'Resumen Diario',
     icon: LayoutDashboard,
-    roles: ['Administrador Principal', 'Contador'],
+    roles: ['Administrador Principal', 'Contador', 'Vendedor', 'Almacenista'],
     category: 'General',
   },
   {
@@ -109,7 +107,7 @@ export const navLinks: NavLink[] = [
     href: '/returns',
     label: 'Devoluciones',
     icon: RotateCcw,
-    roles: ['Administrador Principal'],
+    roles: ['Administrador Principal'], // Solo Admin autoriza devoluciones
     category: 'Operaciones',
     moduleKey: 'sales',
   },
@@ -119,7 +117,7 @@ export const navLinks: NavLink[] = [
     href: '/inventory',
     label: 'Stock Físico',
     icon: Boxes,
-    roles: ['Administrador Principal', 'Almacenista', 'Vendedor'],
+    roles: ['Administrador Principal', 'Almacenista', 'Vendedor', 'Contador'],
     category: 'Inventario',
     moduleKey: 'inventory',
   },
@@ -183,13 +181,6 @@ export const navLinks: NavLink[] = [
     category: 'Configuración',
   },
   {
-    href: '/roles',
-    label: 'Permisos',
-    icon: ShieldCheck,
-    roles: ['Administrador Principal'],
-    category: 'Configuración',
-  },
-  {
     href: '/audit-logs',
     label: 'Auditoría',
     icon: Fingerprint,
@@ -200,13 +191,6 @@ export const navLinks: NavLink[] = [
     href: '/settings',
     label: 'Fiscal & Tienda',
     icon: Settings,
-    roles: ['Administrador Principal'],
-    category: 'Configuración',
-  },
-  {
-    href: '/settings/hardware',
-    label: 'Hardware POS',
-    icon: Printer,
     roles: ['Administrador Principal'],
     category: 'Configuración',
   },

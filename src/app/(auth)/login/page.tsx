@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -42,6 +41,7 @@ export default function LoginPage() {
       localStorage.setItem('storeId', data.user.store);
       localStorage.setItem('userName', data.user.name);
       localStorage.setItem('userEmail', data.user.email);
+      localStorage.setItem('userRole', data.user.roleName);
       localStorage.setItem('isGlobalAdmin', String(data.user.isGlobalAdmin));
       localStorage.setItem('enabledModules', JSON.stringify(data.user.enabledModules));
 
@@ -66,7 +66,7 @@ export default function LoginPage() {
   return (
     <form onSubmit={handleLogin}>
       <CardHeader className="space-y-1 text-center pt-4">
-        {/* Texto eliminado para dejar protagonismo al Logo */}
+        {/* Logo protagonismo */}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -118,7 +118,7 @@ export default function LoginPage() {
           </Link>
         </div>
         <div className="text-center text-[10px] text-muted-foreground pt-4 border-t w-full">
-            Krea Suite v2.0 • Super Admin Enabled
+            Krea Suite v2.0 • Seguridad por Roles Activa
         </div>
       </CardFooter>
     </form>

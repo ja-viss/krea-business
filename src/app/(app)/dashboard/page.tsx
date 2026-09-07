@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -29,12 +28,16 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true);
         const storeId = localStorage.getItem('storeId');
+        const role = localStorage.getItem('userRole') || '';
+        setUserRole(role);
+
         const response = await fetch(`/api/dashboard?storeId=${storeId}`);
         if (!response.ok) throw new Error('Error al cargar datos del dashboard.');
         const result = await response.json();
@@ -52,83 +55,90 @@ export default function DashboardPage() {
     return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(value);
   };
 
-  if (error) return (
-    <div className="p-4 md:p-8">
-        <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
-    </div>
-  );
+  const isAdmin = userRole === 'Administrador Principal';
+  const isAccountant = userRole === 'Contador';
+  const isSeller = userRole === 'Vendedor';
+  const canSeeMoney = isAdmin || isAccountant;
+
+  if (error) return <div className="p-8"><Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert></div>;
 
   return (
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
           title={data?.isSystemMaster ? "Panel Maestro" : "Resumen de Negocio"}
-          description={data?.isSystemMaster ? "Supervisión global." : "Bienvenido a tu centro de control."}
+          description={`Bienvenido, perfil de ${userRole}.`}
           actions={
-            data?.isSystemMaster ? (
-              <Button asChild className="w-full sm:w-auto font-black uppercase tracking-tight shadow-lg shadow-primary/20 h-11">
-                  <Link href="/admin/stores">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Alta de Cliente
-                  </Link>
+            isAdmin ? (
+              <Button asChild className="font-black uppercase shadow-lg shadow-primary/20 h-11">
+                <Link href="/sales/new"><PlusCircle className="mr-2 h-4 w-4" /> Nueva Venta</Link>
               </Button>
-            ) : (
-              <Button asChild className="w-full sm:w-auto font-black uppercase shadow-lg h-11">
-                <Link href="/sales/new">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Nueva Venta
-                </Link>
-              </Button>
-            )
+            ) : isSeller ? (
+                <Button asChild className="font-black uppercase h-11 bg-green-600">
+                    <Link href="/sales/new"><DollarSign className="mr-2 h-4 w-4" /> Abrir Caja</Link>
+                </Button>
+            ) : null
           }
         />
 
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          {loading ? (
-             Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[120px] w-full rounded-xl" />)
-          ) : (
-            <>
-                <KpiCard
-                    title={data?.isSystemMaster ? "Facturación Global" : "Ventas Totales"}
-                    value={formatCurrency(data?.totalSales || 0)}
-                    change={data?.isSystemMaster ? "Bruto plataforma" : "Métricas actuales"}
-                    iconName="dollar-sign"
-                    className={data?.isSystemMaster ? "border-primary/20 bg-primary/5" : "border-2"}
-                />
-                <KpiCard
-                    title={data?.isSystemMaster ? "Empresas Activas" : "Gastos Totales"}
-                    value={data?.isSystemMaster ? String(data.totalExpenses) : formatCurrency(data?.totalExpenses || 0)}
-                    change="Estado actual"
-                    iconName={data?.isSystemMaster ? "boxes" : "receipt"}
-                    className="border-2"
-                />
-                <KpiCard
-                    title={data?.isSystemMaster ? "Personal Total" : "Clientes"}
-                    value={String(data?.customerCount || 0)}
-                    change="En sistema"
-                    iconName="users"
-                    className="border-2"
-                />
-                <Card className="bg-primary text-primary-foreground shadow-xl border-none">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest">Infraestructura</CardTitle>
-                        <Globe className="h-4 w-4 opacity-70" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-xl md:text-2xl font-black">ONLINE</div>
-                        <p className="text-[9px] font-bold opacity-60 uppercase">Nodos Cloud operativos</p>
-                    </CardContent>
-                </Card>
-            </>
-          )}
+            {loading ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />) : (
+                <>
+                    <KpiCard
+                        title={canSeeMoney ? "Facturación Total" : "Ventas del Turno"}
+                        value={canSeeMoney ? formatCurrency(data?.totalSales || 0) : String(data?.recentSales.length || 0)}
+                        change="Métricas acumuladas"
+                        iconName="dollar-sign"
+                        className="border-2"
+                    />
+                    <KpiCard
+                        title="Insumos / Productos"
+                        value={String(data?.productCount || 0)}
+                        change="En catálogo"
+                        iconName="boxes"
+                        className="border-2"
+                    />
+                    <KpiCard
+                        title="Cartera Clientes"
+                        value={String(data?.customerCount || 0)}
+                        change="Registros únicos"
+                        iconName="users"
+                        className="border-2"
+                    />
+                    <Card className="bg-primary text-primary-foreground shadow-xl border-none">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest">Estado</CardTitle>
+                            <Activity className="h-4 w-4 opacity-70" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-xl md:text-2xl font-black">OPERATIVO</div>
+                            <p className="text-[9px] font-bold opacity-60 uppercase">Nodos Cloud activos</p>
+                        </CardContent>
+                    </Card>
+                </>
+            )}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
-            <div className="lg:col-span-4 order-2 lg:order-1">
-                {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <MonthlyProfitChart data={data?.monthlyProfit} />}
+        {canSeeMoney && (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-7">
+                <div className="lg:col-span-4">
+                    {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <MonthlyProfitChart data={data?.monthlyProfit} />}
+                </div>
+                <div className="lg:col-span-3">
+                    {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <RecentSales data={data?.recentSales} />}
+                </div>
             </div>
-            <div className="lg:col-span-3 order-1 lg:order-2">
-                {loading ? <Skeleton className="h-[350px] w-full rounded-xl" /> : <RecentSales data={data?.recentSales} />}
-            </div>
-        </div>
+        )}
+
+        {isSeller && (
+            <Card className="border-4 border-dashed border-primary/20 bg-muted/10 h-60 flex items-center justify-center">
+                <div className="text-center space-y-2">
+                    <ShoppingCart className="h-10 w-10 mx-auto text-primary opacity-20" />
+                    <p className="text-sm font-black uppercase opacity-60">Acceso Rápido POS Habilitado</p>
+                    <Button asChild variant="outline" className="font-bold uppercase text-[10px]"><Link href="/sales/new">Ir a Facturación</Link></Button>
+                </div>
+            </Card>
+        )}
       </main>
     </div>
   );

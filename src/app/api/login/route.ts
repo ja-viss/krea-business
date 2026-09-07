@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
             name: user.name, 
             email: user.email, 
             store: storeIdStr,
+            roleName: user.role?.name || 'Usuario',
             isGlobalAdmin: !!user.isGlobalAdmin,
             enabledModules: enabledModules
         } 
