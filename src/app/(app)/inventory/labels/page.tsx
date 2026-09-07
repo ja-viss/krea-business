@@ -44,7 +44,7 @@ export default function LabelsPage() {
         } else {
             setLabelQueue([...labelQueue, { ...product, quantityToPrint: 1 }]);
         }
-        toast({ title: "Producto Añadido", description: `Se añadió ${product.name} a la cola.` });
+        toast({ title: "Añadido a cola", description: `${product.name}` });
     };
 
     const handleRemove = (id: string) => {
@@ -61,11 +61,10 @@ export default function LabelsPage() {
     const handlePrint = () => {
         if (labelQueue.length === 0) return;
         setIsPrinting(true);
-        // Pequeño delay para asegurar que el DOM de impresión esté listo
         setTimeout(() => {
             window.print();
             setIsPrinting(false);
-        }, 800);
+        }, 500);
     };
 
     const formatCurrency = (val: number) => 
@@ -75,10 +74,11 @@ export default function LabelsPage() {
 
     return (
         <div className="flex flex-1 flex-col bg-background">
+            {/* VISTA WEB INTERACTIVA */}
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-5xl mx-auto w-full print:hidden">
                 <PageHeader 
-                    title="Etiquetado de Productos" 
-                    description="Imprime etiquetas con precios y códigos de barras para estantería."
+                    title="Etiquetas Profesionales" 
+                    description="Genera identificadores de estantería con precios y códigos de barras."
                     actions={
                         <Button variant="outline" asChild className="font-bold border-2">
                             <Link href="/inventory"><ChevronLeft className="mr-2 h-4 w-4" /> Volver</Link>
@@ -87,24 +87,22 @@ export default function LabelsPage() {
                 />
 
                 <div className="grid gap-6 lg:grid-cols-12">
-                    {/* BUSCADOR Y COLA */}
-                    <div className="lg:col-span-8 space-y-6">
+                    <div className="lg:col-span-7 space-y-6">
                         <Card className="border-2 shadow-sm">
                             <CardHeader className="bg-muted/5 border-b py-3">
                                 <CardTitle className="text-[11px] font-black uppercase flex items-center gap-2 text-slate-600">
-                                    <Search className="h-4 w-4 text-primary" /> Selector de Mercancía
+                                    <Search className="h-4 w-4 text-primary" /> Selector de Productos
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-6">
                                 <ProductSearch onProductSelect={handleAddProduct} />
                                 
-                                <div className="mt-6 rounded-xl border-2 overflow-hidden">
+                                <div className="mt-6 rounded-xl border-2 overflow-hidden bg-white">
                                     <Table>
                                         <TableHeader className="bg-muted/50">
                                             <TableRow>
-                                                <TableHead className="font-black text-[10px] uppercase pl-4">Producto / Identificador</TableHead>
-                                                <TableHead className="text-right font-black text-[10px] uppercase">Precio (Bs)</TableHead>
-                                                <TableHead className="text-center font-black text-[10px] uppercase">Cantidad</TableHead>
+                                                <TableHead className="font-black text-[10px] uppercase pl-4">Descripción</TableHead>
+                                                <TableHead className="text-center font-black text-[10px] uppercase">Cant.</TableHead>
                                                 <TableHead className="w-[50px] pr-4"></TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -113,34 +111,29 @@ export default function LabelsPage() {
                                                 <TableRow key={String(item._id)} className="hover:bg-primary/5">
                                                     <TableCell className="pl-4 py-3">
                                                         <div className="flex flex-col">
-                                                            <span className="font-black uppercase text-xs truncate max-w-[220px]">{item.name}</span>
-                                                            <span className="text-[9px] font-mono font-bold text-primary flex items-center gap-1">
-                                                                <Barcode className="h-3 w-3" /> {item.barcode || item.sku || String(item._id).slice(-8).toUpperCase()}
-                                                            </span>
+                                                            <span className="font-black uppercase text-xs truncate max-w-[200px]">{item.name}</span>
+                                                            <span className="text-[10px] font-black text-primary">Bs. {formatCurrency(item.price)}</span>
                                                         </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-black text-sm text-slate-700">
-                                                        {formatCurrency(item.price)}
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <Input 
                                                             type="number" 
-                                                            className="w-16 h-8 mx-auto text-center font-black border-2" 
+                                                            className="w-16 h-9 mx-auto text-center font-black border-2" 
                                                             value={item.quantityToPrint}
                                                             onChange={(e) => handleQtyChange(String(item._id), e.target.value)}
                                                         />
                                                     </TableCell>
                                                     <TableCell className="pr-4">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => handleRemove(String(item._id))}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleRemove(String(item._id))}>
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
                                             )) : (
                                                 <TableRow>
-                                                    <TableCell colSpan={4} className="h-40 text-center text-muted-foreground italic">
+                                                    <TableCell colSpan={3} className="h-40 text-center text-muted-foreground italic">
                                                         <Tag className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                                                        <p className="text-xs font-bold uppercase opacity-40">La cola de impresión está vacía</p>
+                                                        <p className="text-xs font-bold uppercase opacity-40">Busca productos para empezar</p>
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -151,8 +144,7 @@ export default function LabelsPage() {
                         </Card>
                     </div>
 
-                    {/* PANEL DE IMPRESIÓN */}
-                    <div className="lg:col-span-4 space-y-6">
+                    <div className="lg:col-span-5 space-y-6">
                         <Card className="border-2 border-primary/20 bg-primary/[0.02] shadow-xl overflow-hidden">
                             <CardHeader className="bg-primary/5 border-b py-3">
                                 <CardTitle className="text-[11px] font-black uppercase text-primary flex items-center gap-2">
@@ -167,64 +159,73 @@ export default function LabelsPage() {
                                 <div className="p-4 bg-amber-50 border-2 border-amber-100 rounded-xl flex items-start gap-3">
                                     <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                                     <p className="text-[10px] font-bold text-amber-800 leading-tight">
-                                        RECOMENDACIÓN: Use rollos de etiquetas térmicas 50x25mm. Ajuste la escala de impresión al 100% en el diálogo del navegador.
+                                        RECOMENDACIÓN: Para un acabado profesional, desactiva "Encabezados y pies de página" en las opciones de impresión del navegador.
                                     </p>
                                 </div>
                                 <Button 
-                                    className="w-full h-16 text-lg font-black uppercase shadow-2xl shadow-primary/20 transition-transform active:scale-95" 
+                                    className="w-full h-16 text-lg font-black uppercase shadow-2xl" 
                                     disabled={labelQueue.length === 0 || isPrinting}
                                     onClick={handlePrint}
                                 >
                                     {isPrinting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-6 w-6" />}
-                                    Imprimir Ahora
+                                    Imprimir Lote
                                 </Button>
                             </CardContent>
                         </Card>
 
-                        <div className="rounded-xl border-2 border-dashed p-6 bg-muted/20 text-center">
-                            <p className="text-[9px] font-black uppercase opacity-40 mb-4 tracking-widest italic">Previsualización Real</p>
-                            <div className="bg-white border-2 border-black rounded-sm p-2 mx-auto w-[180px] h-[90px] shadow-lg flex flex-col justify-between pointer-events-none text-left">
-                                <p className="text-[10px] font-black uppercase leading-tight line-clamp-2">Arroz Primor Tradicional 1Kg</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-[8px] font-bold">Bs.</span>
-                                    <span className="text-xl font-black">450.00</span>
+                        {/* PREVIEW EN VIVO */}
+                        <div className="p-4 border-2 border-dashed rounded-2xl bg-muted/20">
+                             <p className="text-[9px] font-black uppercase text-center opacity-40 mb-4 tracking-widest italic">Previsualización Industrial</p>
+                             <div className="bg-white border-[1px] border-black rounded-sm p-3 mx-auto w-[180px] h-[95px] shadow-2xl flex flex-col justify-between pointer-events-none text-left">
+                                <p className="text-[10px] font-black uppercase leading-tight line-clamp-1 border-b pb-1">PRODUCTO DE MUESTRA</p>
+                                <div className="flex items-center justify-between my-1">
+                                    <div className="flex items-baseline gap-0.5">
+                                        <span className="text-[7px] font-bold">Bs.</span>
+                                        <span className="text-xl font-black">1.450,00</span>
+                                    </div>
+                                    <div className="bg-black text-white text-[8px] font-black px-1.5 py-0.5 rounded">REF: $40.20</div>
                                 </div>
-                                <div className="border-t border-black pt-1 flex justify-between items-end">
-                                    <div className="font-mono text-[8px] font-bold tracking-tighter">759123456789</div>
-                                    <div className="bg-black text-white text-[7px] font-black px-1">REF: $10.50</div>
+                                <div className="flex flex-col items-center">
+                                    <div className="h-4 w-full flex items-end gap-[1px]">
+                                        {[1,2,1,3,1,2,1,1,2,3,1,2,1].map((w,i) => <div key={i} className="bg-black h-full" style={{width: `${w}px`}}></div>)}
+                                    </div>
+                                    <span className="text-[7px] font-mono font-bold mt-0.5">759123456789</span>
                                 </div>
-                            </div>
+                             </div>
                         </div>
                     </div>
                 </div>
             </main>
 
-            {/* VISTA DE IMPRESIÓN (OCULTA EN WEB, VISIBLE AL IMPRIMIR) */}
-            <div className="hidden print:block print:bg-white print:p-0">
+            {/* MOTOR DE IMPRESIÓN (SOLO VISIBLE EN PAPEL) */}
+            <div className="hidden print:block bg-white">
                 {labelQueue.flatMap((product) => 
                     Array.from({ length: product.quantityToPrint }).map((_, idx) => (
-                        <div key={`${product._id}-${idx}`} className="label-container">
+                        <div key={`${product._id}-${idx}`} className="p-print-label">
                             <div className="label-wrapper">
+                                {/* Cabecera: Nombre */}
                                 <div className="label-header">
                                     <h2 className="label-title">{product.name}</h2>
                                 </div>
                                 
+                                {/* Cuerpo: Precios */}
                                 <div className="label-body">
-                                    <div className="label-price">
-                                        <span className="label-currency">Bs.</span>
+                                    <div className="label-price-main">
+                                        <span className="label-symbol">Bs.</span>
                                         <span className="label-amount">{formatCurrency(product.price)}</span>
                                     </div>
-                                    <div className="label-usd">
+                                    <div className="label-price-ref">
                                         REF: ${rates.usd?.usd ? (product.price / rates.usd.usd).toFixed(2) : '0.00'}
                                     </div>
                                 </div>
 
+                                {/* Pie: Código de Barras */}
                                 <div className="label-footer">
-                                    <div className="barcode-placeholder">
-                                        {/* Representación visual de código de barras */}
+                                    <div className="barcode-box">
                                         <div className="barcode-bars">
-                                            {Array.from({ length: 25 }).map((_, b) => (
-                                                <div key={b} className={`bar ${Math.random() > 0.5 ? 'w-0.5' : 'w-[1px]'} ${Math.random() > 0.3 ? 'bg-black' : 'bg-transparent'}`} />
+                                            {/* Patrón EAN-13 Simulado */}
+                                            {[2,1,3,1,1,2,4,1,2,1,3,1,2,2,1,3,1,1,2,4,1].map((w, i) => (
+                                                <div key={i} className="bar" style={{ flex: w, backgroundColor: 'black' }}></div>
                                             ))}
                                         </div>
                                         <div className="barcode-text">
@@ -244,94 +245,98 @@ export default function LabelsPage() {
                         margin: 0;
                         size: 50mm 25mm;
                     }
-                    body {
+                    html, body {
                         background: white !important;
-                        margin: 0;
-                        padding: 0;
-                        -webkit-print-color-adjust: exact;
-                    }
-                    header, nav, aside, main, .print\\:hidden {
-                        display: none !important;
-                    }
-                    .label-container {
+                        margin: 0 !important;
+                        padding: 0 !important;
                         width: 50mm;
                         height: 25mm;
-                        padding: 1.5mm;
-                        page-break-after: always;
+                        overflow: hidden;
+                    }
+                    header, nav, aside, main, button, .print\\:hidden {
+                        display: none !important;
+                    }
+                    .p-print-label {
+                        width: 50mm;
+                        height: 25mm;
                         display: flex;
                         align-items: center;
                         justify-content: center;
+                        page-break-after: always;
                         background: white;
-                        font-family: 'Inter', sans-serif;
+                        padding: 1.5mm;
+                        box-sizing: border-box;
                     }
                     .label-wrapper {
-                        border: 0.5pt solid black;
                         width: 100%;
                         height: 100%;
+                        border: 0.5pt solid black;
                         display: flex;
                         flex-direction: column;
                         justify-content: space-between;
                         padding: 1mm;
                         box-sizing: border-box;
                     }
+                    .label-header {
+                        border-bottom: 0.3pt solid black;
+                        padding-bottom: 0.5mm;
+                    }
                     .label-title {
+                        font-family: 'Inter', sans-serif;
                         font-size: 8pt;
                         font-weight: 900;
                         text-transform: uppercase;
                         margin: 0;
-                        line-height: 1.1;
-                        display: -webkit-box;
-                        -webkit-line-clamp: 2;
-                        -webkit-box-orient: vertical;
+                        line-height: 1;
+                        white-space: nowrap;
                         overflow: hidden;
+                        text-overflow: ellipsis;
                     }
                     .label-body {
                         display: flex;
                         justify-content: space-between;
-                        align-items: flex-end;
+                        align-items: center;
                         margin: 1mm 0;
                     }
-                    .label-price {
+                    .label-price-main {
                         display: flex;
                         align-items: baseline;
-                        gap: 0.5mm;
+                        gap: 0.3mm;
                     }
-                    .label-currency {
+                    .label-symbol {
                         font-size: 6pt;
                         font-weight: 700;
                     }
                     .label-amount {
-                        font-size: 16pt;
+                        font-size: 15pt;
                         font-weight: 900;
                         letter-spacing: -0.5pt;
                     }
-                    .label-usd {
+                    .label-price-ref {
                         font-size: 7pt;
                         font-weight: 900;
                         background: black;
                         color: white;
-                        padding: 0.2mm 1mm;
+                        padding: 0.4mm 1.5mm;
                         border-radius: 0.5mm;
                     }
                     .label-footer {
-                        border-top: 0.5pt solid black;
-                        padding-top: 0.5mm;
                         display: flex;
                         justify-content: center;
+                        padding-top: 0.5mm;
                     }
-                    .barcode-placeholder {
-                        width: 100%;
+                    .barcode-box {
+                        width: 85%;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                     }
                     .barcode-bars {
-                        height: 4mm;
-                        width: 90%;
+                        height: 4.5mm;
+                        width: 100%;
                         display: flex;
                         align-items: stretch;
-                        justify-content: center;
-                        overflow: hidden;
+                        gap: 0.4mm;
                     }
                     .bar {
                         height: 100%;
@@ -340,8 +345,8 @@ export default function LabelsPage() {
                         font-family: 'Courier New', monospace;
                         font-size: 6pt;
                         font-weight: bold;
-                        margin-top: 0.2mm;
-                        letter-spacing: 0.5pt;
+                        margin-top: 0.5mm;
+                        letter-spacing: 0.8pt;
                     }
                 }
             `}</style>
