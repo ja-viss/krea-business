@@ -105,7 +105,6 @@ export default function NewSalePage() {
   const watchCurrency = form.watch('paymentCurrency');
   const watchChangeCurrency = form.watch('changeCurrency');
   const watchAmountReceived = form.watch('amountReceived');
-  const watchReference = form.watch('referenceNumber');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -126,7 +125,17 @@ export default function NewSalePage() {
         }
     };
     fetchData();
-  }, []);
+
+    // Event Listener para F4 (Facturar)
+    const handleGlobalKeys = (e: KeyboardEvent) => {
+        if (e.key === 'F4') {
+            e.preventDefault();
+            handleFinalizeSale();
+        }
+    };
+    window.addEventListener('keydown', handleGlobalKeys);
+    return () => window.removeEventListener('keydown', handleGlobalKeys);
+  }, [watchItems]);
 
   const totals = useMemo(() => {
     let totalVES = 0;
@@ -210,7 +219,7 @@ export default function NewSalePage() {
   }, [watchAmountReceived, watchCurrency, watchChangeCurrency, targetAmount, totals.ves, rates]);
 
   const handleFinalizeSale = async () => {
-    if (watchItems.length === 0 || (storeConfig?.enforceCashControl && !cashSession)) return;
+    if (watchItems.length === 0 || (storeConfig?.enforceCashControl && !cashSession) || isSubmitting) return;
     setIsSubmitting(true);
     try {
         const response = await fetch('/api/sales/new', {
@@ -223,12 +232,15 @@ export default function NewSalePage() {
                 storeId: localStorage.getItem('storeId')
             }),
         });
-        if (!response.ok) throw new Error("Error en facturación");
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || "Error en facturación");
+        }
         const result = await response.json();
+        toast({ title: "Factura Generada", description: "Imprimiendo comprobante..." });
         router.push(`/sales/${result._id}/invoice?print=true`);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Fallo POS', description: e.message });
-    } finally {
         setIsSubmitting(false);
     }
   };
@@ -285,9 +297,14 @@ export default function NewSalePage() {
                                         {fields.length > 0 ? fields.map((item, index) => (
                                             <TableRow key={item.id} className="hover:bg-primary/[0.02]">
                                                 <TableCell className="pl-4 py-3">
-                                                    <div className='flex flex-col'>
-                                                        <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight line-clamp-1'>{item.name}</span>
-                                                        <span className='text-[8px] opacity-60 font-mono'>Bs. {item.price.toLocaleString()}</span>
+                                                    <div className='flex items-center gap-3'>
+                                                        <div className='h-8 w-8 rounded bg-muted relative overflow-hidden shrink-0 border hidden sm:block'>
+                                                            {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="32px" /> : <Package className='h-4 w-4 m-auto opacity-20' />}
+                                                        </div>
+                                                        <div className='flex flex-col'>
+                                                            <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight line-clamp-1'>{item.name}</span>
+                                                            <span className='text-[8px] opacity-60 font-mono'>Bs. {item.price.toLocaleString()}</span>
+                                                        </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className='text-center'>
@@ -344,7 +361,7 @@ export default function NewSalePage() {
 
                         <Button onClick={handleFinalizeSale} disabled={isSubmitting || watchItems.length === 0 || isLocked} className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl">
                             {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-5 w-5" />}
-                            FACTURAR VENTA (F4)
+                            FACTURAR (F4)
                         </Button>
                     </Card>
                 </div>

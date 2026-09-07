@@ -50,9 +50,10 @@ export async function conectarBalanza() {
       }
     } finally {
       reader.releaseLock();
+      await port.close();
     }
   } catch (error: any) {
-    if (error.name === 'NotFoundError') throw new Error('No se seleccionó ningún dispositivo.');
+    if (error.name === 'NotFoundError') throw new Error('Operación cancelada por el usuario.');
     throw error;
   }
 }
@@ -64,20 +65,26 @@ export async function conectarImpresoraUSB() {
   }
 
   try {
-    // Filtrar por clase de dispositivo de impresión (0x07)
+    // SE ELIMINAN FILTROS para máxima compatibilidad con impresoras genéricas
     const device = await navigator.usb.requestDevice({
-      filters: [{ classCode: 0x07 }] 
+      filters: [] 
     });
 
     await device.open();
     // Seleccionar configuración predeterminada (usualmente 1)
     if (device.configuration === null) await device.selectConfiguration(1);
-    await device.claimInterface(0);
+    
+    // Intentar reclamar la interfaz de impresión
+    try {
+        await device.claimInterface(0);
+    } catch (e) {
+        console.warn('La interfaz 0 ya está en uso o no es accesible.');
+    }
 
     // Ejemplo de comando ESC/POS crudo (Inicializar + Texto de Prueba + Corte)
     const encoder = new TextEncoder();
     const init = new Uint8Array([0x1B, 0x40]); // ESC @ (Init)
-    const text = encoder.encode('\nKREA BUSINESS POS\nPRUEBA EXITOSA\n\n\n\n');
+    const text = encoder.encode('\nKREA BUSINESS POS\nPRUEBA DE VINCULACION USB\nSISTEMA OPERATIVO\n\n\n\n');
     const cut = new Uint8Array([0x1D, 0x56, 0x00]); // GS V 0 (Cut)
 
     const data = new Uint8Array(init.length + text.length + cut.length);
@@ -86,10 +93,16 @@ export async function conectarImpresoraUSB() {
     data.set(cut, init.length + text.length);
 
     // Enviar al endpoint de salida (usualmente el 1 o 2 en impresoras térmicas)
-    await device.transferOut(1, data);
+    try {
+        await device.transferOut(1, data);
+    } catch (err) {
+        console.error('Error al transferir datos. Intentando endpoint 2...');
+        await device.transferOut(2, data);
+    }
     
-    return { name: device.productName, status: 'Connected' };
+    return { name: device.productName || 'Dispositivo USB', status: 'Connected' };
   } catch (error: any) {
+    if (error.name === 'NotFoundError') throw new Error('No se seleccionó ningún dispositivo USB.');
     throw new Error('Error de vinculación USB: ' + error.message);
   }
 }
@@ -98,15 +111,12 @@ export async function conectarImpresoraUSB() {
 export async function vincularDispositivoIP(ipAddress: string) {
   console.log(`Intentando apretón de manos con: ${ipAddress}`);
   
-  /**
-   * NOTA TÉCNICA: Los navegadores bloquean conexiones TCP directas por seguridad (CORS/Mixed Content).
-   * Para impresoras de red, es mejor usar un "WebSocket Bridge" local o que el hardware
-   * tenga un endpoint HTTP con soporte CORS habilitado.
-   */
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
 
+    // En un entorno POS real, se suele requerir un WebSocket Bridge local
+    // porque los navegadores bloquean peticiones directas a IPs locales (Contenido Mixto)
     const response = await fetch(`http://${ipAddress}/status`, { 
       method: 'GET', 
       mode: 'no-cors',
@@ -116,6 +126,6 @@ export async function vincularDispositivoIP(ipAddress: string) {
     clearTimeout(timeoutId);
     return { success: true, message: 'Dispositivo alcanzable en la red.' };
   } catch (error) {
-    throw new Error('No se pudo establecer conexión con la IP. Verifique que el dispositivo esté encendido y en la misma red.');
+    throw new Error('No se pudo establecer conexión con la IP. Verifique que el dispositivo esté encendido y en la misma red local.');
   }
 }
