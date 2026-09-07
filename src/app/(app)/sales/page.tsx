@@ -112,18 +112,18 @@ export default function SalesPage() {
           title="Ventas"
           description="Historial de facturación y movimientos POS."
           actions={
-            <>
-              <Button variant="outline" className='shadow-sm' onClick={() => window.print()}>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Button variant="outline" className="flex-1 sm:flex-none shadow-sm h-11" onClick={() => window.print()}>
                 <FileDown className="mr-2 h-4 w-4" />
-                Listado PDF
+                <span className="sm:inline">Exportar</span>
               </Button>
-              <Button asChild className="font-black uppercase shadow-lg shadow-primary/20">
+              <Button asChild className="flex-1 sm:flex-none font-black uppercase shadow-lg shadow-primary/20 h-11">
                 <Link href="/sales/new">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Nueva Operación
+                  <span className="whitespace-nowrap">Nueva Venta</span>
                 </Link>
               </Button>
-            </>
+            </div>
           }
         />
 
@@ -141,15 +141,15 @@ export default function SalesPage() {
         )}
 
         <div className="rounded-2xl border-2 bg-card shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scrollbar-hide">
             <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="pl-6 font-black text-[10px] uppercase">Nº Documento</TableHead>
+                    <TableHead className="pl-6 font-black text-[10px] uppercase">Nº Doc.</TableHead>
                     <TableHead className="font-black text-[10px] uppercase">Titular / Cliente</TableHead>
-                    <TableHead className="hidden sm:table-cell font-black text-[10px] uppercase">Fecha</TableHead>
+                    <TableHead className="hidden md:table-cell font-black text-[10px] uppercase">Fecha</TableHead>
                     <TableHead className="font-black text-[10px] uppercase">Estado</TableHead>
-                    <TableHead className="text-right font-black text-[10px] uppercase">Importe Total</TableHead>
+                    <TableHead className="text-right font-black text-[10px] uppercase">Total</TableHead>
                     <TableHead className="w-[50px] pr-6"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -159,7 +159,7 @@ export default function SalesPage() {
                       <TableRow key={i}>
                         <TableCell className="pl-6"><Skeleton className="h-4 w-[60px]" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-                        <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-[80px]" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
                         <TableCell className="pr-6"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
@@ -167,39 +167,44 @@ export default function SalesPage() {
                     ))
                 ) : sales.length > 0 ? (
                     sales.map((sale) => (
-                    <TableRow key={sale._id} className="hover:bg-primary/[0.02]">
-                        <TableCell className="font-mono text-xs font-bold pl-6 text-primary"># {String(sale.invoiceNumber).padStart(8, '0')}</TableCell>
-                        <TableCell className="text-xs md:text-sm font-black uppercase truncate max-w-[150px]">
-                          {sale.customerName}
+                    <TableRow key={sale._id} className="hover:bg-primary/[0.02] transition-colors group">
+                        <TableCell className="font-mono text-[11px] font-bold pl-6 text-primary"># {String(sale.invoiceNumber).padStart(6, '0')}</TableCell>
+                        <TableCell className="py-4">
+                          <div className="flex flex-col">
+                            <span className="text-[11px] md:text-sm font-black uppercase truncate max-w-[120px] md:max-w-[250px]">
+                              {sale.customerName}
+                            </span>
+                            <span className="md:hidden text-[9px] font-medium text-muted-foreground">{formatDate(String(sale.createdAt))}</span>
+                          </div>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-xs font-medium">{formatDate(String(sale.createdAt))}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs font-medium">{formatDate(String(sale.createdAt))}</TableCell>
                         <TableCell>
                           <Badge 
                             variant={sale.status === 'Pagado' ? 'secondary' : 'outline'} 
-                            className={cn("text-[9px] font-black uppercase", sale.status === 'Pagado' ? 'bg-green-100 text-green-800' : '')}
+                            className={cn("text-[8px] md:text-[9px] font-black uppercase", sale.status === 'Pagado' ? 'bg-green-100 text-green-800' : '')}
                           >
                             {sale.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-black text-sm">
+                        <TableCell className="text-right font-black text-xs md:text-sm whitespace-nowrap">
                           {formatCurrency(sale.totalAmount)}
                         </TableCell>
                         <TableCell className="pr-6 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0 ml-auto rounded-full">
+                              <Button variant="ghost" className="h-8 w-8 p-0 ml-auto rounded-full hover:bg-muted">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => router.push(`/sales/${sale._id}/invoice`)}>
+                            <DropdownMenuContent align="end" className="w-52 border-2 shadow-2xl">
+                              <DropdownMenuItem className="font-bold text-xs uppercase cursor-pointer" onClick={() => router.push(`/sales/${sale._id}/invoice`)}>
                                 <Eye className="mr-2 h-4 w-4" /> Visualizar Ticket
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="font-bold text-xs uppercase" onSelect={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
+                              <DropdownMenuItem className="font-bold text-xs uppercase cursor-pointer" onClick={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
                                 <Printer className="mr-2 h-4 w-4" /> Imprimir POS
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600 font-black text-xs uppercase" onSelect={() => setSaleToDelete(sale)}>
+                              <DropdownMenuItem className="text-red-600 font-black text-xs uppercase cursor-pointer" onSelect={() => setSaleToDelete(sale)}>
                                 Anular Operación
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -220,16 +225,16 @@ export default function SalesPage() {
         </div>
         
         <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
-            <AlertDialogContent className="border-4">
+            <AlertDialogContent className="border-4 mx-4">
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-xl font-black uppercase italic">¿Anular transacción?</AlertDialogTitle>
                 <AlertDialogDescription className="font-bold">
-                  La factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} será eliminada. El inventario se restaurará automáticamente.
+                  La factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} será eliminada de forma permanente y el inventario se restaurará.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="font-bold">Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 font-black uppercase shadow-lg shadow-red-200">
+              <AlertDialogFooter className="mt-4">
+                <AlertDialogCancel className="font-bold rounded-xl">Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 font-black uppercase shadow-lg shadow-red-200 rounded-xl h-11">
                   Confirmar Anulación
                 </AlertDialogAction>
               </AlertDialogFooter>

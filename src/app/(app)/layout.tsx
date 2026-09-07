@@ -41,9 +41,9 @@ const DesktopSidebar = () => (
 const MobileSidebar = () => (
     <Sheet>
         <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden">
-                <PanelLeft className="h-6 w-6" />
-                <span className="sr-only">Toggle Menu</span>
+            <Button variant="ghost" size="icon" className="lg:hidden h-10 w-10 rounded-full border bg-white/50 backdrop-blur">
+                <PanelLeft className="h-5 w-5" />
+                <span className="sr-only">Menú</span>
             </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[280px] p-0 border-r-4 border-primary/20">
@@ -53,7 +53,7 @@ const MobileSidebar = () => (
             <div className="flex items-center h-24 px-4 border-b justify-center bg-muted/10">
                 <Logo />
             </div>
-            <div className="h-[calc(100vh-6rem)] overflow-y-auto">
+            <div className="h-[calc(100vh-6rem)] overflow-y-auto pb-8">
                 <SideNav />
             </div>
         </SheetContent>
@@ -94,13 +94,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <DesktopSidebar />
         <div className="flex-1 flex flex-col min-w-0 bg-slate-50/50 relative">
             <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-card px-4 lg:px-8 shadow-sm z-30">
-                <MobileSidebar />
+                <div className="flex items-center gap-4 lg:hidden">
+                    <MobileSidebar />
+                </div>
+                
+                <div className="flex-1 lg:hidden">
+                    <Logo className="scale-75 origin-left" />
+                </div>
                 
                 <div className="flex items-center gap-4">
                     {isGlobalAdmin && (
                         <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
                             <ShieldCheck className="h-3 w-3 text-primary" />
-                            <span className="text-[10px] font-black text-primary uppercase tracking-tight">Super Admin Mode</span>
+                            <span className="text-[9px] font-black text-primary uppercase tracking-tight">Super Admin</span>
                         </div>
                     )}
                     
@@ -114,8 +120,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 border-2">
-                            <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50">Mi Cuenta</DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-56 border-2 shadow-2xl mt-1">
+                            <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50 px-3 pt-3 pb-1">Mi Cuenta</DropdownMenuLabel>
+                            <div className="px-3 pb-3">
+                                <p className="text-xs font-bold truncate">{user?.name}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                            </div>
                             <DropdownMenuSeparator />
                              <DropdownMenuItem asChild className="cursor-pointer font-bold text-xs uppercase p-3">
                                 <Link href="/settings">Configuración</Link>
@@ -135,7 +145,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </DropdownMenu>
                 </div>
             </header>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col scroll-smooth">
                 {children}
             </main>
         </div>
