@@ -9,6 +9,18 @@ export interface IPurchaseOrder extends Document {
   expectedDeliveryDate: Date;
   receivedAt?: Date;
   status: 'Pendiente' | 'En camino' | 'Recibido' | 'Anulado';
+  
+  // Tracking Logístico
+  logisticsStatus: 'Factory' | 'In Transit' | 'Delivered';
+  providerCoords: {
+    lat: number;
+    lng: number;
+  };
+  currentLocationCoords?: {
+    lat: number;
+    lng: number;
+  };
+
   totalAmount: number;
   items: Array<{
     product: Types.ObjectId;
@@ -29,6 +41,18 @@ const PurchaseOrderSchema: Schema = new Schema({
   expectedDeliveryDate: { type: Date, required: true },
   receivedAt: { type: Date },
   status: { type: String, enum: ['Pendiente', 'En camino', 'Recibido', 'Anulado'], default: 'Pendiente' },
+  
+  // Logística
+  logisticsStatus: { type: String, enum: ['Factory', 'In Transit', 'Delivered'], default: 'Factory' },
+  providerCoords: {
+    lat: { type: Number, default: 10.4910 }, // Ejemplo: Algún punto en el país
+    lng: { type: Number, default: -66.8200 }
+  },
+  currentLocationCoords: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+
   totalAmount: { type: Number, required: true },
   items: [{
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },

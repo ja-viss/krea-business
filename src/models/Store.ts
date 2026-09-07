@@ -24,6 +24,11 @@ export interface IStore extends Document {
     phone: string;
     idNumber: string;
   };
+  // Ubicación para Logística (Geofencing)
+  locationCoords: {
+    lat: number;
+    lng: number;
+  };
   // Configuración de Impresión
   ticketFontSize: 'sm' | 'md' | 'lg';
   showOtherCurrenciesOnInvoice: boolean;
@@ -60,13 +65,16 @@ const StoreSchema: Schema = new Schema({
   maxInvoicesPerMonth: { type: Number, default: 500 },
   storageLimitMB: { type: Number, default: 500 },
   enforceCashControl: { type: Boolean, default: true },
-  // Configuración Pago Móvil
+  // Coordenadas por defecto (Caracas, Venezuela como base)
+  locationCoords: {
+    lat: { type: Number, default: 10.4806 },
+    lng: { type: Number, default: -66.9036 }
+  },
   pagoMovil: {
     bankCode: { type: String, default: '0102' },
     phone: { type: String, default: '' },
     idNumber: { type: String, default: '' },
   },
-  // Impresión
   ticketFontSize: { type: String, enum: ['sm', 'md', 'lg'], default: 'sm' },
   showOtherCurrenciesOnInvoice: { type: Boolean, default: false },
   enabledModules: {
