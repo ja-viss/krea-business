@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { storeId, vendor, expectedDeliveryDate, items, notes } = body;
+        const { storeId, vendor, lotReference, expectedDeliveryDate, items, notes } = body;
 
         if (!storeId || !vendor || !items || items.length === 0) {
             throw new Error("Datos del pedido incompletos");
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
         const newOrder = new PurchaseOrderModel({
             store: storeId,
             orderNumber: counter.seq,
+            lotReference: lotReference || undefined,
             vendor,
             expectedDeliveryDate: new Date(expectedDeliveryDate),
             status: 'En camino',

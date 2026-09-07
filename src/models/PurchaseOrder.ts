@@ -4,6 +4,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface IPurchaseOrder extends Document {
   store: Types.ObjectId;
   orderNumber: number;
+  lotReference?: string; // Referencia de Lote o Carga
   vendor: string;
   issuedDate: Date;
   expectedDeliveryDate: Date;
@@ -36,6 +37,7 @@ export interface IPurchaseOrder extends Document {
 const PurchaseOrderSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   orderNumber: { type: Number, required: true },
+  lotReference: { type: String }, // Identificador de lote
   vendor: { type: String, required: true },
   issuedDate: { type: Date, default: Date.now },
   expectedDeliveryDate: { type: Date, required: true },
@@ -45,7 +47,7 @@ const PurchaseOrderSchema: Schema = new Schema({
   // Logística
   logisticsStatus: { type: String, enum: ['Factory', 'In Transit', 'Delivered'], default: 'Factory' },
   providerCoords: {
-    lat: { type: Number, default: 10.4910 }, // Ejemplo: Algún punto en el país
+    lat: { type: Number, default: 10.4910 }, 
     lng: { type: Number, default: -66.8200 }
   },
   currentLocationCoords: {

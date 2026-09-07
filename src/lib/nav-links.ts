@@ -1,3 +1,4 @@
+
 import {
   BarChart3,
   Boxes,
@@ -131,7 +132,7 @@ export const navLinks: NavLink[] = [
   },
   {
     href: '/purchases',
-    label: 'Entrada Mercancía',
+    label: 'Pedidos (Compras)',
     icon: Truck,
     roles: ['Administrador Principal', 'Almacenista'],
     category: 'Inventario',
