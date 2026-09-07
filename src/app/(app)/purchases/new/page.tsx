@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -9,13 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Trash2, ChevronLeft, Plus, Save, Truck, Package, Hash, MapPin, Navigation, Globe } from 'lucide-react';
+import { Loader2, Trash2, ChevronLeft, Plus, Save, Truck, Package, Hash, MapPin, Navigation, Globe, Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ProductSearch } from '@/components/sales/product-search';
 import { IProduct } from '@/models/Product';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { LogisticsMap } from '@/components/purchases/logistics-map';
+import { Separator } from '@/components/ui/separator';
 
 const VENEZUELA_CITIES = [
     { name: 'Caracas (Centro)', lat: 10.4806, lng: -66.9036 },
@@ -66,7 +67,10 @@ export default function NewPurchaseOrderPage() {
     }, []);
 
     const handleAddProduct = (product: IProduct) => {
-        if (order.items.some(i => i.product === product._id)) return;
+        if (order.items.some(i => i.product === product._id)) {
+            toast({ title: "Ya está en la lista" });
+            return;
+        }
         setOrder({
             ...order,
             items: [...order.items, {
@@ -143,28 +147,18 @@ export default function NewPurchaseOrderPage() {
         <div className="flex flex-1 flex-col">
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1400px] mx-auto w-full">
                 <PageHeader 
-                    title="Configurar Logística de Lote" 
-                    description="Define el origen y destino. El sistema trazará la ruta y telemetría automáticamente."
+                    title="Nueva Orden de Lote" 
+                    description="Registra un pedido masivo de mercancía para tu inventario."
                     actions={<Button variant="ghost" asChild><Link href="/purchases"><ChevronLeft className='mr-2 h-4 w-4'/> Volver</Link></Button>}
                 />
 
                 <div className="grid gap-6 lg:grid-cols-12 items-start">
-                    <div className="lg:col-span-7 space-y-6">
-                        {/* MAPA DE PREVISUALIZACIÓN ACTIVA */}
-                        <div className="animate-in fade-in zoom-in-95 duration-700">
-                             <LogisticsMap 
-                                status="In Transit"
-                                storeCoords={order.destinationCoords}
-                                providerCoords={order.providerCoords}
-                                vendorName={order.vendor || 'PROVEEDOR'}
-                             />
-                        </div>
-
+                    {/* COLUMNA IZQUIERDA: PRODUCTOS Y MAPA */}
+                    <div className="lg:col-span-8 space-y-6">
                         <Card className="border-2 shadow-lg rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-muted/10 border-b">
-                                <CardTitle className="text-xs font-black uppercase flex items-center gap-2">
-                                    <Plus className="h-4 w-4 text-primary" /> Mercancía Solicitada
-                                </CardTitle>
+                            <CardHeader className="bg-muted/10 border-b flex flex-row items-center gap-2">
+                                <Plus className="h-4 w-4 text-primary" />
+                                <CardTitle className="text-xs font-black uppercase tracking-widest">Selección de Mercancía</CardTitle>
                             </CardHeader>
                             <CardContent className="pt-6">
                                 <ProductSearch onProductSelect={handleAddProduct} />
@@ -172,8 +166,8 @@ export default function NewPurchaseOrderPage() {
                                     <Table>
                                         <TableHeader className="bg-muted/50">
                                             <TableRow>
-                                                <TableHead className="font-black uppercase text-[10px] pl-4 py-4">Descripción del Ítem</TableHead>
-                                                <TableHead className="text-center font-black uppercase text-[10px]">Cantidad</TableHead>
+                                                <TableHead className="font-black uppercase text-[10px] pl-4 py-4">Producto</TableHead>
+                                                <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
                                                 <TableHead className="text-right font-black uppercase text-[10px]">Costo (Bs)</TableHead>
                                                 <TableHead className="w-[40px]"></TableHead>
                                             </TableRow>
@@ -195,91 +189,107 @@ export default function NewPurchaseOrderPage() {
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
-                                            {order.items.length === 0 && <TableRow><TableCell colSpan={4} className="h-40 text-center opacity-30 italic text-sm flex flex-col items-center justify-center gap-2"><Package className="h-10 w-10"/><span>Agrega productos al pedido</span></TableCell></TableRow>}
+                                            {order.items.length === 0 && <TableRow><TableCell colSpan={4} className="h-40 text-center opacity-30 italic text-sm flex flex-col items-center justify-center gap-2"><Package className="h-10 w-10"/><span>Busca productos para el pedido</span></TableCell></TableRow>}
                                         </TableBody>
                                     </Table>
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* MAPA DINÁMICO INTEGRADO EN EL FLUJO */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 px-2">
+                                <Globe className="h-4 w-4 text-primary" />
+                                <h3 className="text-xs font-black uppercase tracking-tighter">Previsualización de Ruta y Logística</h3>
+                            </div>
+                            <div className="animate-in fade-in zoom-in-95 duration-700">
+                                <LogisticsMap 
+                                    status="In Transit"
+                                    storeCoords={order.destinationCoords}
+                                    providerCoords={order.providerCoords}
+                                    vendorName={order.vendor || 'PROVEEDOR'}
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-4">
-                        <Card className="border-2 border-primary/20 bg-primary/[0.02] shadow-xl rounded-2xl overflow-hidden">
-                            <CardHeader className="bg-primary/5 border-b"><CardTitle className="text-xs font-black uppercase text-primary italic tracking-widest">Plan de Rastreo (GPS)</CardTitle></CardHeader>
+                    {/* COLUMNA DERECHA: LOGÍSTICA Y GPS */}
+                    <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-4">
+                        <Card className="border-2 border-primary/10 bg-primary/[0.02] shadow-2xl rounded-2xl overflow-hidden">
+                            <CardHeader className="bg-primary/5 border-b py-4">
+                                <CardTitle className="text-[11px] font-black uppercase text-primary italic tracking-widest flex items-center gap-2">
+                                    <Calculator className="h-4 w-4" /> Logística del Pedido
+                                </CardTitle>
+                            </CardHeader>
                             <CardContent className="pt-6 space-y-6 px-6">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase opacity-60 flex items-center gap-1"><Truck className="h-3 w-3"/> Proveedor</Label>
-                                    <Input placeholder="Nombre de la empresa" value={order.vendor} onChange={e => setOrder({...order, vendor: e.target.value.toUpperCase()})} className="font-black uppercase h-12 border-2" />
+                                    <Label className="text-[10px] font-black uppercase opacity-60">Proveedor</Label>
+                                    <Input placeholder="EJ: EMPRESAS POLAR" value={order.vendor} onChange={e => setOrder({...order, vendor: e.target.value.toUpperCase()})} className="font-black uppercase h-12 border-2" />
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* SECTOR ORIGEN */}
-                                    <div className="space-y-4 p-4 rounded-xl border-2 bg-white shadow-inner">
-                                        <Label className="text-[10px] font-black uppercase text-red-600 flex items-center gap-1"><MapPin className="h-3 w-3"/> Origen (Fábrica)</Label>
-                                        <Select value={order.providerLocation} onValueChange={(v) => handleCityChange('provider', v)}>
-                                            <SelectTrigger className="h-10 font-bold border-2">
-                                                <SelectValue placeholder="Elegir ciudad" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {VENEZUELA_CITIES.map(city => (
-                                                    <SelectItem key={city.name} value={city.name} className='font-bold uppercase text-[10px]'>{city.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="space-y-1">
-                                                <Label className="text-[8px] font-black uppercase opacity-40">Latitud</Label>
-                                                <Input type="number" className="h-8 text-[10px] font-mono" value={order.providerCoords.lat} onChange={e => handleCoordChange('provider', 'lat', e.target.value)} />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-[8px] font-black uppercase opacity-40">Longitud</Label>
-                                                <Input type="number" className="h-8 text-[10px] font-mono" value={order.providerCoords.lng} onChange={e => handleCoordChange('provider', 'lng', e.target.value)} />
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase opacity-60"># Ref. Lote / Carga</Label>
+                                    <Input placeholder="Ej: LOTE-ABC-001" value={order.lotReference} onChange={e => setOrder({...order, lotReference: e.target.value.toUpperCase()})} className="font-mono font-bold h-12 border-2" />
+                                </div>
 
-                                    {/* SECTOR DESTINO */}
-                                    <div className="space-y-4 p-4 rounded-xl border-2 bg-white shadow-inner">
-                                        <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1"><Navigation className="h-3 w-3"/> Destino (Tu Empresa)</Label>
-                                        <Select value={order.destinationLocation} onValueChange={(v) => handleCityChange('destination', v)}>
-                                            <SelectTrigger className="h-10 font-bold border-2 border-primary/20">
-                                                <SelectValue placeholder="Elegir sede" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {VENEZUELA_CITIES.map(city => (
-                                                    <SelectItem key={city.name} value={city.name} className='font-bold uppercase text-[10px]'>{city.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="space-y-1">
-                                                <Label className="text-[8px] font-black uppercase opacity-40">Latitud</Label>
-                                                <Input type="number" className="h-8 text-[10px] font-mono" value={order.destinationCoords.lat} onChange={e => handleCoordChange('destination', 'lat', e.target.value)} />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-[8px] font-black uppercase opacity-40">Longitud</Label>
-                                                <Input type="number" className="h-8 text-[10px] font-mono" value={order.destinationCoords.lng} onChange={e => handleCoordChange('destination', 'lng', e.target.value)} />
-                                            </div>
-                                        </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase opacity-60">Fecha de Entrega Estimada</Label>
+                                    <Input type="date" value={order.expectedDeliveryDate} onChange={e => setOrder({...order, expectedDeliveryDate: e.target.value})} className="h-12 font-bold border-2" />
+                                </div>
+
+                                <Separator className="my-2" />
+
+                                <div className="space-y-4 bg-white p-4 rounded-xl border-2 shadow-inner">
+                                    <Label className="text-[10px] font-black uppercase text-red-600 flex items-center gap-1"><MapPin className="h-3 w-3"/> Origen (Fábrica)</Label>
+                                    <Select value={order.providerLocation} onValueChange={(v) => handleCityChange('provider', v)}>
+                                        <SelectTrigger className="h-11 font-bold border-2">
+                                            <SelectValue placeholder="Elegir ciudad de origen" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {VENEZUELA_CITIES.map(city => (
+                                                <SelectItem key={city.name} value={city.name} className='font-bold uppercase text-[10px]'>{city.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Input type="number" className="h-8 text-[9px] font-mono text-center" value={order.providerCoords.lat} onChange={e => handleCoordChange('provider', 'lat', e.target.value)} />
+                                        <Input type="number" className="h-8 text-[9px] font-mono text-center" value={order.providerCoords.lng} onChange={e => handleCoordChange('provider', 'lng', e.target.value)} />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 bg-white p-4 rounded-xl border-2 shadow-inner">
+                                    <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1"><Navigation className="h-3 w-3"/> Destino (Tu Empresa)</Label>
+                                    <Select value={order.destinationLocation} onValueChange={(v) => handleCityChange('destination', v)}>
+                                        <SelectTrigger className="h-11 font-bold border-2 border-primary/20">
+                                            <SelectValue placeholder="Elegir sede destino" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {VENEZUELA_CITIES.map(city => (
+                                                <SelectItem key={city.name} value={city.name} className='font-bold uppercase text-[10px]'>{city.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Input type="number" className="h-8 text-[9px] font-mono text-center" value={order.destinationCoords.lat} onChange={e => handleCoordChange('destination', 'lat', e.target.value)} />
+                                        <Input type="number" className="h-8 text-[9px] font-mono text-center" value={order.destinationCoords.lng} onChange={e => handleCoordChange('destination', 'lng', e.target.value)} />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase opacity-60 flex items-center gap-1"><Hash className="h-3 w-3"/> Ref. Lote</Label>
-                                    <Input placeholder="Ej: LOTE-CARNICO-ENE" value={order.lotReference} onChange={e => setOrder({...order, lotReference: e.target.value.toUpperCase()})} className="font-mono font-bold h-12 border-2" />
+                                    <Label className="text-[10px] font-black uppercase opacity-60">Notas Internas</Label>
+                                    <Input placeholder="Instrucciones para el almacén..." value={order.notes} onChange={e => setOrder({...order, notes: e.target.value})} className="h-12 border-2" />
                                 </div>
 
                                 <div className="pt-4 border-t-2 border-dashed border-primary/10 flex justify-between items-baseline">
-                                    <span className="text-[10px] font-black uppercase opacity-60">Total Inversión</span>
+                                    <span className="text-[10px] font-black uppercase opacity-60">Inversión Lote</span>
                                     <div className="text-right">
                                         <span className="text-3xl font-black text-primary tracking-tighter">Bs. {total.toLocaleString()}</span>
-                                        <span className="ml-1 text-xs font-black text-primary opacity-50 uppercase italic">VES</span>
                                     </div>
                                 </div>
                             </CardContent>
                             <CardFooter className="p-6 pt-0">
                                 <Button className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl" onClick={handleSave} disabled={loading || order.items.length === 0}>
-                                    {loading ? <Loader2 className="animate-spin mr-2"/> : <Globe className="mr-2 h-6 w-6"/>}
+                                    {loading ? <Loader2 className="animate-spin mr-2"/> : <Save className="mr-2 h-6 w-6"/>}
                                     Emitir Orden y Activar GPS
                                 </Button>
                             </CardFooter>
@@ -287,7 +297,7 @@ export default function NewPurchaseOrderPage() {
 
                         <div className="p-4 bg-amber-50 border-2 border-amber-100 rounded-2xl flex items-start gap-3">
                              <div className="bg-amber-100 p-2 rounded-lg"><Truck className="h-5 w-5 text-amber-600" /></div>
-                             <p className="text-[10px] font-bold text-amber-800 leading-tight">
+                             <p className="text-[9px] font-bold text-amber-800 leading-tight">
                                 CONFIGURACIÓN DINÁMICA: Puedes ajustar los puntos en el mapa seleccionando las ciudades o ingresando coordenadas exactas. El sistema recalculará la ruta automáticamente.
                              </p>
                         </div>
@@ -297,4 +307,3 @@ export default function NewPurchaseOrderPage() {
         </div>
     );
 }
-
