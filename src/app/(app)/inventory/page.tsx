@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package, Image as ImageIcon, Calendar, Trash2, Loader2 } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package, Image as ImageIcon, Calendar, Trash2, Loader2, Truck } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -224,7 +224,7 @@ export default function InventoryPage() {
           actions={
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <Button variant="outline" asChild className="flex-1 sm:flex-none rounded-xl h-11 shadow-sm">
-                <Link href="/reports"><BarChart3 className="mr-2 h-4 w-4" /><span className="sm:inline">Reportes</span></Link>
+                <Link href="/purchases"><Truck className="mr-2 h-4 w-4" /><span className="sm:inline">Compras</span></Link>
               </Button>
               <Button asChild className="flex-1 sm:flex-none rounded-xl font-black uppercase shadow-lg shadow-primary/20 h-11">
                 <Link href="/inventory/new-product"><PlusCircle className="mr-2 h-4 w-4" /><span className="whitespace-nowrap">Dar de Alta</span></Link>
@@ -305,7 +305,7 @@ export default function InventoryPage() {
                             <TableRow>
                                 <TableHead className="pl-6 font-black text-[10px] uppercase">Identidad</TableHead>
                                 <TableHead className='text-right font-black text-[10px] uppercase'>PVP (Bs)</TableHead>
-                                <TableHead className='text-right font-black text-[10px] uppercase'>Stock</TableHead>
+                                <TableHead className='text-right font-black text-[10px] uppercase'>Existencia</TableHead>
                                 <TableHead className="hidden lg:table-cell font-black text-[10px] uppercase">Estado</TableHead>
                                 <TableHead className="w-[50px] pr-6"></TableHead>
                             </TableRow>
@@ -343,7 +343,16 @@ export default function InventoryPage() {
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right text-xs md:text-sm font-black">{formatCurrency(p.price)}</TableCell>
-                                <TableCell className='text-right font-black text-xs md:text-sm text-primary whitespace-nowrap'>{p.stock} <span className="text-[8px] opacity-60">{unitLabel}</span></TableCell>
+                                <TableCell className='text-right'>
+                                    <div className="flex flex-col items-end">
+                                        <span className="font-black text-xs md:text-sm text-primary">{p.stock} <span className="text-[8px] opacity-60">{unitLabel}</span></span>
+                                        {p.inTransit > 0 && (
+                                            <Badge variant="outline" className="text-[7px] font-black uppercase h-4 bg-blue-50 text-blue-600 border-blue-200 flex gap-1 items-center px-1">
+                                                <Truck className="h-2 w-2" /> +{p.inTransit} en tránsito
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </TableCell>
                                 <TableCell className="hidden lg:table-cell">
                                     <Badge variant={p.status === 'En Stock' ? 'secondary' : p.status === 'Stock Bajo' ? 'outline' : 'destructive'} className="text-[9px] font-black uppercase h-6">
                                         {p.status}

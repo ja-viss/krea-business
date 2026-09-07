@@ -25,6 +25,7 @@ export const ProductSchema = new Schema({
   expiryDate: { type: Date },
 
   stock: { type: Number, required: true, default: 0 },
+  inTransit: { type: Number, default: 0 }, // NUEVO: Stock comprometido que viene de proveedores
   minStock: { type: Number, required: true, default: 0 },
   cost: { type: Number, required: true, default: 0 },
   price: { type: Number, required: true, min: 0 }, 
