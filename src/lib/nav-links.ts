@@ -1,39 +1,27 @@
 
 import {
   BarChart3,
-  BookUser,
   Boxes,
-  DollarSign,
-  FileText,
   LayoutDashboard,
   LucideIcon,
   Receipt,
   Settings,
   ShoppingCart,
-  Sparkles,
   Users,
   Store,
-  ShieldCheck,
-  Zap,
-  MessageSquare,
   CreditCard,
-  History,
   Tag,
-  Mail,
-  ShieldAlert,
   Monitor,
-  Package2,
-  HardDriveDownload,
   Calculator,
   RotateCcw,
   Truck,
   ClipboardList,
   Fingerprint,
   Wallet,
-  Scale,
   Printer,
   Layers,
-  UserCheck
+  UserCheck,
+  ShieldCheck
 } from 'lucide-react';
 
 export type NavLink = {
@@ -46,39 +34,43 @@ export type NavLink = {
   moduleKey?: 'inventory' | 'sales' | 'expenses' | 'reports';
 };
 
+/**
+ * Mapa de Navegación Maestro
+ * Filtra dinámicamente según el rol y los módulos habilitados por el SaaS.
+ */
 export const navLinks: NavLink[] = [
-  // --- SECCION GLOBAL ---
+  // --- SECCION GLOBAL (SÓLO SUPER ADMIN) ---
   {
     href: '/dashboard',
-    label: 'Dashboard / Inicio',
+    label: 'Panel Maestro',
     icon: Monitor,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
-    category: 'Monitoreo Principal',
+    category: 'Infraestructura',
   },
   {
     href: '/admin/stores',
-    label: 'Empresas (Tenants)',
+    label: 'Cartera de Clientes',
     icon: Store,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
-    category: 'Gestión de Clientes',
+    category: 'Infraestructura',
   },
   {
     href: '/admin/saas-billing',
-    label: 'Control de Pagos',
+    label: 'Recaudación SaaS',
     icon: CreditCard,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
-    category: 'Control Comercial',
+    category: 'Infraestructura',
   },
 
-  // --- SECCION OPERATIVA ---
+  // --- SECCION OPERATIVA (NEGOCIO) ---
   {
     href: '/dashboard',
-    label: 'Resumen',
+    label: 'Resumen Diario',
     icon: LayoutDashboard,
-    roles: ['Administrador Principal', 'Vendedor'],
+    roles: ['Administrador Principal', 'Contador'],
     category: 'General',
   },
   {
@@ -90,17 +82,25 @@ export const navLinks: NavLink[] = [
     moduleKey: 'sales',
   },
   {
-    href: '/quotes',
-    label: 'Cotizaciones',
-    icon: ClipboardList,
+    href: '/sales/new',
+    label: 'Terminal POS',
+    icon: ShoppingCart,
     roles: ['Administrador Principal', 'Vendedor'],
     category: 'Operaciones',
     moduleKey: 'sales',
   },
   {
     href: '/sales',
-    label: 'Ventas / POS',
-    icon: ShoppingCart,
+    label: 'Historial Ventas',
+    icon: Receipt,
+    roles: ['Administrador Principal', 'Vendedor', 'Contador'],
+    category: 'Operaciones',
+    moduleKey: 'sales',
+  },
+  {
+    href: '/quotes',
+    label: 'Presupuestos',
+    icon: ClipboardList,
     roles: ['Administrador Principal', 'Vendedor'],
     category: 'Operaciones',
     moduleKey: 'sales',
@@ -113,11 +113,13 @@ export const navLinks: NavLink[] = [
     category: 'Operaciones',
     moduleKey: 'sales',
   },
+
+  // --- SECCION LOGÍSTICA ---
   {
     href: '/inventory',
-    label: 'Existencias',
+    label: 'Stock Físico',
     icon: Boxes,
-    roles: ['Administrador Principal', 'Almacenista'],
+    roles: ['Administrador Principal', 'Almacenista', 'Vendedor'],
     category: 'Inventario',
     moduleKey: 'inventory',
   },
@@ -130,71 +132,82 @@ export const navLinks: NavLink[] = [
     moduleKey: 'inventory',
   },
   {
-    href: '/inventory/labels',
-    label: 'Etiquetado',
-    icon: Tag,
-    roles: ['Administrador Principal', 'Almacenista'],
-    category: 'Inventario',
-    moduleKey: 'inventory',
-  },
-  {
     href: '/purchases',
-    label: 'Compras (Entradas)',
+    label: 'Entrada Mercancía',
     icon: Truck,
     roles: ['Administrador Principal', 'Almacenista'],
     category: 'Inventario',
     moduleKey: 'inventory',
   },
   {
+    href: '/inventory/labels',
+    label: 'Imprimir Etiquetas',
+    icon: Tag,
+    roles: ['Administrador Principal', 'Almacenista'],
+    category: 'Inventario',
+    moduleKey: 'inventory',
+  },
+
+  // --- SECCION FINANCIERA ---
+  {
+    href: '/reports',
+    label: 'BI & Fiscal',
+    icon: BarChart3,
+    roles: ['Administrador Principal', 'Contador'],
+    category: 'Finanzas',
+    moduleKey: 'reports',
+  },
+  {
     href: '/expenses',
-    label: 'Gastos de Negocio',
-    icon: Receipt,
-    roles: ['Administrador Principal'],
+    label: 'Egresos',
+    icon: Wallet,
+    roles: ['Administrador Principal', 'Contador'],
     category: 'Finanzas',
     moduleKey: 'expenses',
   },
   {
     href: '/accounts',
     label: 'Cuentas x Cobrar',
-    icon: Wallet,
-    roles: ['Administrador Principal'],
+    icon: CreditCard,
+    roles: ['Administrador Principal', 'Contador'],
     category: 'Finanzas',
     moduleKey: 'expenses',
   },
+
+  // --- SECCION SEGURIDAD ---
   {
     href: '/users',
-    label: 'Directorio Personal',
+    label: 'Personal',
     icon: Users,
     roles: ['Administrador Principal'],
-    category: 'Seguridad',
+    category: 'Configuración',
   },
   {
     href: '/roles',
-    label: 'Roles y Permisos',
-    icon: UserCheck,
+    label: 'Permisos',
+    icon: ShieldCheck,
     roles: ['Administrador Principal'],
-    category: 'Seguridad',
+    category: 'Configuración',
   },
   {
     href: '/audit-logs',
-    label: 'Logs de Auditoría',
+    label: 'Auditoría',
     icon: Fingerprint,
-    roles: ['Administrador Principal'],
-    category: 'Seguridad',
-    moduleKey: 'reports',
+    roles: ['Administrador Principal', 'Contador'],
+    category: 'Configuración',
   },
   {
     href: '/settings',
-    label: 'Configuración',
+    label: 'Fiscal & Tienda',
     icon: Settings,
     roles: ['Administrador Principal'],
-    category: 'Seguridad',
+    category: 'Configuración',
   },
   {
     href: '/settings/hardware',
-    label: 'Hardware / Periféricos',
+    label: 'Hardware POS',
     icon: Printer,
     roles: ['Administrador Principal'],
-    category: 'Seguridad',
+    category: 'Configuración',
   },
 ];
