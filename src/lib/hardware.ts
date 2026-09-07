@@ -11,7 +11,9 @@ export async function conectarBalanza() {
   }
 
   try {
-    // Solicitar permiso y seleccionar puerto
+    // Solicitar permiso y seleccionar puerto. 
+    // Los puertos seriales son genéricos y no permiten filtrar por "clase" como USB.
+    // Se muestran los dispositivos seriales (COM/tty) conectados.
     const port = await (navigator as any).serial.requestPort();
     
     // Configuración estándar de balanzas comerciales
@@ -53,7 +55,7 @@ export async function conectarBalanza() {
       await port.close();
     }
   } catch (error: any) {
-    if (error.name === 'NotFoundError') throw new Error('Operación cancelada por el usuario.');
+    if (error.name === 'NotFoundError') throw new Error('Operación cancelada. No se seleccionó ningún dispositivo serial.');
     throw error;
   }
 }
@@ -65,9 +67,10 @@ export async function conectarImpresoraUSB() {
   }
 
   try {
-    // SE ELIMINAN FILTROS para máxima compatibilidad con impresoras genéricas
+    // FILTRO ESTRICTO: Solo dispositivos con Class Code 07 (Printers)
+    // Esto evita que aparezcan mouses, teclados o cámaras en la lista.
     const device = await navigator.usb.requestDevice({
-      filters: [] 
+      filters: [{ classCode: 7 }] 
     });
 
     await device.open();
@@ -100,9 +103,11 @@ export async function conectarImpresoraUSB() {
         await device.transferOut(2, data);
     }
     
-    return { name: device.productName || 'Dispositivo USB', status: 'Connected' };
+    return { name: device.productName || 'Impresora Térmica USB', status: 'Connected' };
   } catch (error: any) {
-    if (error.name === 'NotFoundError') throw new Error('No se seleccionó ningún dispositivo USB.');
+    if (error.name === 'NotFoundError') {
+        throw new Error('No se encontraron impresoras USB compatibles o se canceló la selección. Verifique que sea una impresora de clase 07.');
+    }
     throw new Error('Error de vinculación USB: ' + error.message);
   }
 }
@@ -115,8 +120,6 @@ export async function vincularDispositivoIP(ipAddress: string) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-    // En un entorno POS real, se suele requerir un WebSocket Bridge local
-    // porque los navegadores bloquean peticiones directas a IPs locales (Contenido Mixto)
     const response = await fetch(`http://${ipAddress}/status`, { 
       method: 'GET', 
       mode: 'no-cors',
