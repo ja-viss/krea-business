@@ -81,6 +81,7 @@ export default function InvoicePage() {
     
     const tasaBcv = rates.usd.usd;
     const totalUSD = sale.totalAmount / tasaBcv;
+    const totalCOP = totalUSD * (rates.cop?.rate || 0);
     
     // Mapeo de tamaños de letra
     const fontSizes = {
@@ -145,10 +146,22 @@ export default function InvoicePage() {
                     {/* SECCION DE TOTALES */}
                     <div className="mt-1.5 border-t border-black pt-1 flex flex-col gap-0.5 font-black uppercase">
                          <div className="flex justify-between text-[1.1em]"><span>TOTAL BS:</span><span>{formatCurrency(sale.totalAmount)}</span></div>
-                         <div className="flex justify-between text-[0.8em] border-t border-dotted border-black/50 pt-0.5">
-                            <span>REF. USD:</span>
-                            <span>${totalUSD.toFixed(2)}</span>
-                        </div>
+                         
+                         {store?.showOtherCurrenciesOnInvoice && (
+                             <div className="mt-1 space-y-0.5 border-t border-dotted border-black/50 pt-1 text-[0.8em]">
+                                <div className="flex justify-between">
+                                    <span>REF. USD:</span>
+                                    <span>${totalUSD.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>REF. COP:</span>
+                                    <span>{totalCOP.toLocaleString()}</span>
+                                </div>
+                                <div className="text-center text-[0.7em] italic lowercase mt-1">
+                                    Tasa BCV: {formatCurrency(tasaBcv)} Bs/$
+                                </div>
+                             </div>
+                         )}
                     </div>
 
                     {/* PIE DE PAGINA */}

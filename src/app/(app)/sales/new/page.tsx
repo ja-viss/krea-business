@@ -24,7 +24,8 @@ import {
     Package,
     Lock,
     Scale,
-    Coins
+    Coins,
+    QrCode
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -269,6 +270,16 @@ export default function NewSalePage() {
 
   const isLocked = storeConfig?.enforceCashControl && !cashSession;
 
+  // URL de QR Dinámico para Pago Móvil
+  const pagoMovilQR = useMemo(() => {
+      if (!storeConfig?.pagoMovil?.phone) return null;
+      const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
+      const amount = totals.ves.toFixed(2);
+      // Formato estándar para apps de banco en Venezuela: bancocode|telefono|cedula|monto
+      const qrData = `${bankCode}|${phone}|${idNumber}|${amount}`;
+      return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
+  }, [storeConfig, totals.ves]);
+
   return (
     <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
        <main className="flex-1 p-2 md:p-4 overflow-y-auto lg:overflow-hidden flex flex-col gap-4">
@@ -418,6 +429,21 @@ export default function NewSalePage() {
                                 <button key={m} type="button" className={cn("h-12 rounded-xl text-[9px] font-black uppercase border-2 transition-all", watchMethod === m ? "bg-primary text-white border-primary shadow-lg" : "bg-muted/40 border-transparent hover:bg-muted/60")} onClick={() => form.setValue('paymentMethod', m)}>{m}</button>
                             ))}
                         </div>
+
+                        {watchMethod === 'Pago Móvil' && pagoMovilQR && (
+                            <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/20 flex flex-col items-center animate-in zoom-in-95 duration-300">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <QrCode className="h-4 w-4 text-primary" />
+                                    <span className="text-[10px] font-black uppercase text-primary">Escanee para Pagar (VES)</span>
+                                </div>
+                                <div className="bg-white p-2 rounded-lg shadow-inner">
+                                    <img src={pagoMovilQR} alt="QR Pago Móvil" className="w-32 h-32" />
+                                </div>
+                                <p className="mt-2 text-[9px] font-bold text-muted-foreground uppercase text-center">
+                                    {storeConfig?.pagoMovil?.bankCode} • {storeConfig?.pagoMovil?.phone}
+                                </p>
+                            </div>
+                        )}
 
                         <div className="space-y-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
                              <div className="space-y-1">

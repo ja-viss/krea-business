@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package, Image as ImageIcon } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package, Image as ImageIcon, Calendar } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -43,11 +43,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format, differenceInDays } from 'date-fns';
 
 interface InventoryMetrics {
   totalValue: number;
   lowStockCount: number;
   outOfStockCount: number;
+  nearExpiryCount: number;
 }
 
 export default function InventoryPage() {
@@ -87,7 +89,13 @@ export default function InventoryPage() {
     const totalValue = productsData.reduce((acc, p) => acc + (p.stock * p.cost || 0), 0);
     const lowStockCount = productsData.filter(p => p.status === 'Stock Bajo').length;
     const outOfStockCount = productsData.filter(p => p.status === 'Sin Stock').length;
-    setMetrics({ totalValue, lowStockCount, outOfStockCount });
+    const nearExpiryCount = productsData.filter(p => {
+        if (!p.expiryDate) return false;
+        const days = differenceInDays(new Date(p.expiryDate), new Date());
+        return days >= 0 && days <= 15;
+    }).length;
+
+    setMetrics({ totalValue, lowStockCount, outOfStockCount, nearExpiryCount });
   };
 
   const handleGetRecommendations = async () => {
@@ -158,8 +166,8 @@ export default function InventoryPage() {
         
         {error && <Alert variant="destructive" className="border-2"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {loading ? Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {loading ? Array.from({ length: 4 }).map((_, i) => (
                 <Card key={i} className="border-2"><CardHeader className='pb-2'><Skeleton className='h-4 w-1/2' /></CardHeader><CardContent><Skeleton className='h-7 w-1/3' /></CardContent></Card>
             )) : metrics && (
                 <>
@@ -190,6 +198,16 @@ export default function InventoryPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-xl md:text-2xl font-black text-red-800">{metrics.outOfStockCount}</div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className={cn("border-2 shadow-sm transition-all", metrics.nearExpiryCount > 0 ? "border-red-500 bg-red-50" : "bg-muted/10")}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className={cn("text-[10px] font-black uppercase tracking-widest", metrics.nearExpiryCount > 0 ? "text-red-700" : "text-muted-foreground")}>Vencimientos</CardTitle>
+                            <Calendar className={cn("h-4 w-4", metrics.nearExpiryCount > 0 ? "text-red-600 animate-pulse" : "text-muted-foreground")} />
+                        </CardHeader>
+                        <CardContent>
+                            <div className={cn("text-xl md:text-2xl font-black", metrics.nearExpiryCount > 0 ? "text-red-800" : "")}>{metrics.nearExpiryCount}</div>
                         </CardContent>
                     </Card>
                 </>
@@ -226,8 +244,10 @@ export default function InventoryPage() {
                         <TableBody>
                             {loading ? Array.from({ length: 5 }).map((_, i) => (
                                 <TableRow key={i}><TableCell className="pl-6"><Skeleton className="h-12 w-full max-w-[200px]" /></TableCell><TableCell className="text-right"><Skeleton className="h-4 w-[80px]" /></TableCell><TableCell className='text-right'><Skeleton className="h-4 w-[40px]" /></TableCell><TableCell className="hidden lg:table-cell"><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell><TableCell className="pr-6"><Skeleton className="h-8 w-8 ml-auto" /></TableCell></TableRow>
-                            )) : filteredProducts.length > 0 ? filteredProducts.map((p) => (
-                                <TableRow key={p._id} className="hover:bg-primary/[0.02] group transition-colors">
+                            )) : filteredProducts.length > 0 ? filteredProducts.map((p) => {
+                                const isNearExpiry = p.expiryDate && differenceInDays(new Date(p.expiryDate), new Date()) <= 15;
+                                return (
+                                <TableRow key={p._id} className={cn("hover:bg-primary/[0.02] group transition-colors", isNearExpiry ? "bg-red-50/30" : "")}>
                                 <TableCell className="pl-6 py-4">
                                     <div className="flex items-center gap-3">
                                         <div className="h-10 w-10 rounded-lg bg-muted relative overflow-hidden flex-shrink-0 border-2 border-muted-foreground/10">
@@ -241,7 +261,14 @@ export default function InventoryPage() {
                                         </div>
                                         <div className="flex flex-col">
                                             <div className="font-black text-[11px] uppercase leading-tight line-clamp-1 group-hover:text-primary transition-colors">{p.name}</div>
-                                            <div className="text-[9px] font-mono font-bold text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-[9px] font-mono font-bold text-muted-foreground uppercase">{p.sku || String(p._id).slice(-6)}</div>
+                                                {p.expiryDate && (
+                                                    <span className={cn("text-[8px] font-black uppercase px-1.5 rounded-sm border", isNearExpiry ? "bg-red-100 text-red-700 border-red-200" : "bg-slate-100 text-slate-500 border-slate-200")}>
+                                                        Vence: {format(new Date(p.expiryDate), 'dd/MM/yy')}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </TableCell>
@@ -271,7 +298,7 @@ export default function InventoryPage() {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell></TableRow>
-                            )) : <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground italic font-medium">Sin coincidencias.</TableCell></TableRow>}
+                            )}) : <TableRow><TableCell colSpan={5} className="h-48 text-center text-muted-foreground italic font-medium">Sin coincidencias.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </div>

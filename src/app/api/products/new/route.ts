@@ -22,6 +22,7 @@ const productSchema = z.object({
   taxRate: z.number().default(0.16),
   location: z.string().optional(),
   imageUrl: z.string().optional(),
+  expiryDate: z.coerce.date().optional(),
 });
 
 export async function POST(req: NextRequest) {

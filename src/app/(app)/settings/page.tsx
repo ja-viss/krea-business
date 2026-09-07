@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode, Calculator, Printer } from 'lucide-react';
+import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode, Calculator, Printer, DollarSign } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,6 +45,7 @@ export default function SettingsPage() {
     footerMessage: '',
     enforceCashControl: true,
     ticketFontSize: 'sm' as 'sm' | 'md' | 'lg',
+    showOtherCurrenciesOnInvoice: false,
     pagoMovil: {
         bankCode: '0102',
         phone: '',
@@ -77,6 +78,7 @@ export default function SettingsPage() {
             footerMessage: data.footerMessage || 'Gracias por su compra',
             enforceCashControl: data.enforceCashControl !== false,
             ticketFontSize: data.ticketFontSize || 'sm',
+            showOtherCurrenciesOnInvoice: !!data.showOtherCurrenciesOnInvoice,
             pagoMovil: {
                 bankCode: data.pagoMovil?.bankCode || '0102',
                 phone: data.pagoMovil?.phone || '',
@@ -292,9 +294,22 @@ export default function SettingsPage() {
                                 <SelectItem value="lg" className="font-bold text-xs uppercase">Grande (Alta Visibilidad - 12px)</SelectItem>
                             </SelectContent>
                         </Select>
-                        <p className="text-[10px] text-muted-foreground italic font-medium">
-                            * El tamaño pequeño permite tickets más cortos y ahorra papel térmico.
-                        </p>
+                    </div>
+
+                    <Separator />
+
+                    <div className="p-4 rounded-xl border-2 border-dashed bg-muted/20 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <DollarSign className="h-5 w-5 text-primary" />
+                            <div className="space-y-0.5">
+                                <Label className="text-xs font-black uppercase">Mostrar Ref. Multimoneda en Factura</Label>
+                                <p className="text-[9px] text-muted-foreground font-medium italic">Incluye el total en USD y COP como guía para el cliente.</p>
+                            </div>
+                        </div>
+                        <Switch 
+                            checked={storeData.showOtherCurrenciesOnInvoice}
+                            onCheckedChange={(checked) => setStoreData({...storeData, showOtherCurrenciesOnInvoice: checked})}
+                        />
                     </div>
 
                     <Separator />

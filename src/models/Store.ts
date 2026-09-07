@@ -26,6 +26,7 @@ export interface IStore extends Document {
   };
   // Configuración de Impresión
   ticketFontSize: 'sm' | 'md' | 'lg';
+  showOtherCurrenciesOnInvoice: boolean;
   // Feature Flags (Módulos Modulares)
   enabledModules: {
     inventory: boolean;
@@ -67,6 +68,7 @@ const StoreSchema: Schema = new Schema({
   },
   // Impresión
   ticketFontSize: { type: String, enum: ['sm', 'md', 'lg'], default: 'sm' },
+  showOtherCurrenciesOnInvoice: { type: Boolean, default: false },
   enabledModules: {
     inventory: { type: Boolean, default: true },
     sales: { type: Boolean, default: true },

@@ -21,6 +21,9 @@ export const ProductSchema = new Schema({
   baseUnit: { type: String, enum: ['Unidad', 'Kilogramos', 'Gramos', 'Litros'], default: 'Unidad' },
   isWeightable: { type: Boolean, default: false },
 
+  // Control de Vencimiento
+  expiryDate: { type: Date },
+
   stock: { type: Number, required: true, default: 0 },
   minStock: { type: Number, required: true, default: 0 },
   cost: { type: Number, required: true, default: 0 },
