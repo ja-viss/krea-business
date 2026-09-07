@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -18,7 +19,7 @@ export default function ProductDetailsPage() {
     const router = useRouter();
     const productId = params.productId as string;
 
-    const [product, setProduct] = useState<IProduct | null>(null);
+    const [product, setProduct] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +32,7 @@ export default function ProductDetailsPage() {
                     if (!response.ok) {
                         throw new Error('No se pudo encontrar el producto.');
                     }
-                    const data: IProduct = await response.json();
+                    const data = await response.json();
                     setProduct(data);
                 } catch (err: any) {
                     setError(err.message);
@@ -98,6 +99,14 @@ export default function ProductDetailsPage() {
 
     if (!product) return null;
 
+    const unitAbbr = {
+        'Unidad': 'Und',
+        'Kilogramos': 'Kg',
+        'Gramos': 'Gr',
+        'Litros': 'L',
+        'Mililitros': 'Ml'
+    }[product.baseUnit as string] || 'Und';
+
     return (
         <div className="flex flex-1 flex-col">
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-6xl mx-auto w-full">
@@ -136,6 +145,7 @@ export default function ProductDetailsPage() {
                                         className="object-cover"
                                         sizes="(max-width: 768px) 100vw, 400px"
                                         priority
+                                        unoptimized
                                     />
                                  ) : (
                                     <div className="flex flex-col items-center gap-2 opacity-20">
@@ -157,7 +167,7 @@ export default function ProductDetailsPage() {
                             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-6">
                                 <DetailItem label="Nombre Oficial" value={product.name} className="col-span-full" />
                                 <DetailItem label="Marca / Fabr." value={product.brand} />
-                                <DetailItem label="Proveedor" value={product.vendor} />
+                                <DetailItem label="Unidad" value={`${product.baseUnit} (${unitAbbr})`} />
                                 <DetailItem label="Categoría" value={product.category} />
                                 <DetailItem label="Tipo" value={product.productType} />
                                 <DetailItem label="Ubicación" value={product.location} />
@@ -188,8 +198,8 @@ export default function ProductDetailsPage() {
                                         {product.status}
                                     </Badge>
                                  </div>
-                                <DetailItem label="Existencia" value={product.stock} />
-                                <DetailItem label="Mínimo" value={product.minStock} />
+                                <DetailItem label="Existencia" value={`${product.stock} ${unitAbbr}`} />
+                                <DetailItem label="Mínimo" value={`${product.minStock} ${unitAbbr}`} />
                                 <DetailItem label="Precio Venta" value={formatCurrency(product.price)} />
                             </CardContent>
                         </Card>

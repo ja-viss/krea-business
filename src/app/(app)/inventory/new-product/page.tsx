@@ -30,7 +30,7 @@ import { es } from 'date-fns/locale';
 const productSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
   productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio', 'Compuesto']),
-  baseUnit: z.enum(['Unidad', 'Kilogramos', 'Gramos', 'Litros']).default('Unidad'),
+  baseUnit: z.enum(['Unidad', 'Kilogramos', 'Gramos', 'Litros', 'Mililitros']).default('Unidad'),
   isWeightable: z.boolean().default(false),
   barcode: z.string().optional(),
   sku: z.string().optional(),
@@ -81,6 +81,7 @@ export default function NewProductPage() {
   });
 
   const watchIsWeightable = form.watch('isWeightable');
+  const watchBaseUnit = form.watch('baseUnit');
   const watchName = form.watch('name');
   const watchImageUrl = form.watch('imageUrl');
   const watchPrice = form.watch('price');
@@ -185,23 +186,46 @@ export default function NewProductPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6 pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField control={form.control} name="baseUnit" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Unidad de Medida</FormLabel>
+                                <Select onValueChange={(v) => {
+                                    field.onChange(v);
+                                    if (v === 'Kilogramos' || v === 'Gramos' || v === 'Litros') {
+                                        form.setValue('isWeightable', true);
+                                    } else {
+                                        form.setValue('isWeightable', false);
+                                    }
+                                }} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger className='h-11 font-bold rounded-xl border-slate-200'><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent className='rounded-xl'>
+                                        <SelectItem value="Unidad" className="font-bold">UNIDAD (Und)</SelectItem>
+                                        <SelectItem value="Kilogramos" className="font-bold">KILOGRAMOS (Kg)</SelectItem>
+                                        <SelectItem value="Gramos" className="font-bold">GRAMOS (Gr)</SelectItem>
+                                        <SelectItem value="Litros" className="font-bold">LITROS (L)</SelectItem>
+                                        <SelectItem value="Mililitros" className="font-bold">MILILITROS (Ml)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )} />
+
                         <FormField control={form.control} name="isWeightable" render={({ field }) => (
                             <FormItem className={cn("flex flex-row items-center justify-between rounded-xl border-2 p-3 transition-all", field.value ? "bg-amber-50/50 border-amber-200" : "bg-slate-50/30 border-dashed border-slate-200")}>
                             <div className="space-y-0.5">
                                 <div className="flex items-center gap-2">
                                     <Scale className={cn("h-4 w-4", field.value ? "text-amber-600" : "text-slate-400")} />
-                                    <FormLabel className={cn('text-xs font-black uppercase', field.value ? 'text-amber-900' : 'text-slate-600')}>Venta a Granel</FormLabel>
+                                    <FormLabel className={cn('text-[9px] font-black uppercase', field.value ? 'text-amber-900' : 'text-slate-600')}>Venta a Granel</FormLabel>
                                 </div>
-                                <p className='text-[9px] font-bold text-slate-400 italic'>Activa cálculo de Kg/Gr</p>
+                                <p className='text-[7px] font-bold text-slate-400 italic'>Soporta Balanza</p>
                             </div>
-                            <FormControl><Switch checked={field.value} onCheckedChange={(v) => { field.onChange(v); form.setValue('baseUnit', v ? 'Kilogramos' : 'Unidad'); }} /></FormControl>
+                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             </FormItem>
                         )} />
 
                         <FormField control={form.control} name="expiryDate" render={({ field }) => (
                             <FormItem className="flex flex-col justify-center rounded-xl border-2 border-dashed bg-slate-50/30 p-3">
-                                <FormLabel className='text-[10px] font-black uppercase text-slate-500 mb-1'>Fecha de Vencimiento</FormLabel>
+                                <FormLabel className='text-[10px] font-black uppercase text-slate-500 mb-1'>Vencimiento</FormLabel>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <FormControl>
@@ -222,7 +246,7 @@ export default function NewProductPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField control={form.control} name="stock" render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase text-slate-500'>{watchIsWeightable ? 'Disponible (Kg)' : 'Disponible (Und)'}</FormLabel>
+                              <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Existencia ({watchBaseUnit})</FormLabel>
                               <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-slate-200 text-center bg-slate-50/50" {...field} value={field.value ?? 0} /></FormControl>
                           </FormItem>
                       )} />

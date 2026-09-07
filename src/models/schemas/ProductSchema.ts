@@ -18,7 +18,7 @@ export const ProductSchema = new Schema({
   category: { type: String },
   
   // Gestión de Unidades y Pesaje
-  baseUnit: { type: String, enum: ['Unidad', 'Kilogramos', 'Gramos', 'Litros'], default: 'Unidad' },
+  baseUnit: { type: String, enum: ['Unidad', 'Kilogramos', 'Gramos', 'Litros', 'Mililitros'], default: 'Unidad' },
   isWeightable: { type: Boolean, default: false },
 
   // Control de Vencimiento
