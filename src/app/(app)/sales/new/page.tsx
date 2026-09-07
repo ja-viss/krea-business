@@ -270,14 +270,28 @@ export default function NewSalePage() {
 
   const isLocked = storeConfig?.enforceCashControl && !cashSession;
 
-  // URL de QR Dinámico para Pago Móvil
+  /**
+   * ESTRUCTURA QR BAJO ESTÁNDAR SUICHE 7B (BCV/PAGO MÓVIL)
+   * Formato: BANCO;TELEFONO;RIF;MONTO;CONCEPTO
+   */
   const pagoMovilQR = useMemo(() => {
-      if (!storeConfig?.pagoMovil?.phone) return null;
+      if (!storeConfig?.pagoMovil?.phone || !storeConfig?.pagoMovil?.idNumber) return null;
+      
       const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
+      
+      // 1. Sanitizar Identificación (Mayúsculas, sin puntos ni guiones)
+      const cleanId = idNumber.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      
+      // 2. Sanitizar Teléfono (11 dígitos, solo números)
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      
+      // 3. Formatear Monto (2 decimales, punto como separador)
       const amount = totals.ves.toFixed(2);
-      // Formato estándar para apps de banco en Venezuela: bancocode|telefono|cedula|monto
-      const qrData = `${bankCode}|${phone}|${idNumber}|${amount}`;
-      return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
+      
+      // 4. Construir cadena Suiche 7B
+      const qrData = `${bankCode};${cleanPhone};${cleanId};${amount};FacturaKrea`;
+      
+      return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}`;
   }, [storeConfig, totals.ves]);
 
   return (
@@ -434,13 +448,13 @@ export default function NewSalePage() {
                             <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/20 flex flex-col items-center animate-in zoom-in-95 duration-300">
                                 <div className="flex items-center gap-2 mb-2">
                                     <QrCode className="h-4 w-4 text-primary" />
-                                    <span className="text-[10px] font-black uppercase text-primary">Escanee para Pagar (VES)</span>
+                                    <span className="text-[10px] font-black uppercase text-primary">QR INTERBANCARIO (BCV)</span>
                                 </div>
                                 <div className="bg-white p-2 rounded-lg shadow-inner">
-                                    <img src={pagoMovilQR} alt="QR Pago Móvil" className="w-32 h-32" />
+                                    <img src={pagoMovilQR} alt="QR Pago Móvil Suiche 7B" className="w-32 h-32" />
                                 </div>
                                 <p className="mt-2 text-[9px] font-bold text-muted-foreground uppercase text-center">
-                                    {storeConfig?.pagoMovil?.bankCode} • {storeConfig?.pagoMovil?.phone}
+                                    {storeConfig?.pagoMovil?.bankCode} • {storeConfig?.pagoMovil?.phone} • {storeConfig?.pagoMovil?.idNumber}
                                 </p>
                             </div>
                         )}

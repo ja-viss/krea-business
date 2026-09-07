@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, MapPin, Calculator, Printer, DollarSign, Lock } from 'lucide-react';
+import { Loader2, Save, MapPin, Calculator, Printer, DollarSign, Lock, QrCode, ShieldAlert } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -245,9 +245,13 @@ export default function SettingsPage() {
                 <CardContent className="space-y-6 pt-6">
                     <div className="p-4 bg-blue-50 border-2 border-blue-100 rounded-xl flex items-start gap-3">
                         <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                        <p className="text-[11px] font-bold text-blue-800 leading-tight">
-                            Asegúrese de que el número telefónico y RIF coincidan exactamente con los registrados en su banca en línea.
-                        </p>
+                        <div className="text-[11px] font-bold text-blue-800 leading-tight space-y-2">
+                            <p>IMPORTANTE: Para que el QR sea válido en apps bancarias, ingrese los datos EXACTAMENTE como están en el banco.</p>
+                            <ul className="list-disc pl-4 space-y-1">
+                                <li><strong>Teléfono:</strong> 11 dígitos (ej: 04120000000).</li>
+                                <li><strong>ID/RIF:</strong> Letra + Número, sin puntos ni guiones (ej: V12345678 o J123456789).</li>
+                            </ul>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -279,11 +283,11 @@ export default function SettingsPage() {
                             />
                         </div>
                         <div className="space-y-2 sm:col-span-2">
-                            <Label className="text-[10px] font-black uppercase text-primary">Cédula o RIF del Titular</Label>
+                            <Label className="text-[10px] font-black uppercase text-primary">Cédula o RIF del Titular (Sin puntos)</Label>
                             <Input 
-                                placeholder="Ej: J-12345678-9" 
+                                placeholder="Ej: V12345678 o J123456789" 
                                 value={storeData.pagoMovil.idNumber}
-                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, idNumber: e.target.value }})}
+                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, idNumber: e.target.value.toUpperCase() }})}
                                 className="font-mono font-bold uppercase h-12 border-2"
                             />
                         </div>
