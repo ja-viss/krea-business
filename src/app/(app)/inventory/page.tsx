@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package, Image as ImageIcon, Calendar } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package, Image as ImageIcon, Calendar, Trash2, Loader2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -29,6 +29,8 @@ import { IProduct } from '@/models/Product';
 import { getInventoryOptimizationRecommendations, InventoryOptimizationInput } from '@/ai/flows/inventory-optimization-recommendations';
 import { TopStockChart } from '@/components/inventory/top-stock-chart';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -40,7 +42,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -62,7 +72,13 @@ export default function InventoryPage() {
   const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modals States
   const [productToDelete, setProductToDelete] = useState<IProduct | null>(null);
+  const [adjustingProduct, setAdjustingProduct] = useState<IProduct | null>(null);
+  const [adjustmentQty, setAdjustmentQty] = useState('0');
+  const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [isAdjusting, setIsAdjusting] = useState(false);
 
   const fetchProducts = async () => {
     try {
@@ -131,6 +147,49 @@ export default function InventoryPage() {
        toast({ variant: 'destructive', title: 'Error', description: err.message });
     } finally {
         setProductToDelete(null);
+    }
+  };
+
+  const handleRegisterLoss = async () => {
+    if (!adjustingProduct || isAdjusting) return;
+    
+    const qty = parseFloat(adjustmentQty);
+    if (isNaN(qty) || qty <= 0) {
+        toast({ variant: 'destructive', title: "Cantidad inválida" });
+        return;
+    }
+
+    if (adjustmentReason.trim().length < 5) {
+        toast({ variant: 'destructive', title: "Justificación requerida", description: "Explique brevemente el motivo de la pérdida." });
+        return;
+    }
+
+    setIsAdjusting(true);
+    try {
+        const res = await fetch(`/api/products/${adjustingProduct._id}/adjust-stock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                quantity: qty,
+                reason: adjustmentReason,
+                userId: localStorage.getItem('userId'),
+                userName: localStorage.getItem('userName'),
+                storeId: localStorage.getItem('storeId')
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        toast({ title: "Ajuste Procesado", description: "El stock ha sido descontado y la auditoría registrada." });
+        setAdjustingProduct(null);
+        setAdjustmentQty('0');
+        setAdjustmentReason('');
+        fetchProducts();
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Fallo de Ajuste", description: e.message });
+    } finally {
+        setIsAdjusting(false);
     }
   };
 
@@ -291,6 +350,9 @@ export default function InventoryPage() {
                                             <DropdownMenuItem className="font-bold text-xs uppercase p-3 cursor-pointer" onSelect={() => router.push(`/inventory/${p._id}/edit`)}>
                                                 <BarChart3 className="mr-2 h-4 w-4" /> Modificar
                                             </DropdownMenuItem>
+                                            <DropdownMenuItem className="font-black text-xs uppercase p-3 cursor-pointer text-amber-600" onSelect={() => setAdjustingProduct(p)}>
+                                                <Trash2 className="mr-2 h-4 w-4" /> Registrar Pérdida
+                                            </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem className="text-red-600 font-black text-xs uppercase p-3 cursor-pointer" onSelect={() => setProductToDelete(p)}>
                                                 <Ban className="mr-2 h-4 w-4" /> Eliminar
@@ -348,6 +410,58 @@ export default function InventoryPage() {
           </div>
         </div>
         
+        {/* DIALOGO DE MERMA / PÉRDIDA */}
+        <Dialog open={!!adjustingProduct} onOpenChange={() => setAdjustingProduct(null)}>
+            <DialogContent className='sm:max-w-[450px] border-4 border-amber-500'>
+                <DialogHeader className='text-center'>
+                    <div className='mx-auto w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-2'><Trash2 className='h-8 w-8 text-amber-600'/></div>
+                    <DialogTitle className='text-xl font-black uppercase italic tracking-tight'>Registrar Baja / Merma</DialogTitle>
+                    <DialogDescription className='font-bold text-amber-800 uppercase text-[10px]'>
+                        Esta acción descontará el stock físico permanentemente.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className='py-4 space-y-6'>
+                    <div className='bg-muted/30 p-3 rounded-xl border-2 border-dashed'>
+                        <p className='text-[10px] font-black uppercase opacity-50'>Producto afectado:</p>
+                        <p className='text-sm font-black uppercase text-primary'>{adjustingProduct?.name}</p>
+                        <p className='text-[9px] font-bold opacity-60'>Stock Actual: {adjustingProduct?.stock} {adjustingProduct?.isWeightable ? 'Kg' : 'Und'}</p>
+                    </div>
+
+                    <div className='space-y-2'>
+                        <Label className='text-[10px] font-black uppercase'>Cantidad a descontar</Label>
+                        <Input 
+                            type="number" 
+                            step="0.001"
+                            placeholder="0.00"
+                            className='h-14 text-3xl font-black text-center border-2' 
+                            value={adjustmentQty}
+                            onChange={e => setAdjustmentQty(e.target.value)}
+                        />
+                    </div>
+
+                    <div className='space-y-2'>
+                        <Label className='text-[10px] font-black uppercase text-red-600'>Justificación (Motivo de la pérdida)</Label>
+                        <Textarea 
+                            placeholder="Ej: Producto vencido en estantería / Verdura dañada por humedad..." 
+                            className='min-h-[100px] font-medium text-xs border-2'
+                            value={adjustmentReason}
+                            onChange={e => setAdjustmentReason(e.target.value)}
+                        />
+                    </div>
+                </div>
+                <DialogFooter className='flex-col gap-2 sm:flex-row'>
+                    <Button variant="outline" className='font-bold flex-1' onClick={() => setAdjustingProduct(null)}>CANCELAR</Button>
+                    <Button 
+                        disabled={isAdjusting}
+                        className='font-black uppercase h-12 px-8 flex-1 bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-200' 
+                        onClick={handleRegisterLoss}
+                    >
+                        {isAdjusting ? <Loader2 className='animate-spin' /> : "Confirmar Baja"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
         <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
             <AlertDialogContent className="border-4 shadow-2xl mx-4">
                 <AlertDialogHeader>
