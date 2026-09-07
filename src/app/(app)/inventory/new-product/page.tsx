@@ -15,14 +15,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Loader2, Scale, Package, Tag, Coins, Camera, ScanLine, Plus, Wand2, Link2, Image as ImageIcon, Briefcase, Boxes, Info, CheckCircle2, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Loader2, Scale, Camera, ScanLine, Plus, Wand2, Link2, Image as ImageIcon, Briefcase, Boxes, Coins, Save, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { Separator } from '@/components/ui/separator';
 
 const productSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
@@ -84,23 +83,23 @@ export default function NewProductPage() {
 
   const handleBarcodeScan = (scannedCode: string) => {
     form.setValue('barcode', scannedCode);
-    toast({ title: 'Código Escaneado', description: `Se ha registrado: ${scannedCode}` });
+    toast({ title: 'Código Escaneado', description: `Registrado: ${scannedCode}` });
     setShowScanner(false);
   };
 
   const handleAutoSearchImage = async () => {
     if (!watchName || watchName.length < 3) {
-      toast({ variant: 'destructive', title: 'Nombre requerido', description: 'Escribe el nombre del producto primero.' });
+      toast({ variant: 'destructive', title: 'Nombre requerido', description: 'Mín. 3 caracteres para buscar.' });
       return;
     }
     setSearchingImage(true);
     try {
-      // Usar solo la primera palabra para mayor éxito en la búsqueda
       const firstWord = watchName.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       const timestamp = new Date().getTime();
       const autoUrl = `https://loremflickr.com/400/400/${firstWord}?lock=${timestamp}`;
       form.setValue('imageUrl', autoUrl, { shouldDirty: true });
       setImgKey(timestamp);
+      toast({ title: 'Imagen Localizada', description: `Se ha vinculado una referencia para: ${watchName}` });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error de búsqueda' });
     } finally {
@@ -112,17 +111,17 @@ export default function NewProductPage() {
     setIsSubmitting(true);
     try {
         const storeId = localStorage.getItem('storeId');
-        if (!storeId) throw new Error('Sesión no válida');
+        if (!storeId) throw new Error('Sesión caducada');
         const response = await fetch('/api/products/new', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...data, storeId }),
         });
-        if (!response.ok) throw new Error('Fallo al guardar producto');
-        toast({ title: 'Éxito', description: `"${data.name}" registrado en sistema.` });
+        if (!response.ok) throw new Error('Error al procesar el alta');
+        toast({ title: 'Registro Exitoso', description: `"${data.name}" añadido al catálogo.` });
         router.push('/inventory');
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message });
+        toast({ variant: 'destructive', title: 'Fallo de Guardado', description: error.message });
     } finally {
         setIsSubmitting(false);
     }
@@ -132,13 +131,13 @@ export default function NewProductPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-[#f8fafc]">
-      <main className="flex-1 space-y-8 p-4 pt-6 md:p-8 max-w-[1400px] mx-auto w-full">
+      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1300px] mx-auto w-full">
         <PageHeader
-          title="Registro de Mercancía"
-          description="Gestión profesional de catálogo e inventario."
+          title="Registro de Artículos"
+          description="Gestión maestra de catálogo e inventario profesional."
           actions={
-            <Button variant="outline" asChild className="rounded-xl border-2 font-bold h-11 px-6 hover:bg-white transition-all shadow-sm">
-              <Link href="/inventory"><ChevronLeft className='mr-2 h-4 w-4'/> Cancelar</Link>
+            <Button variant="outline" asChild className="rounded-xl font-bold h-11 px-6 shadow-sm border-2">
+              <Link href="/inventory"><ChevronLeft className='mr-2 h-4 w-4'/> Volver</Link>
             </Button>
           }
         />
@@ -147,96 +146,94 @@ export default function NewProductPage() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
               
-              {/* COLUMNA IZQUIERDA: INFORMACIÓN MAESTRA (8/12) */}
+              {/* ÁREA PRINCIPAL (8/12) */}
               <div className="space-y-6 lg:col-span-8">
                 
-                {/* CARD 1: IDENTIDAD */}
                 <Card className='border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white'>
-                  <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-4'>
-                    <CardTitle className='text-sm font-black uppercase flex items-center gap-2 text-slate-700 tracking-tight'>
-                        <Briefcase className="h-4 w-4 text-primary" /> Ficha de Identidad
+                  <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-3'>
+                    <CardTitle className='text-[11px] font-black uppercase flex items-center gap-2 text-slate-700 tracking-wider'>
+                        <Briefcase className="h-3.5 w-3.5 text-primary" /> Información de Identidad
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6 pt-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <CardContent className="space-y-5 pt-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <FormField control={form.control} name="name" render={({ field }) => (
                           <FormItem className='md:col-span-2'>
                             <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Nombre del Producto</FormLabel>
                             <div className="flex gap-2">
-                              <FormControl><Input placeholder="Ej: Arroz Blanco Premium 1kg" className="h-12 text-base font-bold rounded-xl border-slate-200 focus:border-primary focus:ring-0 transition-all" {...field} /></FormControl>
-                              <Button type="button" variant="secondary" className="h-12 px-4 rounded-xl bg-amber-500 text-white hover:bg-amber-600 shadow-md group shrink-0" onClick={handleAutoSearchImage} disabled={searchingImage}>
-                                {searchingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4 group-hover:rotate-12 transition-transform" />}
+                              <FormControl><Input placeholder="Ej: Harina de Maíz Precocida" className="h-11 text-base font-bold rounded-xl border-slate-200" {...field} /></FormControl>
+                              <Button type="button" variant="secondary" className="h-11 px-3 rounded-xl bg-amber-500 text-white hover:bg-amber-600 shrink-0 shadow-sm" onClick={handleAutoSearchImage} disabled={searchingImage}>
+                                {searchingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                               </Button>
                             </div>
                           </FormItem>
                         )} />
                         
                         <FormField control={form.control} name="category" render={({ field }) => (
-                            <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-500'>Categoría / Familia</FormLabel>
-                            <FormControl><Input placeholder="Ej: Alimentos" className="h-12 font-bold rounded-xl border-slate-200" {...field} /></FormControl></FormItem>
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-500'>Categoría</FormLabel>
+                            <FormControl><Input placeholder="Ej: Alimentos" className="h-11 font-bold rounded-xl border-slate-200" {...field} /></FormControl></FormItem>
                         )} />
 
                         <FormField control={form.control} name="productType" render={({ field }) => (
-                            <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-500'>Tipo de Artículo</FormLabel>
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-500'>Tipo de Ítem</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger className='h-12 font-bold rounded-xl border-slate-200'><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent className='rounded-xl'><SelectItem value="Inventariable" className="font-bold">CON EXISTENCIA</SelectItem><SelectItem value="No Inventariable" className="font-bold">SIN CONTROL STOCK</SelectItem><SelectItem value="Servicio" className="font-bold">SERVICIO / LABOR</SelectItem><SelectItem value="Compuesto" className="font-bold">KIT / COMBO</SelectItem></SelectContent></Select>
+                                    <FormControl><SelectTrigger className='h-11 font-bold rounded-xl border-slate-200'><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent className='rounded-xl'><SelectItem value="Inventariable" className="font-bold">INVENTARIABLE</SelectItem><SelectItem value="No Inventariable" className="font-bold">NO INVENTARIABLE</SelectItem><SelectItem value="Servicio" className="font-bold">SERVICIO</SelectItem><SelectItem value="Compuesto" className="font-bold">KIT / COMBO</SelectItem></SelectContent></Select>
                             </FormItem>
                         )} />
                       </div>
                   </CardContent>
                 </Card>
 
-                {/* CARD 2: ALMACÉN Y PESO */}
                 <Card className='border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white'>
-                  <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-4'>
-                    <CardTitle className='text-sm font-black uppercase flex items-center gap-2 text-slate-700 tracking-tight'>
-                        <Boxes className="h-4 w-4 text-primary" /> Control de Almacén
+                  <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-3'>
+                    <CardTitle className='text-[11px] font-black uppercase flex items-center gap-2 text-slate-700 tracking-wider'>
+                        <Boxes className="h-3.5 w-3.5 text-primary" /> Almacén y Logística
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-8 pt-6">
+                  <CardContent className="space-y-6 pt-6">
                     <FormField control={form.control} name="isWeightable" render={({ field }) => (
-                        <FormItem className={cn("flex flex-row items-center justify-between rounded-2xl border-2 p-4 transition-all duration-300", field.value ? "bg-amber-50/50 border-amber-200 shadow-sm" : "bg-slate-50/30 border-dashed border-slate-200")}>
+                        <FormItem className={cn("flex flex-row items-center justify-between rounded-xl border-2 p-3 transition-all", field.value ? "bg-amber-50/50 border-amber-200" : "bg-slate-50/30 border-dashed border-slate-200")}>
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
-                                <Scale className={cn("h-5 w-5", field.value ? "text-amber-600" : "text-slate-400")} />
+                                <Scale className={cn("h-4 w-4", field.value ? "text-amber-600" : "text-slate-400")} />
                                 <FormLabel className={cn('text-xs font-black uppercase', field.value ? 'text-amber-900' : 'text-slate-600')}>Venta a Granel (Peso)</FormLabel>
                             </div>
-                            <p className='text-[10px] font-bold text-slate-400 italic'>Habilita entrada de Kg/Gr en la terminal de venta</p>
+                            <p className='text-[9px] font-bold text-slate-400 italic'>Activa cálculo de Kg/Gr en Caja</p>
                           </div>
                           <FormControl><Switch checked={field.value} onCheckedChange={(v) => { field.onChange(v); form.setValue('baseUnit', v ? 'Kilogramos' : 'Unidad'); }} /></FormControl>
                         </FormItem>
                     )} />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField control={form.control} name="stock" render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase text-slate-500'>{watchIsWeightable ? 'Existencia Actual (Kilos)' : 'Existencia Actual (Unidades)'}</FormLabel>
-                              <FormControl><Input type="number" step="0.001" className="h-14 font-black rounded-xl border-slate-200 text-lg bg-slate-50/50 focus:bg-white text-center" {...field} /></FormControl>
+                              <FormLabel className='text-[10px] font-black uppercase text-slate-500'>{watchIsWeightable ? 'Disponible (Kg)' : 'Disponible (Und)'}</FormLabel>
+                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-slate-200 text-center bg-slate-50/50" {...field} /></FormControl>
                           </FormItem>
                       )} />
                       <FormField control={form.control} name="minStock" render={({ field }) => (
                           <FormItem>
-                              <FormLabel className='text-[10px] font-black uppercase text-red-500'>Stock Mínimo (Alerta)</FormLabel>
-                              <FormControl><Input type="number" step="0.001" className="h-14 font-black rounded-xl border-red-100 bg-red-50/20 text-lg text-center" {...field} /></FormControl>
+                              <FormLabel className='text-[10px] font-black uppercase text-red-500'>Mínimo (Alerta)</FormLabel>
+                              <FormControl><Input type="number" step="0.001" className="h-12 font-black rounded-xl border-red-100 bg-red-50/10 text-center" {...field} /></FormControl>
                           </FormItem>
                       )} />
                     </div>
 
                     <FormField control={form.control} name="barcode" render={({ field }) => (
                         <FormItem>
-                            <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Identificador EAN / SKU</FormLabel>
+                            <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Código EAN / SKU</FormLabel>
                             <div className="flex gap-2">
                                 <FormControl>
                                     <div className="relative flex-1 group">
-                                        <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-30 group-focus-within:opacity-100 transition-opacity" />
-                                        <Input placeholder="Escanee o escriba el código" className="h-14 pl-12 font-mono font-bold rounded-xl border-slate-200" {...field} />
+                                        <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-30" />
+                                        <Input placeholder="Escriba o escanee código" className="h-12 pl-11 font-mono font-bold rounded-xl border-slate-200" {...field} />
                                     </div>
                                 </FormControl>
-                                <Button type="button" variant="outline" size="icon" className='h-14 w-14 rounded-xl border-2 hover:bg-primary/5 transition-all shrink-0' onClick={() => setShowScanner(true)}>
-                                    <Camera className="h-6 w-6" />
+                                <Button type="button" variant="outline" size="icon" className='h-12 w-12 rounded-xl border-2' onClick={() => setShowScanner(true)}>
+                                    <Camera className="h-5 w-5" />
                                 </Button>
                             </div>
                         </FormItem>
@@ -245,72 +242,62 @@ export default function NewProductPage() {
                 </Card>
               </div>
 
-              {/* COLUMNA DERECHA: VISUAL Y FINANZAS (4/12) */}
-              <div className="space-y-6 lg:col-span-4 lg:sticky lg:top-8">
+              {/* BARRA LATERAL (4/12) */}
+              <div className="space-y-6 lg:col-span-4">
                 
-                {/* CARD 3: IDENTIDAD VISUAL COMPACTA */}
                 <Card className='border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white'>
                   <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-3'>
-                    <CardTitle className='text-xs font-black uppercase flex items-center gap-2 text-slate-500 tracking-tight'>
-                        <ImageIcon className='h-3 w-3' /> Identidad Visual
+                    <CardTitle className='text-[10px] font-black uppercase flex items-center gap-2 text-slate-500'>
+                        <ImageIcon className='h-3.5 w-3.5' /> Identidad Visual
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-4 space-y-4">
-                    <div className="h-48 w-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50 relative overflow-hidden group">
+                    <div className="h-40 w-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/30 relative overflow-hidden group">
                         {watchImageUrl ? (
-                            <Image key={imgKey} src={watchImageUrl} alt="Preview" fill className="object-contain p-2 transition-transform duration-500" unoptimized />
+                            <Image key={imgKey} src={watchImageUrl} alt="Preview" fill className="object-contain p-3 transition-transform" unoptimized />
                         ) : (
                             <div className="flex flex-col items-center opacity-20">
                                 <ImageIcon className="h-8 w-8 mb-2" />
-                                <span className="text-[8px] font-black uppercase text-center">Sin Imagen<br/>Asignada</span>
+                                <span className="text-[8px] font-black uppercase text-center">Sin Imagen</span>
                             </div>
                         )}
                         {searchingImage && <div className='absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center'><Loader2 className='h-6 w-6 text-primary animate-spin' /></div>}
                     </div>
                     <FormField control={form.control} name="imageUrl" render={({ field }) => (
-                        <FormItem><div className="relative">
-                            <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <FormControl><Input placeholder="Enlace de imagen" className="h-9 pl-9 font-mono text-[9px] rounded-lg border-slate-100 bg-slate-50/50" {...field} /></FormControl>
+                        <FormItem><div className="relative"><Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <FormControl><Input placeholder="Enlace de la imagen (URL)" className="h-9 pl-9 font-mono text-[10px] rounded-lg border-slate-100 bg-slate-50/50" {...field} /></FormControl>
                         </div></FormItem>
                     )} />
                   </CardContent>
                 </Card>
 
-                {/* CARD 4: PANEL FINANCIERO */}
-                <Card className='border-none shadow-2xl rounded-2xl overflow-hidden bg-white border-2 border-primary/5'>
+                <Card className='border-none shadow-2xl rounded-2xl overflow-hidden bg-white'>
                   <div className='bg-gradient-to-r from-primary to-purple-600 p-4 text-white'>
                     <div className='flex justify-between items-center'>
-                        <CardTitle className='text-[10px] font-black uppercase flex items-center gap-2 italic tracking-widest'>
-                            <Coins className='h-3.5 w-3.5' /> Valorización
-                        </CardTitle>
+                        <CardTitle className='text-[10px] font-black uppercase flex items-center gap-2 italic tracking-widest'><Coins className='h-4 w-4' /> Valorización</CardTitle>
                         <Badge className='bg-white/20 text-white border-none font-black text-[7px]'>KREA SUITE</Badge>
                     </div>
                   </div>
                   <CardContent className='pt-6 space-y-5 px-6'>
                       <FormField control={form.control} name="cost" render={({ field }) => (
-                          <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-400'>Costo Unitario (Bs.)</FormLabel><FormControl><Input type="number" step="0.01" className='h-11 border-slate-100 font-bold text-center text-base rounded-xl bg-slate-50/30' {...field} /></FormControl></FormItem>
+                          <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-400'>Costo de Compra (Bs.)</FormLabel><FormControl><Input type="number" step="0.01" className='h-11 border-slate-100 font-bold text-center text-base rounded-xl bg-slate-50/50' {...field} /></FormControl></FormItem>
                       )} />
 
                       <FormField control={form.control} name="price" render={({ field }) => (
                           <FormItem>
-                            <div className='flex justify-between items-end mb-1.5'>
-                                <FormLabel className='text-[10px] font-black uppercase text-primary'>Precio PVP</FormLabel>
-                                <Badge variant="secondary" className="font-black text-[10px] text-green-600 bg-green-50 border-green-100 px-2.5 py-0.5 rounded-full flex gap-1">
-                                    <TrendingUp className='h-3 w-3' /> {margin}%
-                                </Badge>
-                            </div>
-                            <FormControl><Input type="number" step="0.01" className='text-4xl font-black h-20 border-2 border-primary/10 rounded-2xl text-center bg-white shadow-inner text-primary focus:border-primary/30' {...field} /></FormControl>
+                            <div className='flex justify-between items-end mb-1'><FormLabel className='text-[10px] font-black uppercase text-primary'>Precio Venta (PVP)</FormLabel><Badge variant="secondary" className="font-black text-[9px] text-green-600 bg-green-50 border-green-100 px-2 py-0.5 rounded-full flex gap-1"><TrendingUp className='h-3 w-3' /> {margin}%</Badge></div>
+                            <FormControl><Input type="number" step="0.01" className='text-3xl font-black h-16 border-2 border-primary/10 rounded-2xl text-center text-primary shadow-inner' {...field} /></FormControl>
                           </FormItem>
                       )} />
 
                       <FormField control={form.control} name="taxRate" render={({ field }) => (
-                          <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-400'>Carga Fiscal (IVA)</FormLabel><Select onValueChange={(v) => field.onChange(parseFloat(v))} defaultValue={String(field.value)}><FormControl><SelectTrigger className='h-11 font-bold rounded-xl border-slate-100 bg-slate-50/30'><SelectValue /></SelectTrigger></FormControl>
-                          <SelectContent className='rounded-xl'><SelectItem value="0.16" className="font-bold py-2 uppercase text-[10px]">General (16%)</SelectItem><SelectItem value="0.08" className="font-bold py-2 uppercase text-[10px]">Reducido (8%)</SelectItem><SelectItem value="0" className="font-bold py-2 uppercase text-[10px]">Exento (0%)</SelectItem></SelectContent></Select></FormItem>
+                          <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-400'>Carga Fiscal (IVA)</FormLabel><Select onValueChange={(v) => field.onChange(parseFloat(v))} defaultValue={String(field.value)}><FormControl><SelectTrigger className='h-11 font-bold rounded-xl border-slate-100 bg-slate-50/50'><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent className='rounded-xl'><SelectItem value="0.16" className="font-bold py-2 uppercase text-[10px]">IVA General (16%)</SelectItem><SelectItem value="0.08" className="font-bold py-2 uppercase text-[10px]">IVA Reducido (8%)</SelectItem><SelectItem value="0" className="font-bold py-2 uppercase text-[10px]">Exento (0%)</SelectItem></SelectContent></Select></FormItem>
                       )} />
 
-                      <Button type="submit" disabled={isSubmitting} className='w-full h-14 text-base font-black uppercase shadow-xl shadow-primary/20 rounded-2xl bg-primary hover:scale-[1.01] transition-all active:scale-[0.98]'>
+                      <Button type="submit" disabled={isSubmitting} className='w-full h-14 text-base font-black uppercase shadow-xl shadow-primary/20 rounded-2xl bg-primary hover:scale-[1.01] transition-transform active:scale-[0.98]'>
                           {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Plus className="mr-2 h-5 w-5" />}
-                          GUARDAR ARTÍCULO
+                          CREAR PRODUCTO
                       </Button>
                   </CardContent>
                 </Card>
