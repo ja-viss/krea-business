@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { LogisticsMap } from '@/components/purchases/logistics-map';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const VENEZUELA_CITIES = [
     { name: 'Caracas (Centro)', lat: 10.4806, lng: -66.9036 },
