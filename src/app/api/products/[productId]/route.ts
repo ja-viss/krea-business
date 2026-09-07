@@ -48,6 +48,10 @@ export async function PUT(req: NextRequest, { params }: { params: { productId: s
     if (!oldProduct) return NextResponse.json({ message: 'No encontrado' }, { status: 404 });
 
     const updateData: Partial<IProduct> = { ...body };
+    
+    // Sanitize unique fields to avoid empty string collisions
+    if (updateData.barcode === '') (updateData as any).barcode = undefined;
+    if (updateData.sku === '') (updateData as any).sku = undefined;
 
     // Recalcular estado si cambia stock
     if (updateData.stock !== undefined || updateData.minStock !== undefined) {
@@ -84,6 +88,12 @@ export async function PUT(req: NextRequest, { params }: { params: { productId: s
 
   } catch (error: any) {
     console.error('Error al actualizar el producto:', error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return NextResponse.json({ 
+        message: `El ${field === 'barcode' ? 'código de barras' : 'SKU'} ya está registrado en otro producto.` 
+      }, { status: 409 });
+    }
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }

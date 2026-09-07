@@ -70,7 +70,7 @@ export default function NewProductPage() {
       minStock: 0,
       cost: 0,
       price: 0,
-      taxRate: 0.16,
+      taxRate: 0,
       imageUrl: '',
     },
   });
@@ -94,16 +94,27 @@ export default function NewProductPage() {
     try {
         const storeId = localStorage.getItem('storeId');
         if (!storeId) throw new Error('Sesión caducada');
+        
         const response = await fetch('/api/products/new', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...data, storeId }),
         });
-        if (!response.ok) throw new Error('Error al procesar el alta');
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Error al procesar el alta');
+        }
+
         toast({ title: 'Registro Exitoso', description: `"${data.name}" añadido al catálogo.` });
         router.push('/inventory');
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Fallo de Guardado', description: error.message });
+        toast({ 
+            variant: 'destructive', 
+            title: 'Fallo de Guardado', 
+            description: error.message 
+        });
     } finally {
         setIsSubmitting(false);
     }

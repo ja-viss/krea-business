@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
 
     const { storeId, stock, minStock, ...data } = validation.data;
 
+    // Convert empty strings to undefined to avoid unique index collisions in Mongo
+    if (data.barcode === '') delete (data as any).barcode;
+    if (data.sku === '') delete (data as any).sku;
+
     let status: 'En Stock' | 'Stock Bajo' | 'Sin Stock';
     if (stock <= 0) status = 'Sin Stock';
     else if (stock <= minStock) status = 'Stock Bajo';
@@ -53,9 +57,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error: any) {
     console.error('Error al crear el producto:', error);
+    
+    // Mejor detección de errores de duplicación (Código 11000)
     if (error.code === 11000) {
-      return NextResponse.json({ message: 'El código o SKU ya existe en esta tienda.' }, { status: 409 });
+      const field = Object.keys(error.keyPattern)[0];
+      return NextResponse.json({ 
+        message: `El ${field === 'barcode' ? 'código de barras' : 'SKU'} ya está registrado para otro producto.` 
+      }, { status: 409 });
     }
-    return NextResponse.json({ message: 'Error interno del servidor.' }, { status: 500 });
+    
+    return NextResponse.json({ message: 'Error interno del servidor al procesar el alta.' }, { status: 500 });
   }
 }

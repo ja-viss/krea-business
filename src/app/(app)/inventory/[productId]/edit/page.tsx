@@ -134,11 +134,21 @@ export default function EditProductPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...data, userId: localStorage.getItem('userId'), userName: localStorage.getItem('userName') }),
         });
-        if (!response.ok) throw new Error('Error al actualizar');
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Error al actualizar');
+        }
+
         toast({ title: '¡Cambios Guardados!', description: `"${data.name}" se actualizó correctamente.` });
         router.push('/inventory');
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message });
+        toast({ 
+            variant: 'destructive', 
+            title: 'Fallo de Guardado', 
+            description: error.message 
+        });
     } finally {
         setIsSubmitting(false);
     }
