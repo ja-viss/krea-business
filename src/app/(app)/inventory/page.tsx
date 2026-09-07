@@ -235,6 +235,16 @@ export default function InventoryPage() {
         
         {error && <Alert variant="destructive" className="border-2"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
 
+        {metrics && metrics.nearExpiryCount > 0 && (
+            <Alert variant="destructive" className="border-4 shadow-xl bg-red-50 border-red-500 animate-in fade-in slide-in-from-top-2 duration-500">
+                <Calendar className="h-5 w-5 text-red-600" />
+                <AlertTitle className="font-black uppercase tracking-tight text-red-700">Anuncio Crítico de Almacén</AlertTitle>
+                <AlertDescription className="font-bold text-red-800">
+                    Se han detectado <span className="underline">{metrics.nearExpiryCount} productos</span> con fecha de vencimiento próxima (menos de 15 días). Por favor, revise el listado marcado en rojo para priorizar su rotación o venta.
+                </AlertDescription>
+            </Alert>
+        )}
+
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {loading ? Array.from({ length: 4 }).map((_, i) => (
                 <Card key={i} className="border-2"><CardHeader className='pb-2'><Skeleton className='h-4 w-1/2' /></CardHeader><CardContent><Skeleton className='h-7 w-1/3' /></CardContent></Card>

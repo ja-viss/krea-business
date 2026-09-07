@@ -15,14 +15,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Loader2, Scale, Camera, ScanLine, Save, Link2, Image as ImageIcon, Briefcase, Boxes, Coins, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Loader2, Scale, Camera, ScanLine, Save, Link2, Image as ImageIcon, Briefcase, Boxes, Coins, TrendingUp, Calendar as CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
-import { IProduct } from '@/models/Product';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const productSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
@@ -41,6 +44,7 @@ const productSchema = z.object({
   taxRate: z.coerce.number().min(0).default(0.16),
   location: z.string().optional(),
   imageUrl: z.string().optional(),
+  expiryDate: z.date().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -110,6 +114,7 @@ export default function EditProductPage() {
             taxRate: data.taxRate,
             location: data.location || '',
             imageUrl: data.imageUrl || '',
+            expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
           });
         } catch (err: any) {
           toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -215,7 +220,7 @@ export default function EditProductPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6 pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField control={form.control} name="baseUnit" render={({ field }) => (
                             <FormItem>
                                 <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Unidad de Medida</FormLabel>
@@ -244,11 +249,30 @@ export default function EditProductPage() {
                             <div className="space-y-0.5">
                                 <div className="flex items-center gap-2">
                                     <Scale className={cn("h-4 w-4", field.value ? "text-amber-600" : "text-slate-400")} />
-                                    <FormLabel className={cn('text-xs font-black uppercase', field.value ? 'text-amber-900' : 'text-slate-600')}>Venta a Granel</FormLabel>
+                                    <FormLabel className={cn('text-[9px] font-black uppercase', field.value ? 'text-amber-900' : 'text-slate-600')}>Venta a Granel</FormLabel>
                                 </div>
-                                <p className='text-[9px] font-bold text-slate-400 italic'>Activa Balanza</p>
+                                <p className='text-[7px] font-bold text-slate-400 italic'>Activa Balanza</p>
                             </div>
                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="expiryDate" render={({ field }) => (
+                            <FormItem className="flex flex-col justify-center rounded-xl border-2 border-dashed bg-slate-50/30 p-3">
+                                <FormLabel className='text-[10px] font-black uppercase text-slate-500 mb-1'>Vencimiento</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button variant={"outline"} className={cn("h-9 pl-3 text-left font-bold rounded-lg text-xs", !field.value && "text-muted-foreground")}>
+                                                {field.value ? format(field.value, "PPP", { locale: es }) : <span>Sin fecha</span>}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date("1900-01-01")} initialFocus />
+                                    </PopoverContent>
+                                </Popover>
                             </FormItem>
                         )} />
                     </div>
