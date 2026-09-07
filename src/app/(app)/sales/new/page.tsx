@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -27,7 +28,9 @@ import {
     Minus,
     QrCode,
     UserCheck,
-    Package
+    Package,
+    AlertCircle,
+    Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -40,6 +43,7 @@ import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
@@ -67,6 +71,8 @@ export default function NewSalePage() {
   const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
   const { rates } = useExchangeRates();
   const [storeConfig, setStoreConfig] = useState<any>(null);
+  const [cashSession, setCashSession] = useState<any>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
   const productSearchRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof saleSchema>>({
@@ -100,15 +106,24 @@ export default function NewSalePage() {
   };
 
   useEffect(() => {
-    const fetchStoreConfig = async () => {
+    const fetchData = async () => {
         const storeId = localStorage.getItem('storeId');
         if (!storeId) return;
         try {
-            const res = await fetch(`/api/settings/store?storeId=${storeId}`);
-            if (res.ok) setStoreConfig(await res.json());
-        } catch (e) {}
+            const [configRes, sessionRes] = await Promise.all([
+                fetch(`/api/settings/store?storeId=${storeId}`),
+                fetch(`/api/cash-control?storeId=${storeId}`)
+            ]);
+            if (configRes.ok) setStoreConfig(await configRes.json());
+            if (sessionRes.ok) {
+                const sessionData = await sessionRes.json();
+                setCashSession(sessionData.activeSession);
+            }
+        } catch (e) {} finally {
+            setLoadingSession(false);
+        }
     };
-    fetchStoreConfig();
+    fetchData();
   }, []);
 
   const totals = useMemo(() => {
@@ -202,9 +217,10 @@ export default function NewSalePage() {
 
   const isDigitalPayment = ['Pago Móvil', 'Tarjeta', 'Zelle', 'Binance', 'Biopago'].includes(watchMethod);
   const isReferenceMissing = isDigitalPayment && !watchReference?.trim();
+  const isLocked = storeConfig?.enforceCashControl && !cashSession;
 
   const handleFinalizeSale = async () => {
-    if (watchItems.length === 0) return;
+    if (watchItems.length === 0 || isLocked) return;
     const received = parseFloat(watchAmountReceived) || 0;
     
     if (received < targetAmount * 0.999) {
@@ -230,7 +246,10 @@ export default function NewSalePage() {
                 storeId 
             }),
         });
-        if (!response.ok) throw new Error("Fallo al guardar venta");
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || "Fallo al guardar venta");
+        }
         const result = await response.json();
         router.push(`/sales/${result._id}/invoice?print=true`);
     } catch (e: any) {
@@ -251,14 +270,35 @@ export default function NewSalePage() {
   return (
     <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
        <main className="flex-1 p-2 md:p-4 overflow-y-auto lg:overflow-hidden flex flex-col gap-4">
+            
+            {isLocked && !loadingSession && (
+                <Alert variant="destructive" className="border-4 shadow-xl animate-bounce">
+                    <Lock className="h-5 w-5" />
+                    <AlertTitle className="font-black uppercase">Ventas Bloqueadas</AlertTitle>
+                    <AlertDescription className="font-bold flex items-center justify-between">
+                        Debes abrir un turno de caja para poder facturar.
+                        <Button variant="outline" size="sm" asChild className="bg-white text-destructive font-black uppercase">
+                            <Link href="/cash-control">Abrir Caja Ahora</Link>
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" asChild className="rounded-full border bg-white"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
                     <div>
                         <h2 className="text-xl font-black uppercase tracking-tighter text-primary">Terminal de Ventas</h2>
-                        <Badge variant="outline" className="text-[10px] font-black uppercase bg-green-50 text-green-600 border-green-200">
-                           <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> POS Online
-                        </Badge>
+                        <div className="flex gap-2">
+                            <Badge variant="outline" className="text-[10px] font-black uppercase bg-green-50 text-green-600 border-green-200">
+                                <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> POS Online
+                            </Badge>
+                            {cashSession && (
+                                <Badge variant="secondary" className="text-[10px] font-black uppercase">
+                                    <AlertCircle className="h-2.5 w-2.5 mr-1" /> Turno: {cashSession.userName}
+                                </Badge>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <div className="text-left sm:text-right px-1">
@@ -465,11 +505,14 @@ export default function NewSalePage() {
                              <Button 
                                 type="button"
                                 onClick={handleFinalizeSale}
-                                disabled={isSubmitting || watchItems.length === 0 || isReferenceMissing}
-                                className="w-full h-14 md:h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white"
+                                disabled={isSubmitting || watchItems.length === 0 || isReferenceMissing || isLocked}
+                                className={cn(
+                                    "w-full h-14 md:h-16 text-lg font-black uppercase shadow-2xl rounded-2xl transition-all",
+                                    isLocked ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-primary text-white"
+                                )}
                             >
                                 {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-5 w-5" />}
-                                FACTURAR VENTA (F4)
+                                {isLocked ? 'VENTAS CERRADAS (BLOQUEO)' : 'FACTURAR VENTA (F4)'}
                              </Button>
                         </div>
                     </Card>

@@ -11,6 +11,7 @@ export interface ISaleItem {
 
 export interface ISale extends Document {
   store: Types.ObjectId;
+  cashSession?: Types.ObjectId; // Referencia a la sesión de caja bajo la cual se emitió
   invoiceNumber: number;
   customer?: Types.ObjectId;
   customerName: string;
@@ -47,6 +48,7 @@ const SaleItemSchema = new Schema({
 
 const SaleSchema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
+  cashSession: { type: Schema.Types.ObjectId, ref: 'CashSession' },
   invoiceNumber: { type: Number, required: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
@@ -68,6 +70,7 @@ const SaleSchema = new Schema({
 }, { timestamps: true });
 
 SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
+SaleSchema.index({ cashSession: 1 });
 
 export const SaleCounterV2Model = models.SaleCounterV2 || model('SaleCounterV2', new Schema({
     storeId: { type: String, required: true, unique: true },

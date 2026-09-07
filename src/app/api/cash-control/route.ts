@@ -23,18 +23,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         await dbConnect();
-        const { storeId, userId, userName, openingBalances, action } = await req.json();
+        const { storeId, userId, userName, openingBalances, action, terminalName } = await req.json();
 
         if (action === 'OPEN') {
             const existing = await CashSessionModel.findOne({ store: storeId, status: 'Abierta' });
             if (existing) {
-                return NextResponse.json({ message: "Ya existe un turno abierto." }, { status: 400 });
+                return NextResponse.json({ message: "Ya existe un turno abierto en esta tienda." }, { status: 400 });
             }
 
             const newSession = new CashSessionModel({
                 store: storeId,
                 user: userId,
                 userName: userName || 'Cajero',
+                terminalName: terminalName || 'Caja Principal',
                 openingBalances,
                 status: 'Abierta'
             });
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
                 userName: userName || 'Cajero',
                 action: 'APERTURA_CAJA',
                 module: 'Ventas',
-                details: `Apertura de turno con fondo inicial reportado.`
+                details: `Apertura de turno en ${newSession.terminalName} con fondo inicial reportado.`
             });
 
             return NextResponse.json(newSession);
@@ -67,15 +68,12 @@ export async function PUT(req: NextRequest) {
             const session = await CashSessionModel.findById(sessionId);
             if (!session) return NextResponse.json({ message: "Sesión no encontrada." }, { status: 404 });
 
-            // 1. Calcular saldos teóricos (Congelar ventas hasta este momento)
-            const matchQuery: any = { 
-                store: session.store === 'SYSTEM_MASTER' ? 'SYSTEM_MASTER' : new mongoose.Types.ObjectId(session.store),
-                createdAt: { $gte: session.openedAt, $lte: new Date() },
-                status: 'Pagado'
-            };
-
+            // 1. CUADRE AUTOMÁTICO: Calcular saldos teóricos basados ÚNICAMENTE en ventas vinculadas a esta sesión
             const salesInSession = await SaleModel.aggregate([
-                { $match: matchQuery },
+                { $match: { 
+                    cashSession: session._id,
+                    status: 'Pagado'
+                }},
                 { $group: { 
                     _id: { method: '$paymentMethod', currency: '$paymentCurrency' }, 
                     total: { $sum: '$totalAmount' } 
@@ -88,10 +86,9 @@ export async function PUT(req: NextRequest) {
                 amount: s.total
             }));
 
-            // 2. Calcular Discrepancias
+            // 2. Calcular Discrepancias contra lo declarado por el cajero
             const discrepancies = declaredBalances.map((decl: any) => {
                 const theory = theoretical.find(t => t.method === decl.method && t.currency === decl.currency)?.amount || 0;
-                // Sumar fondo inicial si es efectivo
                 let base = 0;
                 if (decl.method === 'Efectivo') {
                     base = session.openingBalances.find((b: any) => b.currency === decl.currency)?.amount || 0;
@@ -119,7 +116,7 @@ export async function PUT(req: NextRequest) {
                 userName: session.userName,
                 action: 'CIERRE_CAJA',
                 module: 'Ventas',
-                details: `Cierre de turno finalizado. Notas: ${notes || 'Sin observaciones'}`
+                details: `Cierre de turno en ${session.terminalName}. Auditoría automática completada.`
             });
 
             return NextResponse.json(session);

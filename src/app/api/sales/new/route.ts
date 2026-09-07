@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import SaleModel, { SaleCounterV2Model } from '@/models/Sale';
 import ProductModel from '@/models/Product';
-import AccountReceivableModel from '@/models/AccountReceivable';
+import CashSessionModel from '@/models/CashSession';
 import StoreModel from '@/models/Store';
 import mongoose from 'mongoose';
 import { startOfMonth, endOfMonth } from 'date-fns';
@@ -15,15 +15,29 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { storeId, customerId, customerName, items, paymentMethod, paymentReference } = body;
+    const { storeId, customerId, customerName, items, paymentMethod, paymentReference, paymentCurrency } = body;
 
     if (!storeId) throw new Error("El ID de la tienda es obligatorio.");
 
-    // 0. VALIDACIÓN DE LÍMITES SAAS (PLAN)
+    // 0. VALIDACIÓN DE LÍMITES SAAS Y CONTROL DE CAJA
     const store = await StoreModel.findById(storeId).session(session);
     if (!store) throw new Error("Tienda no encontrada.");
 
-    // Contar facturas emitidas este mes
+    // VALIDACIÓN DE CAJA (Si está habilitado en configuración)
+    let activeCashSessionId = null;
+    if (store.enforceCashControl) {
+        const activeSession = await CashSessionModel.findOne({ 
+            store: storeId, 
+            status: 'Abierta' 
+        }).session(session);
+
+        if (!activeSession) {
+            throw new Error("OPERACIÓN BLOQUEADA: No hay un turno de caja abierto. Por favor, realice la apertura de caja antes de facturar.");
+        }
+        activeCashSessionId = activeSession._id;
+    }
+
+    // Contar facturas emitidas este mes para límites del plan
     const monthStart = startOfMonth(new Date());
     const monthEnd = endOfMonth(new Date());
 
@@ -33,28 +47,26 @@ export async function POST(req: NextRequest) {
     }).session(session);
 
     if (invoicesThisMonth >= store.maxInvoicesPerMonth) {
-        throw new Error(`Límite de plan alcanzado (${store.maxInvoicesPerMonth} facturas/mes). Por favor, contacte a soporte para un Upgrade de Plan.`);
+        throw new Error(`Límite de plan alcanzado (${store.maxInvoicesPerMonth} facturas/mes). Por favor, contacte a soporte.`);
     }
 
     if (!customerName) throw new Error("El nombre del cliente es obligatorio.");
     if (!Array.isArray(items) || items.length === 0) throw new Error("La lista de productos está vacía.");
     
-    // 1. Obtener número de factura con contador único por tienda
+    // 1. Obtener número de factura
     const counter = await SaleCounterV2Model.findOneAndUpdate(
         { storeId: storeId },
         { $inc: { seq: 1 } },
         { new: true, upsert: true, session, setDefaultsOnInsert: true }
     );
     
-    if (!counter) throw new Error('No se pudo generar el número de factura correlativo.');
+    if (!counter) throw new Error('No se pudo generar el correlativo.');
     const newInvoiceNumber = counter.seq;
 
-    // 2. Validar stock y descontar inventario
+    // 2. Validar stock y descontar
     for (const item of items) {
       const product = await ProductModel.findById(item.productId).session(session);
-      if (!product) {
-        throw new Error(`El producto ${item.name} ya no existe en el catálogo.`);
-      }
+      if (!product) throw new Error(`El producto ${item.name} no existe.`);
       
       if (product.stock < item.quantity) {
         throw new Error(`Stock insuficiente para: ${item.name}. Disponible: ${product.stock}`);
@@ -72,10 +84,9 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Determinar estado de la venta
-    const finalStatus = (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta') ? 'Pagado' : 'Pendiente';
+    const finalStatus = (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta' || paymentMethod === 'Pago Móvil') ? 'Pagado' : 'Pendiente';
 
-    // Cálculos financieros para auditoría
+    // Cálculos fiscales
     const subtotals = { exempt: 0, general: 0, reduced: 0 };
     for (const item of items) {
         const itemTotal = item.price * item.quantity;
@@ -89,14 +100,13 @@ export async function POST(req: NextRequest) {
     };
     const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
 
-    // 3. Crear el documento de venta
-    const validCustomerId = (customerId && mongoose.Types.ObjectId.isValid(customerId)) ? customerId : null;
-
+    // 3. Crear venta
     const newSale = new SaleModel({
       store: storeId,
+      cashSession: activeCashSessionId,
       invoiceNumber: newInvoiceNumber,
-      customer: validCustomerId,
-      customerName: customerName,
+      customer: (customerId && mongoose.Types.ObjectId.isValid(customerId)) ? customerId : null,
+      customerName,
       subtotals,
       taxDetails,
       totalAmount,
@@ -109,37 +119,19 @@ export async function POST(req: NextRequest) {
         })),
       paymentMethod,
       paymentReference: paymentReference || '',
+      paymentCurrency: paymentCurrency || 'VES',
       status: finalStatus,
     });
     
     await newSale.save({ session });
 
-    // 4. Crear cuenta por cobrar automática si el pago no es inmediato
-    if (newSale.status === 'Pendiente') {
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 30); // Crédito por defecto 30 días
-        const newReceivable = new AccountReceivableModel({
-            store: storeId,
-            customer: customerName,
-            sale: newSale._id,
-            amount: totalAmount,
-            dueDate,
-            status: 'Pendiente',
-        });
-        await newReceivable.save({ session });
-    }
-
     await session.commitTransaction();
     return NextResponse.json(newSale, { status: 201 });
 
   } catch (error: any) {
-    if (session.inTransaction()) {
-        await session.abortTransaction();
-    }
-    console.error('Fallo al procesar la venta:', error);
-    return NextResponse.json({ 
-        message: error.message || 'Error interno al procesar la transacción bancaria/inventario.' 
-    }, { status: 500 });
+    if (session.inTransaction()) await session.abortTransaction();
+    console.error('POS ERROR:', error);
+    return NextResponse.json({ message: error.message }, { status: 500 });
   } finally {
     session.endSession();
   }

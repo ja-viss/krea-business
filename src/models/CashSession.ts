@@ -5,6 +5,7 @@ export interface ICashSession extends Document {
   store: string;
   user: string;
   userName: string;
+  terminalName?: string; // Identificador de la taquilla/caja física
   openingBalances: {
     currency: 'USD' | 'VES' | 'COP';
     amount: number;
@@ -44,6 +45,7 @@ const CashSessionSchema: Schema = new Schema({
   store: { type: String, required: true, index: true },
   user: { type: String, required: true },
   userName: { type: String, required: true },
+  terminalName: { type: String, default: 'Caja Principal' },
   openingBalances: [{
     currency: { type: String, enum: ['USD', 'VES', 'COP'], required: true },
     amount: { type: Number, required: true }

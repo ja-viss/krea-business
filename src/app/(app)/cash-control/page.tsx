@@ -25,7 +25,8 @@ import {
     ArrowRightLeft,
     CheckCircle2,
     XCircle,
-    Store
+    Store,
+    LayoutGrid
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,6 +48,7 @@ export default function CashControlPage() {
     // Estados de Apertura
     const [openingUsd, setOpeningUsd] = useState('0');
     const [openingVes, setOpeningVes] = useState('0');
+    const [terminalName, setTerminalName] = useState('Caja 1');
 
     // Estados de Cierre (Arqueo a Ciegas)
     const [cashUsdCount, setCashUsdCount] = useState<Record<number, number>>({});
@@ -103,11 +105,18 @@ export default function CashControlPage() {
             const res = await fetch('/api/cash-control', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storeId, userId, userName, openingBalances: balances, action: 'OPEN' })
+                body: JSON.stringify({ 
+                    storeId, 
+                    userId, 
+                    userName, 
+                    terminalName,
+                    openingBalances: balances, 
+                    action: 'OPEN' 
+                })
             });
             if (!res.ok) throw new Error('Error al abrir caja');
             
-            toast({ title: "Turno Iniciado", description: "Fondo de caja registrado." });
+            toast({ title: "Turno Iniciado", description: `Caja "${terminalName}" lista para facturar.` });
             fetchSessionAndConfig();
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error", description: e.message });
@@ -127,7 +136,7 @@ export default function CashControlPage() {
                 { currency: 'VES', method: 'Efectivo', amount: totalCashVes, denominations: cashVesCount },
                 { currency: 'VES', method: 'Tarjeta', amount: parseFloat(electronicDeclarations.puntoVes.amount) || 0, batchNumber: electronicDeclarations.puntoVes.batch },
                 { currency: 'VES', method: 'Pago Móvil', amount: parseFloat(electronicDeclarations.pagoMovilVes.amount) || 0 },
-                { currency: 'USD', method: 'Transferencia', amount: parseFloat(electronicDeclarations.zelleUsd.amount) || 0, batchNumber: electronicDeclarations.zelleUsd.batch },
+                { currency: 'USD', method: 'Zelle', amount: parseFloat(electronicDeclarations.zelleUsd.amount) || 0, batchNumber: electronicDeclarations.zelleUsd.batch },
                 { currency: 'USD', method: 'Binance', amount: parseFloat(electronicDeclarations.binanceUsd.amount) || 0 },
             ];
 
@@ -141,7 +150,7 @@ export default function CashControlPage() {
             if (!res.ok) throw new Error(resultData.message);
 
             setViewResults(resultData);
-            toast({ title: "Arqueo Procesado", description: "La jornada ha sido cerrada." });
+            toast({ title: "Arqueo Procesado", description: "La jornada ha sido cerrada y las ventas bloqueadas." });
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error crítico", description: e.message });
         } finally {
@@ -157,14 +166,13 @@ export default function CashControlPage() {
 
     if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
-    // --- MODO SIN CAJA REGISTRADORA ---
     if (storeConfig && storeConfig.enforceCashControl === false) {
         return (
             <div className="flex flex-1 flex-col">
                 <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-6xl mx-auto w-full">
                     <PageHeader 
-                        title="Estado de Operación" 
-                        description="Modo Libre: El sistema no requiere apertura ni cierre de turnos."
+                        title="Operación Libre" 
+                        description="El sistema no requiere apertura ni cierre de turnos."
                     />
                     <Card className="border-4 border-dashed border-primary/20 bg-muted/20">
                         <CardContent className="py-20 text-center space-y-6">
@@ -192,13 +200,13 @@ export default function CashControlPage() {
                     <CardHeader className="bg-primary/5 text-center">
                         <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
                         <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Resumen de Cierre</CardTitle>
-                        <CardDescription className="font-bold">Turno finalizado: {new Date(viewResults.closedAt).toLocaleString()}</CardDescription>
+                        <CardDescription className="font-bold">Taquilla: {viewResults.terminalName} • Cajero: {viewResults.userName}</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="font-black text-[10px] uppercase">Método</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Método de Cobro</TableHead>
                                     <TableHead className="text-right font-black text-[10px] uppercase">Declarado</TableHead>
                                     <TableHead className="text-right font-black text-[10px] uppercase">Diferencia</TableHead>
                                 </TableRow>
@@ -235,35 +243,44 @@ export default function CashControlPage() {
         <div className="flex flex-1 flex-col">
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-6xl mx-auto w-full">
                 <PageHeader 
-                    title="Control de Caja Digital" 
-                    description="Protocolo de Arqueo a Ciegas para cierre de turno administrativo."
+                    title="Control de Caja" 
+                    description="Gestión de turnos y arqueo automático por taquilla."
                 />
 
                 {!session ? (
                     <Card className="border-4 border-primary/10 shadow-2xl animate-in zoom-in-95">
                         <CardHeader className="text-center bg-primary/5 pb-8">
                             <Unlock className="h-12 w-12 text-primary mx-auto mb-4" />
-                            <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Apertura de Turno</CardTitle>
-                            <CardDescription className="font-bold">Declara el fondo inicial disponible para dar vueltos.</CardDescription>
+                            <CardTitle className="text-3xl font-black uppercase italic tracking-tighter">Apertura de Taquilla</CardTitle>
+                            <CardDescription className="font-bold">Identifica la caja e ingresa el fondo inicial.</CardDescription>
                         </CardHeader>
-                        <CardContent className="pt-10 grid gap-8 md:grid-cols-2 max-w-2xl mx-auto">
+                        <CardContent className="pt-10 space-y-8 max-w-2xl mx-auto">
                             <div className="space-y-3">
                                 <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
-                                    <Banknote className="h-4 w-4 text-green-600" /> Fondo en Dólares ($)
+                                    <LayoutGrid className="h-4 w-4 text-primary" /> Nombre de Taquilla / Caja
                                 </Label>
-                                <Input type="number" className="text-3xl font-black h-16 text-center bg-green-50/30 border-2" value={openingUsd} onChange={e => setOpeningUsd(e.target.value)} />
+                                <Input className="text-xl font-black h-14 text-center border-2 uppercase" value={terminalName} onChange={e => setTerminalName(e.target.value)} />
                             </div>
-                            <div className="space-y-3">
-                                <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
-                                    <Coins className="h-4 w-4 text-primary" /> Fondo en Bolívares (Bs.)
-                                </Label>
-                                <Input type="number" className="text-3xl font-black h-16 text-center bg-primary/5 border-2" value={openingVes} onChange={e => setOpeningVes(e.target.value)} />
+                            
+                            <div className="grid gap-8 md:grid-cols-2">
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
+                                        <Banknote className="h-4 w-4 text-green-600" /> Fondo en Dólares ($)
+                                    </Label>
+                                    <Input type="number" className="text-3xl font-black h-16 text-center bg-green-50/30 border-2" value={openingUsd} onChange={e => setOpeningUsd(e.target.value)} />
+                                </div>
+                                <div className="space-y-3">
+                                    <Label className="text-xs font-black uppercase text-muted-foreground flex items-center gap-2">
+                                        <Coins className="h-4 w-4 text-primary" /> Fondo en Bolívares (Bs.)
+                                    </Label>
+                                    <Input type="number" className="text-3xl font-black h-16 text-center bg-primary/5 border-2" value={openingVes} onChange={e => setOpeningVes(e.target.value)} />
+                                </div>
                             </div>
                         </CardContent>
                         <CardFooter className="pb-10 flex justify-center">
                             <Button onClick={handleOpenBox} disabled={isProcessing} className="w-full max-w-md h-16 text-xl font-black uppercase shadow-xl">
                                 {isProcessing ? <Loader2 className="animate-spin mr-2" /> : <Unlock className="mr-3 h-6 w-6" />}
-                                Abrir Caja Registradora
+                                Abrir Caja e Iniciar Turno
                             </Button>
                         </CardFooter>
                     </Card>
@@ -278,6 +295,10 @@ export default function CashControlPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-6 space-y-4">
+                                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2 border-dashed">
+                                        <span className="text-[10px] font-black uppercase opacity-50">Taquilla:</span>
+                                        <span className="font-black text-xs uppercase">{session.terminalName}</span>
+                                    </div>
                                     <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2 border-dashed">
                                         <span className="text-[10px] font-black uppercase opacity-50">Iniciado:</span>
                                         <span className="font-bold text-xs">{new Date(session.openedAt).toLocaleTimeString()}</span>
@@ -304,7 +325,7 @@ export default function CashControlPage() {
                                         <Lock className="h-6 w-6 text-primary" /> Arqueo a Ciegas (Paso Final)
                                     </CardTitle>
                                     <CardDescription className="text-white/60 font-bold uppercase text-[10px]">
-                                        Cuenta el dinero físico y transcribe totales de puntos de venta.
+                                        Al finalizar, las ventas se bloquearán para este cajero hasta una nueva apertura.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-0">
@@ -385,7 +406,7 @@ export default function CashControlPage() {
                                     </div>
                                     <Button variant="destructive" onClick={handleCloseBox} disabled={isProcessing} className="w-full h-16 text-xl font-black uppercase shadow-2xl">
                                         {isProcessing ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-3 h-6 w-6" />}
-                                        Finalizar Turno y Procesar Cuadre
+                                        Finalizar Turno y Bloquear Ventas
                                     </Button>
                                 </CardFooter>
                             </Card>
