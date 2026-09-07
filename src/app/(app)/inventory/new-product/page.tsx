@@ -8,14 +8,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Loader2, Scale, Camera, ScanLine, Plus, Wand2, Link2, Image as ImageIcon, Briefcase, Boxes, Coins, Save, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Loader2, Scale, Camera, ScanLine, Plus, Link2, Image as ImageIcon, Briefcase, Boxes, Coins, Save, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,8 +50,6 @@ export default function NewProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [searchingImage, setSearchingImage] = useState(false);
-  const [imgKey, setImgKey] = useState(0);
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -85,26 +83,6 @@ export default function NewProductPage() {
     form.setValue('barcode', scannedCode);
     toast({ title: 'Código Escaneado', description: `Registrado: ${scannedCode}` });
     setShowScanner(false);
-  };
-
-  const handleAutoSearchImage = async () => {
-    if (!watchName || watchName.length < 3) {
-      toast({ variant: 'destructive', title: 'Nombre requerido', description: 'Mín. 3 caracteres para buscar.' });
-      return;
-    }
-    setSearchingImage(true);
-    try {
-      const firstWord = watchName.trim().split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-      const timestamp = new Date().getTime();
-      const autoUrl = `https://loremflickr.com/400/400/${firstWord}?lock=${timestamp}`;
-      form.setValue('imageUrl', autoUrl, { shouldDirty: true });
-      setImgKey(timestamp);
-      toast({ title: 'Imagen Localizada', description: `Se ha vinculado una referencia para: ${watchName}` });
-    } catch (e) {
-      toast({ variant: 'destructive', title: 'Error de búsqueda' });
-    } finally {
-      setSearchingImage(false);
-    }
   };
 
   const onSubmit = async (data: ProductFormValues) => {
@@ -148,9 +126,7 @@ export default function NewProductPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
               
-              {/* ÁREA PRINCIPAL (8/12) */}
               <div className="space-y-6 lg:col-span-8">
-                
                 <Card className='border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white'>
                   <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-3'>
                     <CardTitle className='text-[11px] font-black uppercase flex items-center gap-2 text-slate-700 tracking-wider'>
@@ -162,12 +138,7 @@ export default function NewProductPage() {
                         <FormField control={form.control} name="name" render={({ field }) => (
                           <FormItem className='md:col-span-2'>
                             <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Nombre del Producto</FormLabel>
-                            <div className="flex gap-2">
-                              <FormControl><Input placeholder="Ej: Harina de Maíz Precocida" className="h-11 text-base font-bold rounded-xl border-slate-200" {...field} /></FormControl>
-                              <Button type="button" variant="secondary" className="h-11 px-3 rounded-xl bg-amber-500 text-white hover:bg-amber-600 shrink-0 shadow-sm" onClick={handleAutoSearchImage} disabled={searchingImage}>
-                                {searchingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                              </Button>
-                            </div>
+                            <FormControl><Input placeholder="Ej: Harina de Maíz Precocida" className="h-11 text-base font-bold rounded-xl border-slate-200" {...field} /></FormControl>
                           </FormItem>
                         )} />
                         
@@ -242,30 +213,27 @@ export default function NewProductPage() {
                 </Card>
               </div>
 
-              {/* BARRA LATERAL (4/12) */}
-              <div className="space-y-6 lg:col-span-4">
-                
+              <div className="space-y-6 lg:col-span-4 lg:sticky lg:top-4">
                 <Card className='border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white'>
-                  <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-3'>
-                    <CardTitle className='text-[10px] font-black uppercase flex items-center gap-2 text-slate-500'>
-                        <ImageIcon className='h-3.5 w-3.5' /> Identidad Visual
+                  <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-2 px-4'>
+                    <CardTitle className='text-[9px] font-black uppercase flex items-center gap-2 text-slate-500'>
+                        <ImageIcon className='h-3 w-3' /> Identidad Visual
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="h-40 w-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/30 relative overflow-hidden group">
+                  <CardContent className="pt-3 pb-4 px-4 space-y-3">
+                    <div className="h-28 w-full rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50/30 relative overflow-hidden group">
                         {watchImageUrl ? (
-                            <Image key={imgKey} src={watchImageUrl} alt="Preview" fill className="object-contain p-3 transition-transform" unoptimized />
+                            <Image src={watchImageUrl} alt="Preview" fill className="object-contain p-2" unoptimized />
                         ) : (
                             <div className="flex flex-col items-center opacity-20">
-                                <ImageIcon className="h-8 w-8 mb-2" />
-                                <span className="text-[8px] font-black uppercase text-center">Sin Imagen</span>
+                                <ImageIcon className="h-6 w-6 mb-1" />
+                                <span className="text-[7px] font-black uppercase text-center">Sin Imagen</span>
                             </div>
                         )}
-                        {searchingImage && <div className='absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center'><Loader2 className='h-6 w-6 text-primary animate-spin' /></div>}
                     </div>
                     <FormField control={form.control} name="imageUrl" render={({ field }) => (
-                        <FormItem><div className="relative"><Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <FormControl><Input placeholder="Enlace de la imagen (URL)" className="h-9 pl-9 font-mono text-[10px] rounded-lg border-slate-100 bg-slate-50/50" {...field} /></FormControl>
+                        <FormItem><div className="relative"><Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                            <FormControl><Input placeholder="Enlace URL de imagen" className="h-8 pl-8 font-mono text-[9px] rounded-lg border-slate-100 bg-slate-50/50" {...field} /></FormControl>
                         </div></FormItem>
                     )} />
                   </CardContent>
