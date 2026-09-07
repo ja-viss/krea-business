@@ -9,24 +9,22 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, ShieldAlert, KeyRound, Lock, User, QrCode, Calculator, Printer, DollarSign } from 'lucide-react';
+import { Loader2, Save, MapPin, Calculator, Printer, DollarSign, Lock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 
-const VENEZUELAN_BANKS = [
-    { code: '0102', name: 'Banco de Venezuela' },
-    { code: '0134', name: 'Banesco' },
-    { code: '0105', name: 'Mercantil' },
-    { code: '0108', name: 'Provincial' },
-    { code: '0172', name: 'Bancamiga' },
-    { code: '0174', name: 'Banplus' },
-    { code: '0191', name: 'BNC' },
-    { code: '0114', name: 'Bancaribe' },
-    { code: '0163', name: 'Banco del Tesoro' },
-    { code: '0128', name: 'Banco Caroní' },
+const VENEZUELA_CITIES = [
+    { name: 'Caracas (Centro)', lat: 10.4806, lng: -66.9036 },
+    { name: 'Valencia (Carabobo)', lat: 10.1620, lng: -68.0077 },
+    { name: 'Maracaibo (Zulia)', lat: 10.6427, lng: -71.6125 },
+    { name: 'Barquisimeto (Lara)', lat: 10.0678, lng: -69.3473 },
+    { name: 'Puerto La Cruz (Anzoátegui)', lat: 10.2167, lng: -64.6333 },
+    { name: 'San Cristóbal (Táchira)', lat: 7.7669, lng: -72.2250 },
+    { name: 'Mérida (Mérida)', lat: 8.5833, lng: -71.1333 },
+    { name: 'Puerto Ordaz (Bolívar)', lat: 8.2970, lng: -62.7111 },
 ];
 
 export default function SettingsPage() {
@@ -46,6 +44,8 @@ export default function SettingsPage() {
     enforceCashControl: true,
     ticketFontSize: 'sm' as 'sm' | 'md' | 'lg',
     showOtherCurrenciesOnInvoice: false,
+    locationName: 'Caracas (Centro)',
+    locationCoords: { lat: 10.4806, lng: -66.9036 },
     pagoMovil: {
         bankCode: '0102',
         phone: '',
@@ -79,6 +79,8 @@ export default function SettingsPage() {
             enforceCashControl: data.enforceCashControl !== false,
             ticketFontSize: data.ticketFontSize || 'sm',
             showOtherCurrenciesOnInvoice: !!data.showOtherCurrenciesOnInvoice,
+            locationName: data.locationName || 'Caracas (Centro)',
+            locationCoords: data.locationCoords || { lat: 10.4806, lng: -66.9036 },
             pagoMovil: {
                 bankCode: data.pagoMovil?.bankCode || '0102',
                 phone: data.pagoMovil?.phone || '',
@@ -128,6 +130,17 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCityChange = (cityName: string) => {
+      const city = VENEZUELA_CITIES.find(c => c.name === cityName);
+      if (city) {
+          setStoreData({
+              ...storeData,
+              locationName: cityName,
+              locationCoords: { lat: city.lat, lng: city.lng }
+          });
+      }
+  };
+
   if (loading) return <div className="p-4 md:p-8 space-y-6"><Skeleton className="h-10 w-1/3" /><Skeleton className="h-[400px] w-full rounded-2xl" /></div>;
 
   return (
@@ -166,6 +179,31 @@ export default function SettingsPage() {
 
                     <Separator />
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1">
+                                <MapPin className="h-3 w-3" /> Ciudad Base (Ubicación Empresa)
+                            </Label>
+                            <Select value={storeData.locationName} onValueChange={handleCityChange}>
+                                <SelectTrigger className="font-bold h-11 border-2">
+                                    <SelectValue placeholder="Seleccionar ciudad" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {VENEZUELA_CITIES.map(city => (
+                                        <SelectItem key={city.name} value={city.name} className='font-bold uppercase text-[10px]'>{city.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className='text-[8px] font-bold text-muted-foreground italic uppercase'>Esta ciudad se usará como destino final en el mapa de pedidos.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Teléfono de Contacto</Label>
+                            <Input value={storeData.phone} onChange={(e) => setStoreData({...storeData, phone: e.target.value})} className="h-11 font-bold" />
+                        </div>
+                    </div>
+
+                    <Separator />
+
                     <div className="p-4 rounded-xl border-2 border-primary/20 bg-primary/[0.02] flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="bg-primary text-white p-2 rounded-lg">
@@ -182,18 +220,8 @@ export default function SettingsPage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Teléfono de Contacto</Label>
-                            <Input value={storeData.phone} onChange={(e) => setStoreData({...storeData, phone: e.target.value})} className="h-11" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Condición SENIAT</Label>
-                            <Input value={storeData.seniatCondition} onChange={(e) => setStoreData({...storeData, seniatCondition: e.target.value})} className="h-11" />
-                        </div>
-                    </div>
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Dirección Fiscal</Label>
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Dirección Fiscal Exacta</Label>
                         <Textarea value={storeData.address} onChange={(e) => setStoreData({...storeData, address: e.target.value})} className="min-h-[80px]" />
                     </div>
                 </CardContent>
@@ -365,3 +393,16 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+const VENEZUELAN_BANKS = [
+    { code: '0102', name: 'Banco de Venezuela' },
+    { code: '0134', name: 'Banesco' },
+    { code: '0105', name: 'Mercantil' },
+    { code: '0108', name: 'Provincial' },
+    { code: '0172', name: 'Bancamiga' },
+    { code: '0174', name: 'Banplus' },
+    { code: '0191', name: 'BNC' },
+    { code: '0114', name: 'Bancaribe' },
+    { code: '0163', name: 'Banco del Tesoro' },
+    { code: '0128', name: 'Banco Caroní' },
+];

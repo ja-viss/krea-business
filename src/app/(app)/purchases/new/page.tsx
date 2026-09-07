@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2, Trash2, ChevronLeft, Plus, Save, Truck, Package, Hash, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +24,7 @@ const VENEZUELA_CITIES = [
     { name: 'Puerto La Cruz (Anzoátegui)', lat: 10.2167, lng: -64.6333 },
     { name: 'San Cristóbal (Táchira)', lat: 7.7669, lng: -72.2250 },
     { name: 'Mérida (Mérida)', lat: 8.5833, lng: -71.1333 },
+    { name: 'Puerto Ordaz (Bolívar)', lat: 8.2970, lng: -62.7111 },
 ];
 
 export default function NewPurchaseOrderPage() {
