@@ -23,6 +23,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -32,7 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Camera, ChevronLeft, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Camera, ChevronLeft, Loader2, Scale } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
@@ -40,19 +42,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const productSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
-  productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio']),
+  productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio', 'Compuesto']),
+  baseUnit: z.enum(['Unidad', 'Kilogramos', 'Gramos', 'Litros']),
+  isWeightable: z.boolean().default(false),
   barcode: z.string().optional(),
   sku: z.string().optional(),
   brand: z.string().optional(),
   vendor: z.string().optional(),
   category: z.string().optional(),
-  stock: z.coerce.number().min(0, 'El stock no puede ser negativo.'),
-  minStock: z.coerce.number().min(0, 'El stock mínimo no puede ser negativo.'),
-  cost: z.coerce.number().min(0, 'El costo debe ser positivo.'),
-  price: z.coerce.number().min(0, 'El precio debe ser positivo.'),
-  taxRate: z.coerce.number().min(0, "La tasa de impuesto no puede ser negativa."),
+  stock: z.coerce.number().min(0),
+  minStock: z.coerce.number().min(0),
+  cost: z.coerce.number().min(0),
+  price: z.coerce.number().min(0),
+  taxRate: z.coerce.number().min(0),
   location: z.string().optional(),
-  imageUrl: z.string().url('Debe ser una URL válida.').optional().or(z.literal('')),
+  imageUrl: z.string().url('URL de imagen inválida.').optional().or(z.literal('')),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -73,6 +77,8 @@ export default function NewProductPage() {
     defaultValues: {
       name: '',
       productType: 'Inventariable',
+      baseUnit: 'Unidad',
+      isWeightable: false,
       barcode: '',
       sku: '',
       brand: '',
@@ -80,30 +86,19 @@ export default function NewProductPage() {
       category: '',
       stock: 0,
       minStock: 0,
-      cost: undefined,
-      price: undefined,
+      cost: 0,
+      price: 0,
       taxRate: 0.16,
       location: '',
       imageUrl: '',
     },
   });
 
-  const handleBarcodeScan = (scannedCode: string) => {
-    form.setValue('barcode', scannedCode);
-    toast({
-      title: 'Código Escaneado',
-      description: `Se ha registrado el código: ${scannedCode}`,
-    });
-    setShowScanner(false);
-  };
-
   const onSubmit = async (data: ProductFormValues) => {
     setIsSubmitting(true);
     try {
         const storeId = localStorage.getItem('storeId');
-        if (!storeId) {
-            throw new Error('No se encontró la tienda. Por favor, inicia sesión de nuevo.');
-        }
+        if (!storeId) throw new Error('Sesión no encontrada');
 
         const response = await fetch('/api/products/new', {
             method: 'POST',
@@ -111,23 +106,12 @@ export default function NewProductPage() {
             body: JSON.stringify({ ...data, storeId }),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al crear el producto.');
-        }
+        if (!response.ok) throw new Error('Fallo al guardar producto');
 
-        toast({
-            title: '¡Producto Creado!',
-            description: `El producto "${data.name}" ha sido añadido a tu inventario.`,
-        });
+        toast({ title: 'Producto Creado', description: `"${data.name}" añadido con éxito.` });
         router.push('/inventory');
-
     } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: error.message,
-        });
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
     } finally {
         setIsSubmitting(false);
     }
@@ -137,293 +121,135 @@ export default function NewProductPage() {
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
-          title="Añadir Nuevo Producto"
-          description="Rellena los detalles para registrar un nuevo artículo en tu inventario."
-          actions={
-            <Button variant="outline" asChild>
-              <Link href="/inventory">
-                <ChevronLeft />
-                Volver a Inventario
-              </Link>
-            </Button>
-          }
+          title="Nuevo Artículo"
+          description="Configura productos básicos, verduras por peso o servicios."
+          actions={<Button variant="outline" asChild><Link href="/inventory"><ChevronLeft className='mr-2 h-4 w-4'/> Volver</Link></Button>}
         />
 
-        {showScanner && (
-          <BarcodeScanner
-            onScan={handleBarcodeScan}
-            onClose={() => setShowScanner(false)}
-          />
-        )}
+        {showScanner && <BarcodeScanner onScan={(code) => { form.setValue('barcode', code); setShowScanner(false); }} onClose={() => setShowScanner(false)} />}
         
         {!isClient ? <Skeleton className='h-96 w-full' /> : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                {/* Columna Izquierda */}
                 <div className="space-y-6 lg:col-span-2">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Información General</CardTitle>
-                      <CardDescription>
-                        Datos básicos del producto.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
+                  <Card className='border-2'>
+                    <CardHeader className='bg-muted/10'><CardTitle className='text-sm font-black uppercase'>Identidad del Producto</CardTitle></CardHeader>
+                    <CardContent className="grid gap-6 sm:grid-cols-2 pt-6">
                       <FormField
                         control={form.control}
                         name="name"
                         render={({ field }) => (
                           <FormItem className="sm:col-span-2">
-                            <FormLabel>Nombre del Producto</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Ej: Leche Entera 1L"
-                                {...field}
-                              />
-                            </FormControl>
+                            <FormLabel className='text-[10px] font-black uppercase'>Nombre Comercial</FormLabel>
+                            <FormControl><Input placeholder="Ej: Papa Blanca Seleccionada" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                       <FormField
                         control={form.control}
-                        name="brand"
+                        name="baseUnit"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Marca</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: La Pradera" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="vendor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Proveedor</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: Lácteos Los Andes" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="productType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tipo de Producto</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona un tipo" />
-                                </SelectTrigger>
-                              </FormControl>
+                            <FormLabel className='text-[10px] font-black uppercase'>Unidad de Medida</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl><SelectTrigger className='font-bold'><SelectValue /></SelectTrigger></FormControl>
                               <SelectContent>
-                                <SelectItem value="Inventariable">
-                                  Inventariable
-                                </SelectItem>
-                                <SelectItem value="No Inventariable">
-                                  No Inventariable
-                                </SelectItem>
-                                <SelectItem value="Servicio">
-                                  Servicio
-                                </SelectItem>
+                                <SelectItem value="Unidad">Unidad (Pza/Caja)</SelectItem>
+                                <SelectItem value="Kilogramos">Kilogramos (Kg)</SelectItem>
+                                <SelectItem value="Litros">Litros (Lt)</SelectItem>
                               </SelectContent>
                             </Select>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <FormField
+                       <FormField
                         control={form.control}
-                        name="category"
+                        name="isWeightable"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Categoría</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: Lácteos" {...field} />
-                            </FormControl>
-                            <FormMessage />
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border-2 border-dashed p-3">
+                            <div className="space-y-0.5">
+                              <FormLabel className='text-[10px] font-black uppercase flex items-center gap-1'><Scale className='h-3 w-3'/> Venta por Peso</FormLabel>
+                              <FormDescription className='text-[9px]'>Habilitar báscula/gramaje en POS</FormDescription>
+                            </div>
+                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                           </FormItem>
                         )}
                       />
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Códigos y Almacén</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-6 sm:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="barcode"
-                        render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Código de Barras (UPC/EAN)</FormLabel>
-                              <div className="flex gap-2">
-                                  <FormControl>
-                                      <Input placeholder="Escanea o ingresa el código" {...field} />
-                                  </FormControl>
-                                  <Button type="button" variant="outline" size="icon" onClick={() => setShowScanner(true)}>
-                                      <Camera className="h-4 w-4" />
-                                      <span className="sr-only">Escanear</span>
-                                  </Button>
-                              </div>
-                              <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="sku"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>SKU (Código Interno)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: LAC-001" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="location"
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-2">
-                            <FormLabel>Ubicación en Almacén</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Ej: Pasillo 3, Estante B" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  <Card className='border-2'>
+                    <CardHeader><CardTitle className='text-sm font-black uppercase'>Control de Stock y Costos</CardTitle></CardHeader>
+                    <CardContent className="grid gap-6 sm:grid-cols-3 pt-6">
+                        <FormField control={form.control} name="stock" render={({ field }) => (
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase'>Stock Inicial</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                        )} />
+                        <FormField control={form.control} name="minStock" render={({ field }) => (
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase'>Punto Reorden</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                        )} />
+                         <FormField control={form.control} name="cost" render={({ field }) => (
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase'>Costo Unitario</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl></FormItem>
+                        )} />
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Columna Derecha */}
                 <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Stock y Precios</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-6">
-                      <FormField
-                        control={form.control}
-                        name="stock"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Stock Inicial</FormLabel>
-                            <FormControl>
-                              <Input type="number" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="minStock"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Stock Mínimo (Punto de Reorden)</FormLabel>
-                            <FormControl>
-                              <Input type="number" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="cost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Costo Unitario (VES)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Precio de Venta (VES)</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.01" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="taxRate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Impuesto (IVA)</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(parseFloat(value))} defaultValue={String(field.value)}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona un impuesto" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="0.16">Gravado (16%)</SelectItem>
-                                <SelectItem value="0.08">Reducido (8%)</SelectItem>
-                                <SelectItem value="0">Exento (0%)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  <Card className='border-2 border-primary/20 bg-primary/[0.02] shadow-xl'>
+                    <CardHeader className='bg-primary/5'><CardTitle className='text-sm font-black uppercase text-primary italic'>Precio de Venta</CardTitle></CardHeader>
+                    <CardContent className='pt-6 space-y-4'>
+                        <FormField
+                            control={form.control}
+                            name="price"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className='text-[10px] font-black uppercase'>Precio (Bs)</FormLabel>
+                                <FormControl><Input type="number" step="0.01" className='text-2xl font-black h-14 border-2 border-primary/40' {...field} /></FormControl>
+                                <FormDescription className='text-[9px] font-bold uppercase'>Este precio es por la Unidad de Medida seleccionada.</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="taxRate"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className='text-[10px] font-black uppercase'>Impuesto (IVA)</FormLabel>
+                                <Select onValueChange={(v) => field.onChange(parseFloat(v))} defaultValue={String(field.value)}>
+                                    <FormControl><SelectTrigger className='font-bold'><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="0.16">16% (General)</SelectItem>
+                                        <SelectItem value="0.08">8% (Reducido)</SelectItem>
+                                        <SelectItem value="0">0% (Exento)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                            )}
+                        />
                     </CardContent>
                   </Card>
-                  <Card>
-                      <CardHeader>
-                          <CardTitle>Imagen del Producto</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                          <FormField
-                              control={form.control}
-                              name="imageUrl"
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel>URL de la Imagen</FormLabel>
-                                      <FormControl>
-                                          <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                              />
+                  <Card className='border-2'>
+                      <CardHeader><CardTitle className='text-sm font-black uppercase'>Categorización</CardTitle></CardHeader>
+                      <CardContent className='space-y-4'>
+                          <FormField control={form.control} name="category" render={({ field }) => (
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase'>Departamento</FormLabel><FormControl><Input placeholder="Ej: Verduras" {...field} /></FormControl></FormItem>
+                          )} />
+                          <FormField control={form.control} name="sku" render={({ field }) => (
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase'>SKU</FormLabel><FormControl><Input placeholder="Código Interno" {...field} /></FormControl></FormItem>
+                          )} />
                       </CardContent>
                   </Card>
                 </div>
               </div>
 
               <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => router.push('/inventory')}>Cancelar</Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {isSubmitting ? 'Guardando...' : 'Guardar Producto'}
+                  <Button type="button" variant="outline" onClick={() => router.push('/inventory')} className='font-bold'>CANCELAR</Button>
+                  <Button type="submit" disabled={isSubmitting} className='font-black uppercase h-12 px-10 shadow-xl'>
+                      {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Guardar en Sistema
                   </Button>
               </div>
             </form>

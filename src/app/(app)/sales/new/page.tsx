@@ -30,7 +30,8 @@ import {
     UserCheck,
     Package,
     AlertCircle,
-    Lock
+    Lock,
+    Scale
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -44,6 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
@@ -55,7 +57,8 @@ const saleSchema = z.object({
     quantity: z.coerce.number().min(0.001),
     stock: z.number(),
     taxRate: z.number(),
-    imageUrl: z.string().optional()
+    imageUrl: z.string().optional(),
+    isWeightable: z.boolean().optional()
   })).min(1),
   paymentMethod: z.string().default('Efectivo'),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).default('USD'),
@@ -73,7 +76,11 @@ export default function NewSalePage() {
   const [storeConfig, setStoreConfig] = useState<any>(null);
   const [cashSession, setCashSession] = useState<any>(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const productSearchRef = useRef<HTMLInputElement>(null);
+  
+  // Lógica de Peso
+  const [weightProduct, setWeightProduct] = useState<IProduct | null>(null);
+  const [inputWeight, setInputWeight] = useState('0');
+  const [weightUnit, setWeightUnit] = useState<'KG' | 'GR'>('GR');
 
   const form = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
@@ -99,11 +106,6 @@ export default function NewSalePage() {
   const watchChangeCurrency = form.watch('changeCurrency');
   const watchAmountReceived = form.watch('amountReceived');
   const watchReference = form.watch('referenceNumber');
-
-  const formatCurrency = (val: number, currency = 'VES') => {
-      if (currency === 'COP') return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(val);
-      return new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -133,11 +135,9 @@ export default function NewSalePage() {
         const tax = sub * (i.taxRate || 0);
         totalVES += (sub + tax);
     });
-    
     const ves = Math.round(totalVES * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
-    
     return { ves, usd, cop };
   }, [watchItems, rates]);
 
@@ -147,125 +147,93 @@ export default function NewSalePage() {
       return totals.usd;
   }, [watchCurrency, totals]);
 
-  useEffect(() => {
-    if (watchMethod === 'Efectivo') {
-        form.setValue('changeCurrency', watchCurrency);
-    }
-  }, [watchCurrency, watchMethod, form]);
-
-  const changeInfo = useMemo(() => {
-      const received = parseFloat(watchAmountReceived) || 0;
-      if (received <= targetAmount) return { amount: 0, currency: watchChangeCurrency };
-
-      const receivedInVES = watchCurrency === 'USD' ? received * (rates.usd?.usd || 0) : 
-                           watchCurrency === 'COP' ? (received / (rates.cop?.rate || 1)) * (rates.usd?.usd || 0) : 
-                           received;
-      
-      const changeInVES = receivedInVES - totals.ves;
-
-      let finalChange = 0;
-      if (watchChangeCurrency === 'VES') {
-          finalChange = changeInVES;
-      } else if (watchChangeCurrency === 'USD') {
-          finalChange = changeInVES / (rates.usd?.usd || 1);
-      } else if (watchChangeCurrency === 'COP') {
-          finalChange = (changeInVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 0);
-      }
-
-      return {
-          amount: Math.max(0, finalChange),
-          currency: watchChangeCurrency
-      };
-  }, [watchAmountReceived, watchCurrency, watchChangeCurrency, targetAmount, totals.ves, rates]);
-
-  useEffect(() => {
-    if (['Pago Móvil', 'Tarjeta', 'Biopago'].includes(watchMethod)) {
-        form.setValue('paymentCurrency', 'VES');
-        form.setValue('changeCurrency', 'VES');
-        form.setValue('amountReceived', totals.ves.toFixed(2));
-    } else if (['Zelle', 'Binance'].includes(watchMethod)) {
-        form.setValue('paymentCurrency', 'USD');
-        form.setValue('changeCurrency', 'USD');
-        form.setValue('amountReceived', totals.usd.toFixed(2));
-    }
-  }, [watchMethod, totals.ves, totals.usd, form]);
-
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
+    if (product.isWeightable) {
+        setWeightProduct(product);
+        setInputWeight('0');
+        setWeightUnit('GR');
+        return;
+    }
+
     const existing = fields.findIndex(item => item.productId === String(product._id));
     if (existing > -1) {
-      const currentQty = parseFloat(watchItems[existing].quantity.toString()) || 0;
-      update(existing, { ...fields[existing], quantity: currentQty + quantity });
+      update(existing, { ...fields[existing], quantity: parseFloat(watchItems[existing].quantity.toString()) + quantity });
     } else {
         append({
             productId: String(product._id),
             name: product.name,
             price: product.price, 
-            quantity: quantity,
+            quantity,
             stock: product.stock,
             taxRate: product.taxRate,
-            imageUrl: product.imageUrl
+            imageUrl: product.imageUrl,
+            isWeightable: product.isWeightable
         });
     }
   };
 
-  const handleAdjustQuantity = (index: number, delta: number) => {
-    const currentQty = parseFloat(watchItems[index]?.quantity?.toString()) || 0;
-    const nextQty = Math.max(0, currentQty + delta);
-    if (nextQty <= 0) remove(index);
-    else update(index, { ...fields[index], quantity: nextQty });
+  const handleAddWeightedItem = () => {
+      if (!weightProduct) return;
+      const weightVal = parseFloat(inputWeight) || 0;
+      const finalKg = weightUnit === 'GR' ? weightVal / 1000 : weightVal;
+      
+      if (finalKg <= 0) {
+          toast({ variant: 'destructive', title: "Peso inválido" });
+          return;
+      }
+
+      append({
+          productId: String(weightProduct._id),
+          name: `${weightProduct.name} (${finalKg} Kg)`,
+          price: weightProduct.price,
+          quantity: finalKg,
+          stock: weightProduct.stock,
+          taxRate: weightProduct.taxRate,
+          imageUrl: weightProduct.imageUrl,
+          isWeightable: true
+      });
+      setWeightProduct(null);
   };
 
-  const isDigitalPayment = ['Pago Móvil', 'Tarjeta', 'Zelle', 'Binance', 'Biopago'].includes(watchMethod);
-  const isReferenceMissing = isDigitalPayment && !watchReference?.trim();
-  const isLocked = storeConfig?.enforceCashControl && !cashSession;
+  const changeInfo = useMemo(() => {
+    const received = parseFloat(watchAmountReceived) || 0;
+    if (received <= targetAmount) return { amount: 0, currency: watchChangeCurrency };
+    const receivedInVES = watchCurrency === 'USD' ? received * (rates.usd?.usd || 0) : 
+                         watchCurrency === 'COP' ? (received / (rates.cop?.rate || 1)) * (rates.usd?.usd || 0) : 
+                         received;
+    const changeInVES = receivedInVES - totals.ves;
+    let finalChange = 0;
+    if (watchChangeCurrency === 'VES') finalChange = changeInVES;
+    else if (watchChangeCurrency === 'USD') finalChange = changeInVES / (rates.usd?.usd || 1);
+    else if (watchChangeCurrency === 'COP') finalChange = (changeInVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 0);
+    return { amount: Math.max(0, finalChange), currency: watchChangeCurrency };
+  }, [watchAmountReceived, watchCurrency, watchChangeCurrency, targetAmount, totals.ves, rates]);
 
   const handleFinalizeSale = async () => {
-    if (watchItems.length === 0 || isLocked) return;
-    const received = parseFloat(watchAmountReceived) || 0;
-    
-    if (received < targetAmount * 0.999) {
-        toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago es insuficiente.' });
-        return;
-    }
-
-    if (isReferenceMissing) {
-        toast({ variant: 'destructive', title: 'Referencia Requerida', description: 'Por favor ingrese el número de confirmación bancaria.' });
-        return;
-    }
-
+    if (watchItems.length === 0 || (storeConfig?.enforceCashControl && !cashSession)) return;
     setIsSubmitting(true);
     try {
-        const storeId = localStorage.getItem('storeId');
         const response = await fetch('/api/sales/new', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 ...form.getValues(), 
-                amountReceived: received,
+                amountReceived: parseFloat(watchAmountReceived) || 0,
                 change: changeInfo.amount,
-                storeId 
+                storeId: localStorage.getItem('storeId')
             }),
         });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || "Fallo al guardar venta");
-        }
+        if (!response.ok) throw new Error("Error en facturación");
         const result = await response.json();
         router.push(`/sales/${result._id}/invoice?print=true`);
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error POS', description: e.message });
+        toast({ variant: 'destructive', title: 'Fallo POS', description: e.message });
     } finally {
         setIsSubmitting(false);
     }
   };
 
-  const qrPayload = useMemo(() => {
-    if (!storeConfig?.pagoMovil?.phone || !storeConfig?.pagoMovil?.bankCode) return '';
-    const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
-    const cleanDoc = idNumber.replace(/[^0-9VJEG]/g, '').toUpperCase();
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    return `${bankCode};${cleanDoc};${cleanPhone};${totals.ves.toFixed(2)}`;
-  }, [storeConfig, totals.ves]);
+  const isLocked = storeConfig?.enforceCashControl && !cashSession;
 
   return (
     <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
@@ -293,36 +261,21 @@ export default function NewSalePage() {
                             <Badge variant="outline" className="text-[10px] font-black uppercase bg-green-50 text-green-600 border-green-200">
                                 <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> POS Online
                             </Badge>
-                            {cashSession && (
-                                <Badge variant="secondary" className="text-[10px] font-black uppercase">
-                                    <AlertCircle className="h-2.5 w-2.5 mr-1" /> Turno: {cashSession.userName}
-                                </Badge>
-                            )}
                         </div>
                     </div>
-                </div>
-                <div className="text-left sm:text-right px-1">
-                    <span className="text-[10px] font-black uppercase opacity-40 block">Tasa Oficial BCV</span>
-                    <span className="text-sm font-black text-primary">Bs. {formatCurrency(rates.usd?.usd || 0)}</span>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 flex-1 lg:overflow-hidden pb-20 lg:pb-0">
-                {/* IZQUIERDA: CARRITO */}
                 <div className="lg:col-span-7 flex flex-col gap-4 lg:overflow-hidden">
-                    <Card className='rounded-2xl border-2 shadow-sm'>
-                        <CardContent className="p-2 md:p-3">
-                            <ProductSearch inputRef={productSearchRef} onProductSelect={handleProductSelect} />
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-2xl flex-1 lg:overflow-hidden flex flex-col overflow-hidden border-2 shadow-sm">
+                    <Card className='rounded-2xl border-2 shadow-sm'><CardContent className="p-2 md:p-3"><ProductSearch onProductSelect={handleProductSelect} /></CardContent></Card>
+                    <Card className="rounded-2xl flex-1 lg:overflow-hidden flex flex-col border-2 shadow-sm overflow-hidden">
                         <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
                             <div className="overflow-x-auto overflow-y-auto flex-1">
                                 <Table>
                                     <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                                         <TableRow>
-                                            <TableHead className="pl-4 font-black uppercase text-[10px]">Item / Imagen</TableHead>
+                                            <TableHead className="pl-4 font-black uppercase text-[10px]">Item</TableHead>
                                             <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
                                             <TableHead className="text-right pr-4 font-black uppercase text-[10px]">Total</TableHead>
                                             <TableHead className="w-[40px]"></TableHead>
@@ -330,46 +283,24 @@ export default function NewSalePage() {
                                     </TableHeader>
                                     <TableBody>
                                         {fields.length > 0 ? fields.map((item, index) => (
-                                            <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b">
-                                                <TableCell className="pl-4 py-2 md:py-3">
-                                                    <div className='flex items-center gap-3'>
-                                                        <div className='h-10 w-10 rounded-lg bg-muted relative overflow-hidden shrink-0 border'>
-                                                            {item.imageUrl ? (
-                                                                <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="40px" />
-                                                            ) : (
-                                                                <div className='flex h-full w-full items-center justify-center opacity-20'>
-                                                                    <Package className='h-5 w-5' />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className='flex flex-col'>
-                                                            <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight line-clamp-1'>{item.name}</span>
-                                                            <span className='text-[8px] md:text-[9px] text-muted-foreground font-mono'>Bs. {formatCurrency(item.price)}</span>
-                                                        </div>
+                                            <TableRow key={item.id} className="hover:bg-primary/[0.02]">
+                                                <TableCell className="pl-4 py-3">
+                                                    <div className='flex flex-col'>
+                                                        <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight line-clamp-1'>{item.name}</span>
+                                                        <span className='text-[8px] opacity-60 font-mono'>Bs. {item.price.toLocaleString()}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className='text-center'>
                                                     <div className="flex items-center justify-center gap-1">
-                                                        <Button variant="outline" size="icon" className="h-6 w-6 md:h-8 md:w-8 rounded-lg border-2" onClick={() => handleAdjustQuantity(index, -1)}><Minus className="h-3 w-3" /></Button>
-                                                        <span className="w-6 md:w-8 text-center font-black text-xs md:text-sm">{watchItems[index]?.quantity}</span>
-                                                        <Button variant="outline" size="icon" className="h-6 w-6 md:h-8 md:w-8 rounded-lg border-2 border-primary/20 text-primary" onClick={() => handleAdjustQuantity(index, 1)}><Plus className="h-3 w-3" /></Button>
+                                                        <span className="font-black text-xs md:text-sm">{watchItems[index]?.quantity} {item.isWeightable ? 'Kg' : 'Und'}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right pr-4 font-black text-[11px] md:text-sm text-primary whitespace-nowrap">
-                                                    {formatCurrency(item.price * item.quantity * (1 + (item.taxRate || 0)))}
+                                                <TableCell className="text-right pr-4 font-black text-primary text-[11px]">
+                                                    {(item.price * item.quantity * (1 + item.taxRate)).toLocaleString('es-VE')}
                                                 </TableCell>
-                                                <TableCell className="pr-2">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
-                                                </TableCell>
+                                                <TableCell className="pr-2"><Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => remove(index)}><X className="h-4 w-4" /></Button></TableCell>
                                             </TableRow>
-                                        )) : (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className='h-48 md:h-64 text-center opacity-20'>
-                                                    <QrCode className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4" />
-                                                    <p className="font-black uppercase text-[10px] md:text-xs tracking-widest">Esperando Productos</p>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
+                                        )) : <TableRow><TableCell colSpan={4} className='h-48 text-center opacity-20 italic text-xs uppercase font-black'>Esperando Mercancía...</TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </div>
@@ -377,148 +308,81 @@ export default function NewSalePage() {
                     </Card>
                 </div>
 
-                {/* DERECHA: LIQUIDACIÓN */}
                 <div className="lg:col-span-5 flex flex-col gap-4">
                     <Card className="rounded-2xl bg-primary text-primary-foreground border-none overflow-hidden shadow-xl">
-                        <CardContent className="p-0">
-                            <div className="grid grid-cols-3 divide-x divide-white/10 border-b border-white/10">
-                                <div className={cn("p-2 md:p-3 text-center transition-all", watchCurrency === 'USD' ? "bg-white/10 scale-105" : "opacity-60")}>
-                                    <span className="text-[8px] md:text-[9px] font-black uppercase opacity-60 block">Dólares</span>
-                                    <span className="text-base md:text-lg font-black">${formatCurrency(totals.usd, 'USD')}</span>
-                                </div>
-                                <div className={cn("p-2 md:p-3 text-center transition-all", watchCurrency === 'VES' ? "bg-white/10 scale-105" : "opacity-60")}>
-                                    <span className="text-[8px] md:text-[9px] font-black uppercase opacity-60 block">Bolívares</span>
-                                    <span className="text-base md:text-lg font-black">Bs. {formatCurrency(totals.ves)}</span>
-                                </div>
-                                <div className={cn("p-2 md:p-3 text-center transition-all", watchCurrency === 'COP' ? "bg-white/10 scale-105" : "opacity-60")}>
-                                    <span className="text-[8px] md:text-[9px] font-black uppercase opacity-60 block">Pesos</span>
-                                    <span className="text-base md:text-lg font-black">{totals.cop.toLocaleString()}</span>
-                                </div>
-                            </div>
+                        <CardContent className="p-3 grid grid-cols-3 divide-x divide-white/10">
+                            <div className="text-center"><span className="text-[8px] font-black uppercase opacity-60 block">USD</span><span className="text-base font-black">${totals.usd.toFixed(2)}</span></div>
+                            <div className="text-center"><span className="text-[8px] font-black uppercase opacity-60 block">VES</span><span className="text-base font-black">Bs. {totals.ves.toLocaleString()}</span></div>
+                            <div className="text-center"><span className="text-[8px] font-black uppercase opacity-60 block">COP</span><span className="text-base font-black">{totals.cop.toLocaleString()}</span></div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl flex-1 flex flex-col overflow-hidden border-2 shadow-sm">
-                        <CardContent className="p-3 md:p-4 space-y-4 flex-1 overflow-y-auto">
-                            <div className="space-y-1">
-                                <Label className="text-[10px] font-black uppercase opacity-50 ml-1">Titular de Factura</Label>
-                                {selectedCustomer ? (
-                                    <div className="flex items-center justify-between p-3 bg-primary/5 border-2 border-primary/20 rounded-xl animate-in zoom-in-95 duration-200">
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-primary text-white p-1.5 rounded-lg"><UserCheck className="h-4 w-4" /></div>
-                                            <div className="flex flex-col overflow-hidden">
-                                                <span className="text-xs font-black uppercase truncate">{selectedCustomer.name}</span>
-                                                <span className="text-[9px] font-mono opacity-60">{selectedCustomer.idNumber}</span>
-                                            </div>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-red-500 shrink-0" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', 'Cliente Contado'); form.setValue('customerId', undefined); }}><X className="h-4 w-4" /></Button>
-                                    </div>
-                                ) : (
-                                    <CustomerSearch onCustomerSelect={(c) => { form.setValue('customerId', c._id); form.setValue('customerName', c.name); setSelectedCustomer(c); }} />
-                                )}
-                            </div>
-
-                            <Separator />
-
-                            <div className="grid grid-cols-3 gap-2">
-                                {[
-                                    { id: 'Pago Móvil', icon: Smartphone, color: 'text-blue-500' },
-                                    { id: 'Tarjeta', icon: CreditCard, color: 'text-purple-500' },
-                                    { id: 'Efectivo', icon: Banknote, color: 'text-green-600' },
-                                    { id: 'Zelle', icon: CheckCircle2, color: 'text-blue-600' },
-                                    { id: 'Binance', icon: Coins, color: 'text-amber-500' },
-                                    { id: 'Biopago', icon: ShieldCheck, color: 'text-red-500' },
-                                ].map((m) => (
-                                    <button 
-                                        key={m.id}
-                                        type="button"
-                                        className={cn(
-                                            "min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-xl transition-all font-black text-[9px] uppercase border-2",
-                                            watchMethod === m.id ? "border-primary bg-primary/5 text-primary shadow-sm" : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted"
-                                        )}
-                                        onClick={() => form.setValue('paymentMethod', m.id)}
-                                    >
-                                        <m.icon className={cn("h-4 w-4", watchMethod === m.id ? "text-primary" : m.color)} />
-                                        {m.id}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="bg-muted/30 rounded-2xl p-3 md:p-4 border-2 border-dashed space-y-4">
-                                {watchMethod === 'Pago Móvil' ? (
-                                    <div className="flex flex-col sm:flex-row gap-4 items-center">
-                                        <div className="bg-white p-2 rounded-xl border-2 border-primary/10 shadow-sm shrink-0">
-                                            {qrPayload ? (
-                                                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrPayload)}&ecc=L`} alt="QR" className="w-24 h-20 sm:w-20" />
-                                            ) : <div className="w-20 h-20 flex items-center justify-center text-[7px] font-black text-center opacity-20 uppercase">Faltan Datos Cuenta</div>}
-                                        </div>
-                                        <div className="flex-1 w-full space-y-2">
-                                            <div className="text-[9px] font-bold">
-                                                <p className="font-black text-primary text-[11px]">Banco: {storeConfig?.pagoMovil?.bankCode || 'N/A'}</p>
-                                                <p className="opacity-70">CI: {storeConfig?.pagoMovil?.idNumber || 'N/A'}</p>
-                                                <p className="opacity-70">TEL: {storeConfig?.pagoMovil?.phone || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-[8px] font-black uppercase opacity-50 ml-1">Referencia (Últimos 6)</Label>
-                                                <Input placeholder="000000" className="h-10 font-black uppercase text-center rounded-xl bg-white border-2" {...form.register('referenceNumber')} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {watchMethod === 'Efectivo' && (
-                                            <div className="flex gap-1 p-1 bg-white/50 rounded-xl border">
-                                                {['USD', 'VES', 'COP'].map((curr: any) => (
-                                                    <button key={curr} type="button" className={cn("flex-1 h-8 rounded-lg font-black text-[10px] transition-all", watchCurrency === curr ? "bg-primary text-white" : "text-muted-foreground opacity-50")} onClick={() => form.setValue('paymentCurrency', curr)}>{curr}</button>
-                                                ))}
-                                            </div>
-                                        )}
-                                        
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1">
-                                                <Label className="text-[9px] font-black uppercase opacity-40 ml-1">Recibido ({watchCurrency})</Label>
-                                                <div className="relative">
-                                                    <Input type="number" className="h-11 text-xl font-black text-center rounded-xl border-2 border-primary/20 focus:border-primary" {...form.register('amountReceived')} />
-                                                    {watchMethod === 'Efectivo' && (
-                                                         <button type="button" className="absolute right-1 top-1 h-9 px-2 font-black text-[8px] uppercase text-primary bg-primary/5 rounded-md" onClick={() => form.setValue('amountReceived', targetAmount.toFixed(2))}>Exacto</button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className={cn("rounded-xl p-2 flex flex-col justify-center text-center border-2 transition-all", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700 scale-105 shadow-lg" : "bg-muted border-transparent opacity-40")}>
-                                                <span className="text-[9px] font-black uppercase opacity-60">Vuelto ({changeInfo.currency})</span>
-                                                <span className="text-lg font-black">{formatCurrency(changeInfo.amount, changeInfo.currency)}</span>
-                                            </div>
-                                        </div>
-
-                                        {isDigitalPayment && (
-                                            <div className="space-y-1">
-                                                <Label className="text-[9px] font-black uppercase opacity-40 ml-1">Nº Referencia / Lote</Label>
-                                                <Input placeholder="Ej: 014523" className="h-10 font-black uppercase text-center rounded-xl bg-white border-2" {...form.register('referenceNumber')} />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-
-                        <div className="p-3 md:p-4 bg-white border-t mt-auto sticky bottom-0 z-20">
-                             <Button 
-                                type="button"
-                                onClick={handleFinalizeSale}
-                                disabled={isSubmitting || watchItems.length === 0 || isReferenceMissing || isLocked}
-                                className={cn(
-                                    "w-full h-14 md:h-16 text-lg font-black uppercase shadow-2xl rounded-2xl transition-all",
-                                    isLocked ? "bg-slate-300 text-slate-500 cursor-not-allowed" : "bg-primary text-white"
-                                )}
-                            >
-                                {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-5 w-5" />}
-                                {isLocked ? 'VENTAS CERRADAS (BLOQUEO)' : 'FACTURAR VENTA (F4)'}
-                             </Button>
+                    <Card className="rounded-2xl flex-1 flex flex-col border-2 shadow-sm p-4 space-y-4">
+                        <CustomerSearch onCustomerSelect={(c) => { form.setValue('customerId', c._id); form.setValue('customerName', c.name); setSelectedCustomer(c); }} />
+                        
+                        <div className="grid grid-cols-3 gap-2">
+                            {['Pago Móvil', 'Tarjeta', 'Efectivo', 'Zelle', 'Binance', 'Biopago'].map(m => (
+                                <button key={m} type="button" className={cn("h-12 rounded-xl text-[9px] font-black uppercase border-2 transition-all", watchMethod === m ? "bg-primary text-white border-primary" : "bg-muted/40 border-transparent")} onClick={() => form.setValue('paymentMethod', m)}>{m}</button>
+                            ))}
                         </div>
+
+                        <div className="space-y-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
+                             <div className="flex gap-2">
+                                {['USD', 'VES', 'COP'].map(curr => (
+                                    <Button key={curr} type="button" variant={watchCurrency === curr ? 'default' : 'outline'} size="sm" className="flex-1 font-black" onClick={() => form.setValue('paymentCurrency', curr as any)}>{curr}</Button>
+                                ))}
+                             </div>
+                             <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase opacity-40">Monto Recibido</Label>
+                                <Input type="number" className="h-12 text-2xl font-black text-center" {...form.register('amountReceived')} />
+                             </div>
+                             <div className={cn("p-3 rounded-xl text-center border-2", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700" : "bg-muted opacity-40")}>
+                                <span className="text-[9px] font-black uppercase block">Vuelto ({changeInfo.currency})</span>
+                                <span className="text-xl font-black">{changeInfo.amount.toLocaleString()}</span>
+                             </div>
+                        </div>
+
+                        <Button onClick={handleFinalizeSale} disabled={isSubmitting || watchItems.length === 0 || isLocked} className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl">
+                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-5 w-5" />}
+                            FACTURAR VENTA (F4)
+                        </Button>
                     </Card>
                 </div>
             </div>
        </main>
+
+       {/* MODAL DE PESO (Verduras/Frutas) */}
+       <Dialog open={!!weightProduct} onOpenChange={() => setWeightProduct(null)}>
+           <DialogContent className='sm:max-w-[400px] border-4 border-primary'>
+                <DialogHeader className='text-center'>
+                    <div className='mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-2'><Scale className='h-8 w-8 text-primary'/></div>
+                    <DialogTitle className='text-xl font-black uppercase italic'>{weightProduct?.name}</DialogTitle>
+                </DialogHeader>
+                <div className='py-6 space-y-6'>
+                    <div className='flex gap-2 p-1 bg-muted rounded-xl border'>
+                        <Button variant={weightUnit === 'GR' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('GR')}>Gramos (Gr)</Button>
+                        <Button variant={weightUnit === 'KG' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('KG')}>Kilos (Kg)</Button>
+                    </div>
+                    <div className='space-y-2'>
+                        <Label className='text-[10px] font-black uppercase text-center block'>Cantidad a Vender</Label>
+                        <Input type="number" value={inputWeight} onChange={e => setInputWeight(e.target.value)} className='h-20 text-5xl font-black text-center bg-primary/5 border-2 border-primary/20' autoFocus onKeyDown={e => e.key === 'Enter' && handleAddWeightedItem()} />
+                    </div>
+                    {weightProduct && (
+                        <div className='bg-primary/5 p-4 rounded-xl border-2 border-primary/10 space-y-2'>
+                             <div className='flex justify-between text-[10px] font-black uppercase opacity-60'><span>Subtotal Estimado:</span></div>
+                             <div className='flex justify-between items-baseline'>
+                                <span className='text-2xl font-black text-primary'>Bs. {((weightProduct.price * (weightUnit === 'GR' ? parseFloat(inputWeight)/1000 : parseFloat(inputWeight))) || 0).toLocaleString()}</span>
+                                <span className='text-sm font-bold opacity-60'>REF: ${( ((weightProduct.price * (weightUnit === 'GR' ? parseFloat(inputWeight)/1000 : parseFloat(inputWeight))) || 0) / (rates.usd?.usd || 1)).toFixed(2)}</span>
+                             </div>
+                        </div>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" className='font-bold' onClick={() => setWeightProduct(null)}>CANCELAR</Button>
+                    <Button className='font-black uppercase h-12 px-8' onClick={handleAddWeightedItem}>Añadir al Carrito</Button>
+                </DialogFooter>
+           </DialogContent>
+       </Dialog>
     </div>
   );
 }

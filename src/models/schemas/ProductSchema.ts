@@ -9,6 +9,7 @@ const LotSchema = new Schema({
 
 const ComponentSchema = new Schema({
     product: { type: Schema.Types.ObjectId, ref: 'Product' },
+    productName: { type: String }, // Redundancia para velocidad
     quantity: { type: Number, required: true },
 });
 
@@ -23,25 +24,20 @@ export const ProductSchema = new Schema({
   category: { type: String },
   
   // Gestión de Unidades
-  baseUnit: { type: String, default: 'Unidad' }, // Unidades, Kg, Litros, etc.
-  purchaseUnit: { type: String }, // Bulto, Caja, Saco
-  conversionFactor: { type: Number, default: 1 }, // Ej: 24 (unidades por bulto)
+  baseUnit: { type: String, enum: ['Unidad', 'Kilogramos', 'Gramos', 'Litros'], default: 'Unidad' },
+  isWeightable: { type: Boolean, default: false }, // Dispara el modal de peso en POS
 
-  stock: { type: Number, required: true, default: 0, min: 0 },
-  minStock: { type: Number, required: true, default: 0, min: 0 },
-  cost: { type: Number, required: true, default: 0, min: 0 },
-  price: { type: Number, required: true, min: 0 },
+  stock: { type: Number, required: true, default: 0 },
+  minStock: { type: Number, required: true, default: 0 },
+  cost: { type: Number, required: true, default: 0 },
+  price: { type: Number, required: true, min: 0 }, // Precio por unidad o por Kg
   taxRate: { type: Number, required: true, default: 0.16 },
   location: { type: String },
   imageUrl: { type: String },
   status: { type: String, enum: ['En Stock', 'Stock Bajo', 'Sin Stock'], required: true },
   
-  // Campos Avanzados
-  lots: [LotSchema],
-  recipe: [ComponentSchema], // Solo para tipo 'Compuesto'
-  isWeightable: { type: Boolean, default: false }, // Dispara lectura de balanza
-  isBimonetary: { type: Boolean, default: true },
-  allowCredit: { type: Boolean, default: true },
+  // Receta para productos Compuestos (Combos)
+  recipe: [ComponentSchema],
 }, {
   timestamps: true
 });
