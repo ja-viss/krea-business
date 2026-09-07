@@ -23,7 +23,8 @@ import {
     UserCheck,
     Package,
     Lock,
-    Scale
+    Scale,
+    Coins
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -126,7 +127,12 @@ export default function NewSalePage() {
     };
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [watchItems]);
+  }, []);
+
+  // Sincronizar moneda de vuelto con moneda de pago por defecto
+  useEffect(() => {
+    form.setValue('changeCurrency', watchCurrency);
+  }, [watchCurrency, form]);
 
   const totals = useMemo(() => {
     let totalVES = 0;
@@ -213,14 +219,24 @@ export default function NewSalePage() {
   const changeInfo = useMemo(() => {
     const received = parseFloat(watchAmountReceived) || 0;
     if (received <= targetAmount) return { amount: 0, currency: watchChangeCurrency };
+    
+    // Convertir lo recibido a VES para unificar el cálculo de base
     const receivedInVES = watchCurrency === 'USD' ? received * (rates.usd?.usd || 0) : 
                          watchCurrency === 'COP' ? (received / (rates.cop?.rate || 1)) * (rates.usd?.usd || 0) : 
                          received;
+    
     const changeInVES = receivedInVES - totals.ves;
+    
+    // Convertir el vuelto de VES a la moneda de vuelto seleccionada
     let finalChange = 0;
-    if (watchChangeCurrency === 'VES') finalChange = changeInVES;
-    else if (watchChangeCurrency === 'USD') finalChange = changeInVES / (rates.usd?.usd || 1);
-    else if (watchChangeCurrency === 'COP') finalChange = (changeInVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 0);
+    if (watchChangeCurrency === 'VES') {
+        finalChange = changeInVES;
+    } else if (watchChangeCurrency === 'USD') {
+        finalChange = changeInVES / (rates.usd?.usd || 1);
+    } else if (watchChangeCurrency === 'COP') {
+        finalChange = (changeInVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 0);
+    }
+
     return { amount: Math.max(0, finalChange), currency: watchChangeCurrency };
   }, [watchAmountReceived, watchCurrency, watchChangeCurrency, targetAmount, totals.ves, rates]);
 
@@ -404,18 +420,47 @@ export default function NewSalePage() {
                         </div>
 
                         <div className="space-y-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
-                             <div className="flex gap-2">
-                                {['USD', 'VES', 'COP'].map(curr => (
-                                    <Button key={curr} type="button" variant={watchCurrency === curr ? 'default' : 'outline'} size="sm" className="flex-1 font-black" onClick={() => form.setValue('paymentCurrency', curr as any)}>{curr}</Button>
-                                ))}
-                             </div>
                              <div className="space-y-1">
-                                <Label className="text-[9px] font-black uppercase opacity-40">Monto Recibido</Label>
+                                <Label className="text-[9px] font-black uppercase opacity-40">Moneda de Pago</Label>
+                                <div className="flex gap-2">
+                                    {['USD', 'VES', 'COP'].map(curr => (
+                                        <Button key={curr} type="button" variant={watchCurrency === curr ? 'default' : 'outline'} size="sm" className="flex-1 font-black" onClick={() => form.setValue('paymentCurrency', curr as any)}>{curr}</Button>
+                                    ))}
+                                </div>
+                             </div>
+
+                             <div className="space-y-1">
+                                <Label className="text-[9px] font-black uppercase opacity-40">Monto Recibido ({watchCurrency})</Label>
                                 <Input type="number" className="h-12 text-2xl font-black text-center" {...form.register('amountReceived')} />
                              </div>
-                             <div className={cn("p-3 rounded-xl text-center border-2 transition-all", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700 shadow-lg scale-[1.02]" : "bg-muted opacity-40")}>
-                                <span className="text-[9px] font-black uppercase block">Vuelto ({changeInfo.currency})</span>
-                                <span className="text-xl font-black">{changeInfo.amount.toLocaleString()}</span>
+
+                             <div className="space-y-2 pt-2 border-t border-dashed border-muted-foreground/20">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-[9px] font-black uppercase opacity-40">Devolver Vuelto en:</Label>
+                                    <div className="flex gap-1">
+                                        {['USD', 'VES', 'COP'].map(curr => (
+                                            <Button 
+                                                key={curr} 
+                                                type="button" 
+                                                variant={watchChangeCurrency === curr ? 'secondary' : 'ghost'} 
+                                                size="xs" 
+                                                className="h-6 px-2 text-[8px] font-black uppercase" 
+                                                onClick={() => form.setValue('changeCurrency', curr as any)}
+                                            >
+                                                {curr}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className={cn("p-3 rounded-xl text-center border-2 transition-all", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700 shadow-lg scale-[1.02]" : "bg-muted opacity-40")}>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Coins className={cn("h-4 w-4", changeInfo.amount > 0 ? "animate-bounce" : "")} />
+                                        <span className="text-[9px] font-black uppercase">Vuelto en {changeInfo.currency}</span>
+                                    </div>
+                                    <span className="text-xl font-black">
+                                        {changeInfo.currency === 'USD' ? '$' : changeInfo.currency === 'VES' ? 'Bs.' : ''} {changeInfo.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {changeInfo.currency === 'COP' ? 'COP' : ''}
+                                    </span>
+                                </div>
                              </div>
                         </div>
 
@@ -437,7 +482,7 @@ export default function NewSalePage() {
                 <div className='py-6 space-y-6'>
                     <div className='flex gap-2 p-1 bg-muted rounded-xl border'>
                         <Button variant={weightUnit === 'GR' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('GR')}>Gramos (Gr)</Button>
-                        <Button variant={weightUnit === 'KG' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('KG')}>Gilos (Kg)</Button>
+                        <Button variant={weightUnit === 'KG' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('KG')}>Kilos (Kg)</Button>
                     </div>
                     <div className='space-y-2'>
                         <Label className='text-[10px] font-black uppercase text-center block'>Cantidad a Vender</Label>
