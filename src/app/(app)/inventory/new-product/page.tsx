@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -97,10 +98,13 @@ export default function NewProductPage() {
 
     setSearchingImage(true);
     try {
-      const keyword = encodeURIComponent(watchName.trim().split(' ')[0]);
+      // Tomamos las primeras dos palabras para una búsqueda más precisa
+      const keywords = watchName.trim().split(' ').slice(0, 2).join(' ');
+      const keyword = encodeURIComponent(keywords);
       const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${Math.floor(Math.random() * 1000)}`;
       
-      form.setValue('imageUrl', autoUrl);
+      // Actualizamos el valor asegurando que el formulario detecte el cambio
+      form.setValue('imageUrl', autoUrl, { shouldDirty: true, shouldValidate: true, shouldTouch: true });
       
       toast({
         title: 'Imagen Localizada',
@@ -235,7 +239,7 @@ export default function NewProductPage() {
                                   alt="Preview" 
                                   fill 
                                   className="object-cover"
-                                  onError={() => form.setValue('imageUrl', '')}
+                                  unoptimized
                                 />
                               ) : (
                                 <div className="flex flex-col items-center opacity-20">

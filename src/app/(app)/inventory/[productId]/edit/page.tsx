@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -153,9 +154,11 @@ export default function EditProductPage() {
 
     setSearchingImage(true);
     try {
-      const keyword = encodeURIComponent(watchName.trim().split(' ')[0]);
+      const keywords = watchName.trim().split(' ').slice(0, 2).join(' ');
+      const keyword = encodeURIComponent(keywords);
       const autoUrl = `https://loremflickr.com/600/600/${keyword}?lock=${Math.floor(Math.random() * 1000)}`;
-      form.setValue('imageUrl', autoUrl);
+      
+      form.setValue('imageUrl', autoUrl, { shouldDirty: true, shouldValidate: true, shouldTouch: true });
       toast({ title: 'Imagen Actualizada' });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error de búsqueda' });
@@ -396,7 +399,7 @@ export default function EditProductPage() {
                             <Label className="text-xs font-bold uppercase opacity-60">Vista Previa</Label>
                             <div className="h-32 w-full rounded-xl border-2 border-dashed bg-muted/20 relative overflow-hidden flex items-center justify-center">
                                 {watchImageUrl ? (
-                                    <Image src={watchImageUrl} alt="Preview" fill className="object-cover" />
+                                    <Image src={watchImageUrl} alt="Preview" fill className="object-cover" unoptimized />
                                 ) : (
                                     <ImageIcon className="h-8 w-8 opacity-20" />
                                 )}
