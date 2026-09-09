@@ -13,25 +13,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { 
     ChevronLeft, 
-    Calendar, 
     Zap, 
     AlertTriangle, 
     Loader2, 
     Users, 
     ShieldCheck, 
-    UserPlus, 
     KeyRound, 
     Ban, 
     CheckCircle2, 
-    Clock, 
-    HardDrive,
-    Lock,
-    Trophy,
     Package,
     ShoppingCart,
     Receipt,
     BarChart3,
-    Settings2
+    Settings2,
+    LogIn
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,11 +42,12 @@ export default function StoreAdminDetailPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [isImpersonating, setIsImpersonating] = useState(false);
     
     // Modal states
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
-    const [tempPassword, setTempPassword] = useState('Cambio2026*');
+    const [tempPassword, setTempPassword] = useState('Krea2026*');
 
     useEffect(() => {
         fetchData();
@@ -97,6 +93,34 @@ export default function StoreAdminDetailPage() {
         }
     };
 
+    const handleImpersonate = async (userId: string) => {
+        setIsImpersonating(true);
+        try {
+            const res = await fetch('/api/admin/impersonate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetUserId: userId })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            // Inyectar sesión de suplantación
+            localStorage.setItem('userId', data.user.id);
+            localStorage.setItem('storeId', data.user.store);
+            localStorage.setItem('userName', data.user.name);
+            localStorage.setItem('userEmail', data.user.email);
+            localStorage.setItem('userRole', data.user.roleName);
+            localStorage.setItem('isGlobalAdmin', 'false'); // Importante para que la UI cambie
+            localStorage.setItem('enabledModules', JSON.stringify(data.user.enabledModules));
+
+            toast({ title: "Modo Suplantación Activo", description: `Has iniciado sesión como ${data.user.name}.` });
+            router.push('/dashboard');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: "Error de Soporte", description: e.message });
+            setIsImpersonating(false);
+        }
+    };
+
     const toggleModule = (module: string) => {
         const currentModules = store.enabledModules || { inventory: true, sales: true, expenses: true, reports: true };
         handleUpdateStore({
@@ -135,7 +159,7 @@ export default function StoreAdminDetailPage() {
                             <ShieldCheck className="mr-2 h-4 w-4" /> Licencia y Módulos
                         </TabsTrigger>
                         <TabsTrigger value="users" className="font-black text-xs uppercase">
-                            <Users className="mr-2 h-4 w-4" /> Personal
+                            <Users className="mr-2 h-4 w-4" /> Personal y Soporte
                         </TabsTrigger>
                     </TabsList>
 
@@ -143,13 +167,13 @@ export default function StoreAdminDetailPage() {
                         <div className="grid gap-6 md:grid-cols-3">
                             <Card className="md:col-span-2 border-2 shadow-sm">
                                 <CardHeader className="bg-muted/10 border-b">
-                                    <CardTitle className="text-lg font-black uppercase">Control Maestro</CardTitle>
+                                    <CardTitle className="text-lg font-black uppercase">Control Maestro de Agencia</CardTitle>
                                     <CardDescription>Configuración de acceso y herramientas contratadas.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="pt-6 space-y-8">
                                     <div className="grid gap-6 md:grid-cols-2">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase">Estado Operativo</Label>
+                                            <Label className="text-[10px] font-black uppercase">Estado Operativo (Kill Switch)</Label>
                                             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border-2 border-dashed">
                                                 <div className="space-y-1">
                                                     <p className="font-bold text-sm">Estado Actual</p>
@@ -175,7 +199,7 @@ export default function StoreAdminDetailPage() {
                                                 type="date" 
                                                 value={getFormattedDate(store.expiryDate)} 
                                                 onChange={(e) => handleUpdateStore({ expiryDate: new Date(e.target.value) })}
-                                                className="font-mono font-bold"
+                                                className="font-mono font-bold h-11"
                                             />
                                         </div>
                                     </div>
@@ -243,22 +267,22 @@ export default function StoreAdminDetailPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 border-primary/10 bg-primary/[0.02]">
-                                <CardHeader>
-                                    <CardTitle className="text-sm font-black uppercase">Límites del Plan</CardTitle>
+                            <Card className="border-2 border-primary/10 bg-primary/[0.02] shadow-xl">
+                                <CardHeader className="bg-primary/5 border-b">
+                                    <CardTitle className="text-sm font-black uppercase italic">Límites del Plan</CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
+                                <CardContent className="space-y-6 pt-6">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase">Plan Actual</Label>
-                                        <Badge className="w-full justify-center h-8 font-black uppercase">{store.plan || 'BASIC'}</Badge>
+                                        <Label className="text-[10px] font-black uppercase">Plan Contratado</Label>
+                                        <Badge className="w-full justify-center h-10 font-black uppercase text-sm bg-primary">{store.plan || 'BASIC'}</Badge>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase">Máx. Usuarios</Label>
+                                        <Label className="text-[10px] font-black uppercase">Máx. Usuarios permitidos</Label>
                                         <Input 
                                             type="number" 
                                             value={store.maxUsers} 
                                             onChange={(e) => handleUpdateStore({ maxUsers: parseInt(e.target.value) || 0 })}
-                                            className="font-bold"
+                                            className="font-bold h-11 border-2"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -267,13 +291,22 @@ export default function StoreAdminDetailPage() {
                                             type="number" 
                                             value={store.maxInvoicesPerMonth} 
                                             onChange={(e) => handleUpdateStore({ maxInvoicesPerMonth: parseInt(e.target.value) || 0 })}
-                                            className="font-bold"
+                                            className="font-bold h-11 border-2"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase">Límite Almacenamiento (MB)</Label>
+                                        <Input 
+                                            type="number" 
+                                            value={store.storageLimitMB} 
+                                            onChange={(e) => handleUpdateStore({ storageLimitMB: parseInt(e.target.value) || 0 })}
+                                            className="font-bold h-11 border-2"
                                         />
                                     </div>
                                 </CardContent>
-                                <CardFooter className="pt-2">
-                                    <p className="text-[9px] text-muted-foreground italic leading-tight">
-                                        Cambiar estos valores afectará inmediatamente la capacidad operativa del cliente.
+                                <CardFooter className="pt-2 bg-muted/5 py-4 border-t">
+                                    <p className="text-[9px] text-muted-foreground italic leading-tight text-center w-full">
+                                        * Los cambios se aplican en tiempo real al motor de validación de la tienda.
                                     </p>
                                 </CardFooter>
                             </Card>
@@ -281,25 +314,28 @@ export default function StoreAdminDetailPage() {
                     </TabsContent>
 
                     <TabsContent value="users">
-                        <Card className="border-2 shadow-md">
-                            <CardHeader className="bg-muted/10 border-b">
-                                <CardTitle className="text-lg font-black uppercase">Cuentas Vinculadas</CardTitle>
+                        <Card className="border-2 shadow-xl overflow-hidden">
+                            <CardHeader className="bg-muted/10 border-b flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg font-black uppercase">Directorio de Cuentas Vinculadas</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold uppercase">Gestión de accesos y soporte técnico.</CardDescription>
+                                </div>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <Table>
                                     <TableHeader className="bg-muted/50">
                                         <TableRow>
-                                            <TableHead className="font-black text-[10px] uppercase pl-6">Estado</TableHead>
-                                            <TableHead className="font-black text-[10px] uppercase">Identidad</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Estado</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase">Identidad / Login</TableHead>
                                             <TableHead className="font-black text-[10px] uppercase">Rol</TableHead>
-                                            <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acción</TableHead>
+                                            <TableHead className="text-right font-black text-[10px] uppercase pr-6">Herramientas Desarrollador</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {users.map((u) => (
                                             <TableRow key={u._id} className="hover:bg-muted/30">
                                                 <TableCell className="pl-6">
-                                                    {u.active ? <Badge className="bg-green-100 text-green-800">ACTIVO</Badge> : <Badge variant="destructive">BLOQUEADO</Badge>}
+                                                    {u.active ? <Badge className="bg-green-100 text-green-800 font-black text-[8px]">ACTIVO</Badge> : <Badge variant="destructive" className="font-black text-[8px]">BLOQUEADO</Badge>}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
@@ -308,14 +344,24 @@ export default function StoreAdminDetailPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline" className="text-[9px] font-black uppercase">{u.role?.name || 'EMPLEADO'}</Badge>
+                                                    <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 bg-primary/5">{u.role?.name || 'EMPLEADO'}</Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                    <Button variant="outline" size="sm" className="h-8 font-bold text-[9px] uppercase" onClick={() => {
+                                                <TableCell className="text-right pr-6 space-x-2">
+                                                    <Button 
+                                                        variant="secondary" 
+                                                        size="sm" 
+                                                        className="h-9 font-black text-[9px] uppercase"
+                                                        onClick={() => handleImpersonate(u._id)}
+                                                        disabled={isImpersonating}
+                                                    >
+                                                        {isImpersonating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="mr-1.5 h-3.5 w-3.5" />}
+                                                        Entrar como
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" className="h-9 font-bold text-[9px] uppercase border-2" onClick={() => {
                                                         setSelectedUser(u);
                                                         setIsResetModalOpen(true);
                                                     }}>
-                                                        <KeyRound className="mr-1 h-3 w-3" /> Reset Clave
+                                                        <KeyRound className="mr-1.5 h-3.5 w-3.5" /> Reset Clave
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -331,24 +377,25 @@ export default function StoreAdminDetailPage() {
             <Dialog open={isResetModalOpen} onOpenChange={setIsResetModalOpen}>
                 <DialogContent className="sm:max-w-[400px] border-4">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-black uppercase">Restablecer Acceso</DialogTitle>
+                        <DialogTitle className="text-lg font-black uppercase">Restablecimiento Maestro</DialogTitle>
+                        <DialogDescription className="font-bold">Define una clave temporal para: {selectedUser?.name}</DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase">Contraseña Temporal</Label>
+                            <Label className="text-[10px] font-black uppercase">Contraseña Nueva</Label>
                             <Input 
                                 value={tempPassword} 
                                 onChange={(e) => setTempPassword(e.target.value)}
-                                className="font-mono text-center text-lg font-black bg-muted"
+                                className="font-mono text-center text-lg font-black bg-muted h-12 border-2"
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsResetModalOpen(false)}>Cancelar</Button>
                         <Button onClick={() => {
-                            toast({ title: "Clave Actualizada", description: "Acceso reestablecido con éxito." });
+                            toast({ title: "Acceso Modificado", description: "La clave ha sido actualizada en la base de datos." });
                             setIsResetModalOpen(false);
-                        }} className="font-black uppercase">Confirmar</Button>
+                        }} className="font-black uppercase h-11 px-8 shadow-xl">Confirmar Cambio</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

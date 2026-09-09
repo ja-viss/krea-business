@@ -21,7 +21,11 @@ import {
   Printer,
   Layers,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  Database,
+  ShieldAlert,
+  Zap,
+  Settings2
 } from 'lucide-react';
 
 export type NavLink = {
@@ -41,7 +45,7 @@ export const navLinks: NavLink[] = [
   // --- SECCION GLOBAL (SÓLO SUPER ADMIN) ---
   {
     href: '/dashboard',
-    label: 'Panel Maestro',
+    label: 'Consola Maestra',
     icon: Monitor,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
@@ -49,22 +53,46 @@ export const navLinks: NavLink[] = [
   },
   {
     href: '/admin/stores',
-    label: 'Cartera de Clientes',
-    icon: Store,
+    label: 'Agencias y Datos',
+    icon: Database,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
     category: 'Infraestructura',
   },
   {
     href: '/admin/saas-billing',
-    label: 'Recaudación SaaS',
+    label: 'Cuentas SaaS',
     icon: CreditCard,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
     category: 'Infraestructura',
   },
+  {
+    href: '/admin/users',
+    label: 'Acceso Global',
+    icon: Users,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+    category: 'Infraestructura',
+  },
+  {
+    href: '/admin/plans',
+    label: 'Planes y Tarifas',
+    icon: Settings2,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+    category: 'Estrategia',
+  },
+  {
+    href: '/admin/offline-deployments',
+    label: 'Nodos Locales',
+    icon: Zap,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+    category: 'Estrategia',
+  },
 
-  // --- SECCION OPERATIVA ---
+  // --- SECCION OPERATIVA (TIENDAS) ---
   {
     href: '/dashboard',
     label: 'Resumen Diario',
@@ -108,7 +136,7 @@ export const navLinks: NavLink[] = [
     href: '/returns',
     label: 'Devoluciones',
     icon: RotateCcw,
-    roles: ['Administrador Principal'], // Solo Admin autoriza devoluciones
+    roles: ['Administrador Principal'], 
     category: 'Operaciones',
     moduleKey: 'sales',
   },
