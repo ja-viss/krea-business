@@ -25,7 +25,9 @@ import {
   Database,
   ShieldAlert,
   Zap,
-  Settings2
+  Settings2,
+  Activity,
+  ScrollText
 } from 'lucide-react';
 
 export type NavLink = {
@@ -47,6 +49,14 @@ export const navLinks: NavLink[] = [
     href: '/dashboard',
     label: 'Consola Maestra',
     icon: Monitor,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+    category: 'Infraestructura',
+  },
+  {
+    href: '/admin/monitoring',
+    label: 'Telemetría y Logs',
+    icon: Activity,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
     category: 'Infraestructura',

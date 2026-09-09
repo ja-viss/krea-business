@@ -26,13 +26,17 @@ import {
     Receipt,
     BarChart3,
     Settings2,
-    LogIn
+    LogIn,
+    Activity,
+    HeartPulse,
+    ShieldAlert
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 export default function StoreAdminDetailPage() {
     const params = useParams();
@@ -44,6 +48,10 @@ export default function StoreAdminDetailPage() {
     const [saving, setSaving] = useState(false);
     const [isImpersonating, setIsImpersonating] = useState(false);
     
+    // Health Check State
+    const [health, setHealth] = useState<any>(null);
+    const [checkingHealth, setCheckingHealth] = useState(false);
+
     // Modal states
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -71,6 +79,20 @@ export default function StoreAdminDetailPage() {
             toast({ variant: 'destructive', title: "Error", description: "No se pudo cargar la información." });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleHealthCheck = async () => {
+        setCheckingHealth(true);
+        try {
+            const res = await fetch(`/api/admin/health-check?storeId=${params.storeId}`);
+            const data = await res.json();
+            setHealth(data);
+            toast({ title: "Diagnóstico Completado", description: `Estado de la infraestructura: ${data.status}` });
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Fallo de Telemetría", description: "No se pudo contactar con el nodo del cliente." });
+        } finally {
+            setCheckingHealth(false);
         }
     };
 
@@ -110,7 +132,7 @@ export default function StoreAdminDetailPage() {
             localStorage.setItem('userName', data.user.name);
             localStorage.setItem('userEmail', data.user.email);
             localStorage.setItem('userRole', data.user.roleName);
-            localStorage.setItem('isGlobalAdmin', 'false'); // Importante para que la UI cambie
+            localStorage.setItem('isGlobalAdmin', 'false'); 
             localStorage.setItem('enabledModules', JSON.stringify(data.user.enabledModules));
 
             toast({ title: "Modo Suplantación Activo", description: `Has iniciado sesión como ${data.user.name}.` });
@@ -147,11 +169,51 @@ export default function StoreAdminDetailPage() {
                     title={store.name} 
                     description={`RIF: ${store.rif || 'S/N'} • ID: ${store._id}`}
                     actions={
-                        <Button variant="outline" onClick={() => router.back()} className="font-bold">
-                            <ChevronLeft className="mr-2 h-4 w-4" /> Volver al Directorio
-                        </Button>
+                        <div className='flex gap-2'>
+                            <Button variant="outline" onClick={handleHealthCheck} disabled={checkingHealth} className="font-bold">
+                                {checkingHealth ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HeartPulse className="mr-2 h-4 w-4 text-red-500" />}
+                                Diagnóstico de Nodo
+                            </Button>
+                            <Button variant="outline" onClick={() => router.back()} className="font-bold">
+                                <ChevronLeft className="mr-2 h-4 w-4" /> Volver
+                            </Button>
+                        </div>
                     }
                 />
+
+                {health && (
+                    <Card className={cn("border-2 animate-in slide-in-from-top-4 duration-500", 
+                        health.status === 'Healthy' ? "border-green-500 bg-green-50/10" : "border-red-500 bg-red-50/10"
+                    )}>
+                        <CardHeader className='pb-2 flex flex-row items-center justify-between'>
+                            <div className='flex items-center gap-2'>
+                                <Activity className={cn("h-5 w-5", health.status === 'Healthy' ? "text-green-600" : "text-red-600")} />
+                                <CardTitle className='text-sm font-black uppercase'>Resultado del Health Check</CardTitle>
+                            </div>
+                            <Badge className={cn("font-black uppercase", health.status === 'Healthy' ? "bg-green-600" : "bg-red-600")}>
+                                {health.status}
+                            </Badge>
+                        </CardHeader>
+                        <CardContent className='grid grid-cols-2 md:grid-cols-4 gap-4 py-4'>
+                            <div className='bg-white/50 p-3 rounded-xl border'>
+                                <p className='text-[8px] font-black uppercase opacity-40'>Latencia DB</p>
+                                <p className='text-sm font-black'>{health.metrics.latency}</p>
+                            </div>
+                            <div className='bg-white/50 p-3 rounded-xl border'>
+                                <p className='text-[8px] font-black uppercase opacity-40'>Productos</p>
+                                <p className='text-sm font-black'>{health.metrics.totalProducts}</p>
+                            </div>
+                            <div className='bg-white/50 p-3 rounded-xl border'>
+                                <p className='text-[8px] font-black uppercase opacity-40'>Ventas (Total)</p>
+                                <p className='text-sm font-black'>{health.metrics.totalSales}</p>
+                            </div>
+                            <div className='bg-white/50 p-3 rounded-xl border'>
+                                <p className='text-[8px] font-black uppercase opacity-40'>Aislamiento</p>
+                                <p className='text-sm font-black uppercase'>{health.metrics.dbType}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Tabs defaultValue="license" className="space-y-6">
                     <TabsList className="bg-muted/50 p-1 border-2">
