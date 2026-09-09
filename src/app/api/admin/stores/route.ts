@@ -9,11 +9,31 @@ import mongoose from 'mongoose';
 import { encrypt, generateActivationToken } from '@/lib/encryption';
 import crypto from 'crypto';
 
+/**
+ * API de Gestión de Infraestructura (Multi-Tenant).
+ * Retorna tiendas con información del Usuario Padre (Owner).
+ */
 export async function GET(req: NextRequest) {
     try {
         await dbConnect();
-        const stores = await StoreModel.find().sort({ createdAt: -1 });
-        return NextResponse.json(stores);
+        
+        // Buscamos las tiendas
+        const stores = await StoreModel.find().sort({ createdAt: -1 }).lean();
+        
+        // Buscamos el administrador principal de cada tienda (Usuario Padre)
+        const storesWithOwners = await Promise.all(stores.map(async (store) => {
+            const owner = await UserModel.findOne({ store: store._id })
+                .populate({ path: 'role', model: RoleModel })
+                .select('name email active')
+                .lean();
+            
+            return {
+                ...store,
+                owner: owner || null
+            };
+        }));
+
+        return NextResponse.json(storesWithOwners);
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }

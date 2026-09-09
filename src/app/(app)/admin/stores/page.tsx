@@ -28,7 +28,10 @@ import {
     ArrowRightLeft,
     ShieldAlert,
     RefreshCcw,
-    Zap
+    Zap,
+    User,
+    ArrowUpRight,
+    Search
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +39,8 @@ import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 export default function AdminStoresPage() {
     const { toast } = useToast();
@@ -43,6 +48,7 @@ export default function AdminStoresPage() {
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
 
     // Estados para Gestión de Datos
     const [isDataModalOpen, setIsDataModalOpen] = useState(false);
@@ -180,14 +186,20 @@ export default function AdminStoresPage() {
             case 'Demo': return <Badge variant="outline" className="bg-blue-50 text-blue-700">DEMO</Badge>;
             default: return <Badge variant="secondary">{status}</Badge>;
         }
-    }
+    };
+
+    const filteredStores = stores.filter(s => 
+        s.name.toLowerCase().includes(search.toLowerCase()) || 
+        s.owner?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        s.owner?.email?.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <div className="flex flex-1 flex-col">
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
                 <PageHeader 
                     title="Control de Infraestructura" 
-                    description="Supervisa y gestiona todos los inquilinos de la plataforma."
+                    description="Supervisa el despliegue de agencias y gestiona la portabilidad de datos."
                     actions={
                         <div className='flex gap-2'>
                             <Button variant="outline" onClick={fetchStores} disabled={loading} className='h-11 px-4'>
@@ -311,148 +323,191 @@ export default function AdminStoresPage() {
                     }
                 />
 
-                <Card className="border-2 shadow-md">
+                <div className="flex items-center gap-4">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Filtrar por Agencia o Usuario Padre..." 
+                            className="pl-9 h-11 border-2 font-bold"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <Badge variant="outline" className="h-11 px-4 font-black bg-primary/5 uppercase">
+                        {filteredStores.length} Agencias Activas
+                    </Badge>
+                </div>
+
+                <Card className="border-2 shadow-xl overflow-hidden rounded-2xl">
                     <CardHeader className="bg-muted/10 border-b">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight">Cartera de Clientes</CardTitle>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 italic">
+                            <Database className="h-5 w-5 text-primary" /> Directorio de Infraestructura y Portabilidad
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <Table>
-                            <TableHeader className="bg-muted/50">
-                                <TableRow>
-                                    <TableHead className="font-black text-[10px] uppercase pl-6">Estado</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase">Empresa</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase">Plan / Despliegue</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase">Vencimiento</TableHead>
-                                    <TableHead className="text-right font-black text-[10px] uppercase pr-6">Gestión Datos</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    Array.from({ length: 3 }).map((_, i) => (
-                                        <TableRow key={i}><TableCell colSpan={5}><div className="h-12 bg-muted animate-pulse rounded m-2" /></TableCell></TableRow>
-                                    ))
-                                ) : stores.length > 0 ? (
-                                    stores.map((s) => (
-                                        <TableRow key={s._id} className="hover:bg-muted/30">
-                                            <TableCell className="pl-6">{getStatusBadge(s.status || 'Active')}</TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-col">
-                                                    <span className="font-black uppercase text-xs">{s.name}</span>
-                                                    <span className="font-mono text-[9px] text-muted-foreground uppercase">{s._id}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-col gap-1">
-                                                    <Badge variant="outline" className="w-fit font-black text-[9px] uppercase border-primary/30 text-primary bg-primary/5">
-                                                        {s.plan || 'BASIC'}
-                                                    </Badge>
-                                                    <span className="text-[9px] font-bold text-muted-foreground flex items-center gap-1">
-                                                        {s.deploymentMode === 'Offline' ? <HardDrive className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
-                                                        {s.deploymentMode || 'Online'}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                                                    <Calendar className="h-3 w-3 opacity-50" />
-                                                    {format(new Date(s.expiryDate || s.createdAt), 'dd/MM/yyyy')}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right pr-6 space-x-2">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className='h-9 w-9 rounded-full bg-primary/5 text-primary'
-                                                    onClick={() => { setSelectedStore(s); setIsDataModalOpen(true); }}
-                                                    title="Gestiòn de Datos & Migración"
-                                                >
-                                                    <Database className="h-4 w-4" />
-                                                </Button>
-                                                <Button asChild variant="outline" size="sm" className="font-black text-[9px] h-9 px-3">
-                                                    <Link href={`/admin/stores/${s._id}`}>
-                                                        <Settings2 className="mr-1.5 h-3 w-3" /> CONFIG
-                                                    </Link>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/50">
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No hay empresas registradas.</TableCell>
+                                        <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Estado</TableHead>
+                                        <TableHead className="font-black text-[10px] uppercase">Agencia / Sucursal</TableHead>
+                                        <TableHead className="font-black text-[10px] uppercase">Usuario Padre (Owner)</TableHead>
+                                        <TableHead className="font-black text-[10px] uppercase">Plan / Despliegue</TableHead>
+                                        <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acciones de Datos</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        Array.from({ length: 3 }).map((_, i) => (
+                                            <TableRow key={i}><TableCell colSpan={5}><div className="h-12 bg-muted animate-pulse rounded m-2" /></TableCell></TableRow>
+                                        ))
+                                    ) : filteredStores.length > 0 ? (
+                                        filteredStores.map((s) => (
+                                            <TableRow key={s._id} className="hover:bg-primary/[0.02] transition-colors">
+                                                <TableCell className="pl-6">{getStatusBadge(s.status || 'Active')}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black uppercase text-xs">{s.name}</span>
+                                                        <span className="font-mono text-[9px] text-muted-foreground uppercase">{s._id}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {s.owner ? (
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                                <User className="h-4 w-4" />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-black uppercase text-[10px]">{s.owner.name}</span>
+                                                                <span className="text-[9px] font-mono text-muted-foreground">{s.owner.email}</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] italic text-muted-foreground">Sin owner registrado</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col gap-1">
+                                                        <Badge variant="outline" className="w-fit font-black text-[9px] uppercase border-primary/30 text-primary bg-primary/5">
+                                                            {s.plan || 'BASIC'}
+                                                        </Badge>
+                                                        <span className="text-[9px] font-bold text-muted-foreground flex items-center gap-1">
+                                                            {s.deploymentMode === 'Offline' ? <HardDrive className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
+                                                            {s.deploymentMode || 'Online'}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6 space-x-2">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className='font-black text-[9px] uppercase h-9 border-2'
+                                                        onClick={() => { setSelectedStore(s); setIsDataModalOpen(true); }}
+                                                    >
+                                                        <Database className="mr-1.5 h-3.5 w-3.5 text-primary" /> MIGRAR / BACKUP
+                                                    </Button>
+                                                    <Button asChild variant="ghost" size="icon" className='h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary'>
+                                                        <Link href={`/admin/stores/${s._id}`}>
+                                                            <Settings2 className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No se encontraron empresas registradas.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
             </main>
 
-            {/* MODAL DE GESTIÓN DE DATOS (BACKUP & MIGRATION) */}
+            {/* MODAL DE GESTIÓN DE DATOS AVANZADO */}
             <Dialog open={isDataModalOpen} onOpenChange={setIsDataModalOpen}>
-                <DialogContent className='sm:max-w-[500px] border-4 border-primary'>
-                    <DialogHeader>
-                        <DialogTitle className='text-xl font-black uppercase italic tracking-tighter flex items-center gap-3'>
-                            <Database className='h-6 w-6 text-primary' /> Gestión de Infraestructura
-                        </DialogTitle>
-                        <DialogDescription className='font-bold text-xs uppercase'>Empresa: {selectedStore?.name}</DialogDescription>
-                    </DialogHeader>
+                <DialogContent className='sm:max-w-[550px] border-4 border-primary p-0 overflow-hidden rounded-3xl'>
+                    <div className='bg-primary p-6 text-white'>
+                        <DialogHeader>
+                            <DialogTitle className='text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3'>
+                                <Database className='h-7 w-7' /> Centro de Datos Maestra
+                            </DialogTitle>
+                            <DialogDescription className='text-white/80 font-bold text-xs uppercase tracking-widest'>
+                                Agencia: {selectedStore?.name} • Owner: {selectedStore?.owner?.name || 'S/N'}
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
                     
-                    <div className='py-6 space-y-8'>
-                        {/* SECCIÓN BACKUP */}
+                    <div className='p-6 space-y-8'>
+                        {/* SECCIÓN 1: PORTABILIDAD (DOWNLOAD) */}
                         <div className='space-y-4'>
-                            <div className='flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground'>
-                                <Download className='h-3.5 w-3.5' /> Respaldo Binario (Backup)
+                            <div className='flex items-center gap-2 text-[11px] font-black uppercase text-slate-500'>
+                                <Download className='h-4 w-4' /> Portabilidad de Datos (Descarga)
                             </div>
-                            <div className='p-4 bg-muted/20 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-4 text-center'>
-                                <p className='text-[10px] font-bold text-muted-foreground leading-relaxed italic px-4'>
-                                    Extrae la base de datos completa en formato comprimido. Este proceso es seguro y no afecta la operación actual.
+                            <div className='p-5 bg-slate-50 border-2 border-dashed rounded-2xl flex flex-col items-center gap-4 text-center'>
+                                <p className='text-[10px] font-bold text-muted-foreground leading-relaxed italic px-4 uppercase'>
+                                    Extrae el lote completo de documentos (Ventas, Stock, Gastos) en formato JSON estructurado para portabilidad inmediata.
                                 </p>
                                 <Button 
-                                    className='w-full font-black uppercase bg-primary/10 text-primary border-2 border-primary/20 hover:bg-primary/20'
+                                    className='w-full h-14 font-black uppercase bg-white text-primary border-2 border-primary/20 hover:bg-primary hover:text-white transition-all shadow-lg'
                                     onClick={() => handleDownloadBackup(selectedStore._id, selectedStore.name)}
                                 >
-                                    <Download className='mr-2 h-4 w-4' /> Descargar Backup (.json)
+                                    <Download className='mr-2 h-5 w-5' /> Descargar Base de Datos (.json)
                                 </Button>
                             </div>
                         </div>
 
-                        <Separator />
+                        <Separator className='border-2' />
 
-                        {/* SECCIÓN MIGRACIÓN */}
+                        {/* SECCIÓN 2: MIGRACIÓN DE CLÚSTER (UPLOAD/LOAD) */}
                         <div className='space-y-4'>
-                            <div className='flex items-center gap-2 text-[10px] font-black uppercase text-amber-600'>
-                                <ArrowRightLeft className='h-3.5 w-3.5' /> Migración de Clúster (Estrategia ETL)
+                            <div className='flex items-center gap-2 text-[11px] font-black uppercase text-amber-600'>
+                                <ArrowRightLeft className='h-4 w-4' /> Migración de Carga (DB Externa)
                             </div>
                             <div className='space-y-4'>
                                 <div className='space-y-2'>
-                                    <Label className='text-[9px] font-black uppercase ml-1'>Nueva URI de Conexión (Target MongoDB)</Label>
+                                    <Label className='text-[10px] font-black uppercase ml-1 flex items-center gap-2'>
+                                        <Zap className='h-3 w-3 text-amber-500' /> URI de Conexión Destino (Target)
+                                    </Label>
                                     <Input 
-                                        placeholder="mongodb+srv://..." 
-                                        className='font-mono text-xs h-11 border-2'
+                                        placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname" 
+                                        className='font-mono text-xs h-14 border-2 focus:ring-4 focus:ring-amber-500/20'
                                         value={migrationUri}
                                         onChange={e => setMigrationUri(e.target.value)}
                                     />
-                                </div>
-                                <div className='p-4 bg-amber-50 border-2 border-amber-200 border-dashed rounded-xl flex items-start gap-3'>
-                                    <ShieldAlert className='h-5 w-5 text-amber-600 shrink-0 mt-0.5' />
-                                    <p className='text-[9px] font-bold text-amber-800 leading-tight uppercase'>
-                                        ADVERTENCIA: Al migrar, la empresa entrará en MODO MANTENIMIENTO. Se copiarán colecciones, documentos e índices hacia el nuevo clúster.
+                                    <p className='text-[8px] font-bold text-slate-400 italic px-1'>
+                                        Esta acción moverá físicamente los datos desde el clúster central hacia el clúster dedicado del cliente.
                                     </p>
                                 </div>
+
+                                <div className='p-4 bg-amber-50 border-2 border-amber-200 border-dashed rounded-2xl flex items-start gap-3'>
+                                    <ShieldAlert className='h-6 w-6 text-amber-600 shrink-0 mt-0.5' />
+                                    <div className='space-y-1'>
+                                        <p className='text-[10px] font-black text-amber-800 uppercase leading-tight'>
+                                            PROTOCOLO DE MANTENIMIENTO ACTIVO
+                                        </p>
+                                        <p className='text-[9px] font-bold text-amber-700 leading-tight'>
+                                            La agencia será bloqueada durante la transferencia. Se copiarán esquemas, índices y documentos de forma íntegra.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <Button 
-                                    className='w-full h-14 font-black uppercase bg-amber-600 hover:bg-amber-700 shadow-xl'
+                                    className='w-full h-16 font-black uppercase bg-amber-600 hover:bg-amber-700 text-white shadow-xl shadow-amber-200 rounded-2xl text-lg group'
                                     disabled={isMigrating || !migrationUri}
                                     onClick={handleMigrate}
                                 >
-                                    {isMigrating ? <Loader2 className='mr-2 h-5 w-5 animate-spin' /> : <Zap className='mr-2 h-5 w-5' />}
-                                    {isMigrating ? 'MIGRANDO DATOS...' : 'INICIAR MIGRACIÓN A CLOUD'}
+                                    {isMigrating ? <Loader2 className='mr-2 h-6 w-6 animate-spin' /> : <Zap className='mr-2 h-6 w-6 group-hover:scale-125 transition-transform' />}
+                                    {isMigrating ? 'MIGRANDO CARGA...' : 'CARGAR A DB DEDICADA'}
                                 </Button>
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="ghost" className='font-bold uppercase text-[10px]' onClick={() => setIsDataModalOpen(false)}>Cancelar</Button>
+                    <DialogFooter className='p-6 bg-slate-50 border-t'>
+                        <Button variant="ghost" className='font-black uppercase text-[10px]' onClick={() => setIsDataModalOpen(false)}>Cerrar Consola</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
