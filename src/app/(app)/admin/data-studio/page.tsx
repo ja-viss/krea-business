@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,10 @@ import {
     Settings2,
     X,
     ChevronDown,
-    Filter
+    Filter,
+    ChevronLeft,
+    Copy,
+    ArrowRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,7 +42,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-// Utilidad para aplanar objetos anidados (Ej: price.cost)
+// Utilidad para aplanar objetos anidados
 function flattenObject(obj: any, prefix = ''): any {
     if (!obj || typeof obj !== 'object') return { [prefix]: obj };
     
@@ -50,7 +53,7 @@ function flattenObject(obj: any, prefix = ''): any {
             obj[k] !== null && 
             !Array.isArray(obj[k]) && 
             !(obj[k] instanceof Date) &&
-            !(k === '_id') // No aplanamos el ObjectId
+            !(k === '_id')
         ) {
             Object.assign(acc, flattenObject(obj[k], pre + k));
         } else {
@@ -70,14 +73,13 @@ export default function DataStudioPage() {
     const [loading, setLoading] = useState(false);
     const [serverInfo, setServerInfo] = useState<any>(null);
     
-    // Editor State
+    // UI State
     const [isReadOnly, setIsReadOnly] = useState(true);
     const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
+    const [mobileStep, setMobileStep] = useState<'stores' | 'collections' | 'data'>('stores');
     const [queryFilter, setQueryFilter] = useState('{}');
     const [editingDoc, setEditingDoc] = useState<any>(null);
     const [jsonEditorContent, setJsonEditorContent] = useState('');
-
-    // Column Management
     const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
 
     const fetchData = async () => {
@@ -86,7 +88,6 @@ export default function DataStudioPage() {
             const storesRes = await fetch('/api/admin/stores');
             const storesData = await storesRes.json();
             setStores(storesData);
-
             await fetchCollections(selectedStoreId);
         } catch (e) {
             toast({ variant: 'destructive', title: "Error", description: "No se pudo cargar el Data Studio." });
@@ -128,6 +129,7 @@ export default function DataStudioPage() {
             });
             const data = await res.json();
             setDocuments(data);
+            if (window.innerWidth < 1024) setMobileStep('data');
         } catch (e: any) {
             toast({ variant: 'destructive', title: "Error de Consulta", description: e.message });
         } finally {
@@ -160,7 +162,6 @@ export default function DataStudioPage() {
         }
     };
 
-    // --- LÓGICA DE TABLA DINÁMICA ---
     const flattenedDocs = useMemo(() => documents.map(doc => flattenObject(doc)), [documents]);
     
     const allHeaders = useMemo(() => {
@@ -168,15 +169,11 @@ export default function DataStudioPage() {
         flattenedDocs.forEach(doc => {
             Object.keys(doc).forEach(k => keys.add(k));
         });
-        // Priorizar _id y createdAt
-        const sorted = Array.from(keys).sort((a, b) => {
+        return Array.from(keys).sort((a, b) => {
             if (a === '_id') return -1;
             if (b === '_id') return 1;
-            if (a === 'createdAt') return -1;
-            if (b === 'createdAt') return 1;
             return a.localeCompare(b);
         });
-        return sorted;
     }, [flattenedDocs]);
 
     const visibleHeaders = allHeaders.filter(h => !hiddenColumns.has(h));
@@ -190,79 +187,111 @@ export default function DataStudioPage() {
 
     const formatCellValue = (val: any) => {
         if (val === null || val === undefined) return '-';
-        if (typeof val === 'boolean') return val ? 'V' : 'F';
-        if (val instanceof Date || (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}T/))) {
-            return new Date(val).toLocaleDateString();
-        }
-        if (Array.isArray(val)) return `[${val.length} ítems]`;
+        if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+        if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}T/)) return new Date(val).toLocaleDateString();
+        if (Array.isArray(val)) return `[${val.length} items]`;
         if (typeof val === 'object') return '{...}';
         return String(val);
     };
 
     return (
-        <div className="flex flex-1 flex-col h-screen overflow-hidden">
-            <main className="flex-1 flex flex-col p-4 md:p-6 space-y-4">
+        <div className="flex flex-1 flex-col h-screen overflow-hidden bg-slate-50/50">
+            <main className="flex-1 flex flex-col p-2 md:p-6 space-y-4">
                 <PageHeader 
-                    title="Data Studio & Monitor" 
-                    description="Ingeniería de datos avanzada para el ecosistema Krea."
+                    title="Data Studio" 
+                    description="Gestión técnica de infraestructura."
+                    className="hidden lg:flex"
                     actions={
                         <div className='flex gap-2'>
-                            <div className='bg-muted/50 p-1 rounded-xl border-2 flex'>
-                                <Button 
-                                    variant={viewMode === 'table' ? 'default' : 'ghost'} 
-                                    size="sm" 
-                                    className="h-8 font-black uppercase text-[9px]"
-                                    onClick={() => setViewMode('table')}
-                                >
-                                    <LayoutGrid className="mr-1.5 h-3 w-3" /> Tabla
-                                </Button>
-                                <Button 
-                                    variant={viewMode === 'json' ? 'default' : 'ghost'} 
-                                    size="sm" 
-                                    className="h-8 font-black uppercase text-[9px]"
-                                    onClick={() => setViewMode('json')}
-                                >
-                                    <List className="mr-1.5 h-3 w-3" /> JSON
-                                </Button>
-                            </div>
                             <Button 
                                 variant={isReadOnly ? "secondary" : "destructive"} 
-                                className="font-black text-[10px] uppercase h-11"
+                                className="font-black text-[10px] uppercase h-10 px-6"
                                 onClick={() => setIsReadOnly(!isReadOnly)}
                             >
                                 {isReadOnly ? <Eye className="mr-2 h-4 w-4" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
-                                {isReadOnly ? 'Lectura' : 'Escritura'}
-                            </Button>
-                            <Button variant="outline" onClick={fetchData} disabled={loading} className='h-11'>
-                                <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+                                {isReadOnly ? 'Solo Lectura' : 'Modo Escritura'}
                             </Button>
                         </div>
                     }
                 />
 
-                <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
+                {/* MÓVIL: BOTONES DE NAVEGACIÓN STACK */}
+                <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-2">
+                    <Button 
+                        variant={mobileStep === 'stores' ? 'default' : 'outline'} 
+                        size="sm" 
+                        onClick={() => setMobileStep('stores')}
+                        className="text-[9px] font-black uppercase rounded-full h-8 px-4 shrink-0"
+                    >
+                        1. Empresa
+                    </Button>
+                    {selectedStoreId && (
+                        <>
+                            <ArrowRight className="h-3 w-3 opacity-30 shrink-0" />
+                            <Button 
+                                variant={mobileStep === 'collections' ? 'default' : 'outline'} 
+                                size="sm" 
+                                onClick={() => setMobileStep('collections')}
+                                className="text-[9px] font-black uppercase rounded-full h-8 px-4 shrink-0"
+                            >
+                                2. Esquemas
+                            </Button>
+                        </>
+                    )}
+                    {selectedCol && (
+                        <>
+                            <ArrowRight className="h-3 w-3 opacity-30 shrink-0" />
+                            <Button 
+                                variant={mobileStep === 'data' ? 'default' : 'outline'} 
+                                size="sm" 
+                                onClick={() => setMobileStep('data')}
+                                className="text-[9px] font-black uppercase rounded-full h-8 px-4 shrink-0"
+                            >
+                                3. Registros
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-12 gap-4 lg:gap-6 flex-1 min-h-0">
                     
-                    {/* COLUMNA IZQUIERDA: CONTEXTO Y COLECCIONES */}
-                    <Card className="col-span-12 lg:col-span-3 border-2 flex flex-col shadow-xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b py-4">
-                            <Label className="text-[10px] font-black uppercase mb-2 block">Contexto de Infraestructura</Label>
-                            <Select value={selectedStoreId} onValueChange={(val) => {
-                                setSelectedStoreId(val);
-                                fetchCollections(val);
-                            }}>
-                                <SelectTrigger className="font-bold h-11 border-2">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="SYSTEM_MASTER" className='font-black uppercase text-[10px]'>★ Nucleo Maestra</SelectItem>
-                                    {stores.map(s => (
-                                        <SelectItem key={s._id} value={s._id} className='font-bold uppercase text-[10px]'>🏢 {s.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                    {/* PANEL IZQUIERDO: EMPRESAS Y COLECCIONES */}
+                    <Card className={cn(
+                        "col-span-12 lg:col-span-3 border-2 flex flex-col shadow-xl overflow-hidden bg-white transition-all",
+                        mobileStep !== 'stores' && mobileStep !== 'collections' ? "hidden lg:flex" : "flex"
+                    )}>
+                        <CardHeader className="bg-muted/30 border-b p-3 md:p-4">
+                            {mobileStep === 'stores' || !selectedCol ? (
+                                <div className="space-y-3">
+                                    <Label className="text-[10px] font-black uppercase opacity-40">Infraestructura</Label>
+                                    <Select value={selectedStoreId} onValueChange={(val) => {
+                                        setSelectedStoreId(val);
+                                        fetchCollections(val);
+                                        if (window.innerWidth < 1024) setMobileStep('collections');
+                                    }}>
+                                        <SelectTrigger className="font-bold h-11 border-2 shadow-sm">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="SYSTEM_MASTER" className='font-black uppercase text-[10px]'>★ Nucleo Maestra</SelectItem>
+                                            {stores.map(s => (
+                                                <SelectItem key={s._id} value={s._id} className='font-bold uppercase text-[10px]'>🏢 {s.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ) : (
+                                <Button variant="ghost" size="sm" className="font-black text-[9px] uppercase" onClick={() => setMobileStep('stores')}>
+                                    <ChevronLeft className="mr-1 h-3 w-3" /> Cambiar Empresa
+                                </Button>
+                            )}
                         </CardHeader>
-                        <CardContent className="p-0 flex-1 overflow-y-auto">
-                            <div className='p-3 border-b bg-muted/10 flex items-center justify-between'>
+                        
+                        <CardContent className={cn(
+                            "p-0 flex-1 overflow-y-auto",
+                            mobileStep === 'stores' && "hidden lg:block"
+                        )}>
+                            <div className='p-3 border-b bg-muted/10 flex items-center justify-between sticky top-0 bg-white z-10'>
                                 <span className="text-[9px] font-black uppercase opacity-40">Esquemas Detectados</span>
                                 <Badge variant="outline" className='text-[8px] opacity-40'>{collections.length}</Badge>
                             </div>
@@ -276,16 +305,15 @@ export default function DataStudioPage() {
                                         )}
                                         onClick={() => {
                                             setSelectedCol(col.name);
-                                            // Reset hidden columns when changing collection
                                             setHiddenColumns(new Set());
                                             setTimeout(runQuery, 100);
                                         }}
                                     >
                                         <div className='flex items-center gap-3'>
-                                            <TableIcon className={cn("h-4 w-4 transition-transform group-hover:scale-110", selectedCol === col.name ? "text-white" : "text-primary")} />
-                                            <span className="text-xs uppercase tracking-tight">{col.name}</span>
+                                            <TableIcon className={cn("h-4 w-4 shrink-0", selectedCol === col.name ? "text-white" : "text-primary")} />
+                                            <span className="text-xs uppercase tracking-tight truncate max-w-[150px]">{col.name}</span>
                                         </div>
-                                        <Badge variant="outline" className={cn("text-[9px] border-none font-bold", selectedCol === col.name ? "bg-white/20 text-white" : "bg-muted")}>
+                                        <Badge className={cn("text-[9px] border-none font-bold", selectedCol === col.name ? "bg-white/20 text-white" : "bg-muted")}>
                                             {col.count}
                                         </Badge>
                                     </button>
@@ -295,28 +323,45 @@ export default function DataStudioPage() {
                     </Card>
 
                     {/* ÁREA DE TRABAJO CENTRAL */}
-                    <div className="col-span-12 lg:col-span-9 flex flex-col gap-4 min-h-0">
+                    <div className={cn(
+                        "col-span-12 lg:col-span-9 flex flex-col gap-4 min-h-0",
+                        mobileStep !== 'data' ? "hidden lg:flex" : "flex"
+                    )}>
                         
                         {/* QUERY RUNNER */}
-                        <Card className='border-2 shadow-sm overflow-hidden'>
-                            <div className='bg-black p-2 px-4 flex items-center justify-between'>
+                        <Card className='border-2 shadow-sm overflow-hidden bg-white'>
+                            <div className='bg-black p-2 md:p-3 px-4 flex items-center justify-between'>
                                 <div className='flex items-center gap-2 text-white'>
                                     <Terminal className='h-4 w-4 text-primary' />
-                                    <span className='text-[10px] font-black uppercase italic tracking-widest'>Mongo Query Console</span>
+                                    <span className='text-[9px] md:text-[10px] font-black uppercase italic tracking-widest'>Query Console</span>
                                 </div>
-                                <div className='flex items-center gap-4'>
-                                    <span className='text-[8px] font-black text-white/40 uppercase'>db.{selectedCol || 'collection'}.find()</span>
+                                <div className='flex items-center gap-2'>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-primary-foreground hover:bg-white/10">
+                                                <Settings2 className="mr-1 h-3 w-3" /> Filtros
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[280px] md:w-[400px] p-4 border-4 z-[120]">
+                                            <Label className="text-[10px] font-black uppercase mb-2 block">Criterio JSON de Búsqueda</Label>
+                                            <Textarea 
+                                                value={queryFilter} 
+                                                onChange={e => setQueryFilter(e.target.value)}
+                                                className="font-mono text-xs h-32 mb-4 border-2"
+                                                placeholder='{"status": "Active"}'
+                                            />
+                                            <Button onClick={runQuery} className="w-full font-black uppercase text-xs">Actualizar Vista</Button>
+                                        </PopoverContent>
+                                    </Popover>
                                     {viewMode === 'table' && documents.length > 0 && (
                                         <Popover>
                                             <PopoverTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-6 text-[8px] font-black uppercase text-primary-foreground hover:bg-white/10">
-                                                    <Settings2 className="mr-1 h-3 w-3" /> Columnas
+                                                <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-primary-foreground hover:bg-white/10 hidden md:flex">
+                                                    <LayoutGrid className="mr-1 h-3 w-3" /> Columnas
                                                 </Button>
                                             </PopoverTrigger>
                                             <PopoverContent className="w-56 p-0 border-4 z-[120]">
-                                                <div className="p-2 border-b bg-muted/50">
-                                                    <span className="text-[9px] font-black uppercase italic opacity-60">Visibilidad de Campos</span>
-                                                </div>
+                                                <div className="p-2 border-b bg-muted/50"><span className="text-[9px] font-black uppercase italic opacity-60">Visibilidad</span></div>
                                                 <div className="max-h-[300px] overflow-y-auto p-1">
                                                     {allHeaders.map(h => (
                                                         <div key={h} className="flex items-center space-x-2 p-2 hover:bg-muted rounded-lg cursor-pointer" onClick={() => toggleColumn(h)}>
@@ -330,80 +375,82 @@ export default function DataStudioPage() {
                                     )}
                                 </div>
                             </div>
-                            <CardContent className='p-3 flex gap-3'>
+                            <CardContent className='p-3 flex gap-2'>
                                 <div className='relative flex-1'>
-                                    <Filter className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+                                    <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
                                     <Input 
-                                        className='pl-9 font-mono text-xs h-11 bg-muted/30 border-2 focus:ring-primary'
-                                        placeholder='Filtro JSON (ej: {"status": "Active"})'
+                                        className='pl-9 font-mono text-xs h-11 bg-muted/30 border-2'
+                                        placeholder='db.find(...)'
                                         value={queryFilter}
                                         onChange={e => setQueryFilter(e.target.value)}
                                     />
                                 </div>
-                                <Button onClick={runQuery} disabled={loading || !selectedCol} className='h-11 px-8 font-black uppercase shadow-lg shadow-primary/20 active:scale-95 transition-transform'>
-                                    {loading ? <Loader2 className='animate-spin' /> : <Play className='mr-2 h-4 w-4' />}
-                                    Ejecutar
+                                <Button onClick={runQuery} disabled={loading || !selectedCol} className='h-11 px-4 md:px-8 font-black uppercase shadow-lg'>
+                                    {loading ? <Loader2 className='animate-spin' /> : <Play className='md:mr-2 h-4 w-4' />}
+                                    <span className="hidden md:inline">Ejecutar</span>
                                 </Button>
                             </CardContent>
                         </Card>
 
                         {/* RESULTADOS / DATA GRID */}
                         <Card className="flex-1 border-2 shadow-2xl overflow-hidden flex flex-col min-h-0 bg-white">
-                            <CardHeader className="bg-muted/10 border-b py-3 flex flex-row items-center justify-between">
+                            <CardHeader className="bg-muted/10 border-b p-3 flex flex-row items-center justify-between">
                                 <div className='flex items-center gap-2'>
-                                    <Search className='h-4 w-4 text-primary' />
-                                    <CardTitle className="text-sm font-black uppercase tracking-tight">
-                                        Colección: <span className="text-primary italic">{selectedCol || '---'}</span>
+                                    <Database className='h-4 w-4 text-primary' />
+                                    <CardTitle className="text-xs font-black uppercase">
+                                        <span className="hidden sm:inline">Colección:</span> <span className="text-primary italic">{selectedCol || '---'}</span>
                                     </CardTitle>
                                 </div>
-                                {documents.length > 0 && (
-                                    <div className='flex items-center gap-2'>
-                                        <Badge variant="secondary" className='text-[9px] font-black uppercase'>{documents.length} Registros</Badge>
-                                        <Badge variant="outline" className='text-[9px] font-black uppercase'>{visibleHeaders.length} Columnas</Badge>
-                                    </div>
-                                )}
+                                <div className='flex gap-1'>
+                                    <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setViewMode('table')}>
+                                        <LayoutGrid className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant={viewMode === 'json' ? 'default' : 'outline'} size="icon" className="h-7 w-7" onClick={() => setViewMode('json')}>
+                                        <List className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
                             </CardHeader>
+
                             <CardContent className="p-0 flex-1 overflow-auto bg-[#fafafa] relative">
                                 {documents.length > 0 ? (
                                     viewMode === 'table' ? (
-                                        <div className="min-w-full">
-                                            <Table className="border-collapse">
+                                        <div className="min-w-full overflow-x-auto">
+                                            <Table className="border-collapse table-fixed md:table-auto">
                                                 <TableHeader className="bg-white sticky top-0 z-20 shadow-sm">
                                                     <TableRow className="hover:bg-transparent">
                                                         {visibleHeaders.map(header => (
-                                                            <TableHead key={header} className="font-black text-[9px] uppercase py-3 border-r border-b px-4 whitespace-nowrap bg-muted/50">
-                                                                <div className="flex items-center justify-between gap-4">
-                                                                    {header}
-                                                                    <ChevronDown className="h-2.5 w-2.5 opacity-20" />
-                                                                </div>
+                                                            <TableHead key={header} className={cn(
+                                                                "font-black text-[9px] uppercase py-3 border-r border-b px-4 whitespace-nowrap bg-muted/50",
+                                                                header === '_id' && "sticky left-0 bg-white z-30 shadow-[4px_0_10px_rgba(0,0,0,0.05)]"
+                                                            )}>
+                                                                {header}
                                                             </TableHead>
                                                         ))}
-                                                        <TableHead className="sticky right-0 bg-white border-l z-30 font-black text-[9px] uppercase px-4 text-center">Acción</TableHead>
+                                                        <TableHead className="sticky right-0 bg-white border-l z-30 font-black text-[9px] uppercase px-4 text-center">⚙️</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {flattenedDocs.map((doc, idx) => (
-                                                        <TableRow key={doc._id || idx} className="hover:bg-primary/[0.03] transition-colors border-b group">
+                                                        <TableRow key={doc._id || idx} className="hover:bg-primary/[0.03] border-b">
                                                             {visibleHeaders.map(header => (
-                                                                <TableCell key={header} className="text-[10px] font-medium border-r px-4 py-2.5 whitespace-nowrap max-w-[250px] truncate">
-                                                                    {header === '_id' ? (
-                                                                        <code className="bg-primary/5 text-primary px-1.5 py-0.5 rounded font-black text-[9px]">{doc[header]}</code>
-                                                                    ) : (
-                                                                        formatCellValue(doc[header])
-                                                                    )}
+                                                                <TableCell key={header} className={cn(
+                                                                    "text-[10px] font-medium border-r px-4 py-2.5 whitespace-nowrap truncate max-w-[200px]",
+                                                                    header === '_id' && "sticky left-0 bg-white font-black text-primary z-10 shadow-[4px_0_10px_rgba(0,0,0,0.02)]"
+                                                                )}>
+                                                                    {formatCellValue(doc[header])}
                                                                 </TableCell>
                                                             ))}
                                                             <TableCell className="sticky right-0 bg-white border-l z-10 p-0 text-center shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
                                                                 <Button 
                                                                     variant="ghost" 
                                                                     size="sm" 
-                                                                    className="h-9 w-full rounded-none font-black text-[9px] uppercase hover:bg-primary hover:text-white"
+                                                                    className="h-10 w-full rounded-none font-black text-[9px] uppercase hover:bg-primary hover:text-white"
                                                                     onClick={() => {
                                                                         setEditingDoc(documents[idx]);
                                                                         setJsonEditorContent(JSON.stringify(documents[idx], null, 2));
                                                                     }}
                                                                 >
-                                                                    {isReadOnly ? 'Ver' : 'Editar'}
+                                                                    Ver
                                                                 </Button>
                                                             </TableCell>
                                                         </TableRow>
@@ -412,67 +459,61 @@ export default function DataStudioPage() {
                                             </Table>
                                         </div>
                                     ) : (
-                                        <div className="divide-y">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                                             {documents.map((doc, idx) => (
-                                                <div key={doc._id || idx} className="p-4 hover:bg-white transition-all group relative border-l-4 border-transparent hover:border-primary">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <span className="font-mono text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded flex items-center gap-2">
-                                                            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                                                            _id: {doc._id}
-                                                        </span>
-                                                        <Button 
-                                                            variant="secondary" 
-                                                            size="sm" 
-                                                            className="h-7 text-[9px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                                                            onClick={() => {
-                                                                setEditingDoc(doc);
-                                                                setJsonEditorContent(JSON.stringify(doc, null, 2));
-                                                            }}
-                                                        >
-                                                            {isReadOnly ? 'Abrir JSON' : 'Editar Registro'}
+                                                <Card key={doc._id || idx} className="border-2 shadow-sm hover:shadow-md transition-all group overflow-hidden">
+                                                    <CardHeader className="bg-muted/5 p-3 flex flex-row justify-between items-center space-y-0">
+                                                        <code className="text-[10px] font-black text-primary truncate max-w-[180px]">ID: {doc._id}</code>
+                                                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                                                            setEditingDoc(doc);
+                                                            setJsonEditorContent(JSON.stringify(doc, null, 2));
+                                                        }}>
+                                                            <Eye className="h-3.5 w-3.5" />
                                                         </Button>
-                                                    </div>
-                                                    <pre className="text-[11px] font-mono whitespace-pre-wrap line-clamp-4 opacity-70 group-hover:opacity-100 transition-opacity">
-                                                        {JSON.stringify(doc, (key, value) => key === '_id' ? undefined : value)}
-                                                    </pre>
-                                                </div>
+                                                    </CardHeader>
+                                                    <CardContent className="p-3">
+                                                        <pre className="text-[10px] font-mono text-muted-foreground whitespace-pre-wrap line-clamp-6 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                            {JSON.stringify(doc, (key, value) => key === '_id' ? undefined : value, 1)}
+                                                        </pre>
+                                                    </CardContent>
+                                                </Card>
                                             ))}
                                         </div>
                                     )
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-20">
-                                        <Database className="h-20 w-20 mb-4" />
-                                        <p className="text-sm font-black uppercase italic tracking-widest">Esperando orden de consulta...</p>
+                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-20 p-10 text-center">
+                                        <LayoutGrid className="h-20 w-20 mb-4" />
+                                        <p className="text-sm font-black uppercase italic tracking-widest">Seleccione un esquema para explorar los datos en tiempo real.</p>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
-                        {/* MONITOR DE SALUD (FOOTER) */}
+                        {/* MONITOR DE SALUD (FOOTER) - Solo en Desktop */}
                         {serverInfo && (
-                            <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-                                <Card className='p-3 border-2 shadow-sm bg-black text-white hover:bg-slate-900 transition-colors'>
+                            <div className='hidden md:grid grid-cols-4 gap-4'>
+                                <Card className='p-3 border-2 bg-black text-white'>
                                     <div className='flex items-center justify-between'>
-                                        <div className='flex items-center gap-2'><Cpu className='h-3 w-3 text-primary'/><span className='text-[8px] font-black uppercase opacity-60'>Uso Memoria</span></div>
+                                        <div className='flex items-center gap-2'><Cpu className='h-3 w-3 text-primary'/><span className='text-[8px] font-black uppercase opacity-60'>Uso RAM</span></div>
                                         <span className='text-xs font-black'>{serverInfo.mem?.resident || 0}MB</span>
                                     </div>
                                 </Card>
-                                <Card className='p-3 border-2 shadow-sm'>
+                                <Card className='p-3 border-2'>
                                     <div className='flex items-center justify-between'>
-                                        <div className='flex items-center gap-2'><Activity className='h-3 w-3 text-green-500'/><span className='text-[8px] font-black uppercase opacity-60'>Conexiones</span></div>
+                                        <div className='flex items-center gap-2'><Activity className='h-3 w-3 text-green-500'/><span className='text-[8px] font-black uppercase opacity-60'>Links</span></div>
                                         <span className='text-xs font-black'>{serverInfo.connections?.current || 0}</span>
                                     </div>
                                 </Card>
-                                <Card className='p-3 border-2 shadow-sm'>
+                                <Card className='p-3 border-2'>
                                     <div className='flex items-center justify-between'>
-                                        <div className='flex items-center gap-2'><Zap className='h-3 w-3 text-amber-500'/><span className='text-[8px] font-black uppercase opacity-60'>Tiempo Activo</span></div>
+                                        <div className='flex items-center gap-2'><Zap className='h-3 w-3 text-amber-500'/><span className='text-[8px] font-black uppercase opacity-60'>Uptime</span></div>
                                         <span className='text-xs font-black'>{Math.floor(serverInfo.uptime / 3600)}h</span>
                                     </div>
                                 </Card>
-                                <Card className='p-3 border-2 shadow-sm'>
+                                <Card className='p-3 border-2'>
                                     <div className='flex items-center justify-between'>
-                                        <div className='flex items-center gap-2'><Database className='h-3 w-3 text-primary'/><span className='text-[8px] font-black uppercase opacity-60'>Versión Motor</span></div>
-                                        <span className='text-xs font-black'>{serverInfo.version || 'Atlas'}</span>
+                                        <div className='flex items-center gap-2'><Database className='h-3 w-3 text-primary'/><span className='text-[8px] font-black uppercase opacity-60'>Motor</span></div>
+                                        <span className='text-xs font-black truncate max-w-[80px]'>{serverInfo.version || 'Atlas'}</span>
                                     </div>
                                 </Card>
                             </div>
@@ -481,18 +522,18 @@ export default function DataStudioPage() {
                 </div>
             </main>
 
-            {/* MODAL EDITOR JSON */}
+            {/* MODAL EDITOR JSON (Bottom Sheet en móvil) */}
             <Dialog open={!!editingDoc} onOpenChange={() => setEditingDoc(null)}>
-                <DialogContent className="sm:max-w-[750px] border-[6px] border-primary/20 overflow-hidden p-0 rounded-3xl">
-                    <div className='bg-primary p-6 text-white'>
+                <DialogContent className="sm:max-w-[800px] h-[95vh] md:h-auto border-[6px] border-primary/20 overflow-hidden p-0 rounded-t-3xl md:rounded-3xl">
+                    <div className='bg-primary p-4 md:p-6 text-white shrink-0'>
                         <div className='flex items-center justify-between'>
                             <div>
                                 <DialogHeader>
-                                    <DialogTitle className='text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3'>
-                                        <Code2 className='h-8 w-8' /> Editor Maestro
+                                    <DialogTitle className='text-lg md:text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3'>
+                                        <Code2 className='h-6 w-6 md:h-8 md:w-8' /> Inspector Maestro
                                     </DialogTitle>
-                                    <DialogDescription className='text-white/70 font-bold uppercase text-[10px] tracking-widest'>
-                                        ID: {editingDoc?._id} • Contexto: {selectedCol}
+                                    <DialogDescription className='text-white/70 font-bold uppercase text-[9px] md:text-[10px] tracking-widest'>
+                                        Contexto: {selectedCol} • ID: {editingDoc?._id}
                                     </DialogDescription>
                                 </DialogHeader>
                             </div>
@@ -502,36 +543,36 @@ export default function DataStudioPage() {
                         </div>
                     </div>
                     
-                    <div className="p-6 bg-white">
+                    <div className="p-4 md:p-6 bg-white overflow-y-auto flex-1">
                         <div className='mb-4 flex justify-between items-center'>
-                            <Label className='text-[10px] font-black uppercase text-muted-foreground'>Contenido JSON (BSON Compatible)</Label>
-                            {isReadOnly && <Badge className='bg-amber-500 text-white font-black text-[9px] uppercase'>Vista Protegida</Badge>}
+                            <Label className='text-[10px] font-black uppercase text-muted-foreground'>Contenido JSON (Sintaxis Protegida)</Label>
+                            {isReadOnly && <Badge className='bg-amber-500 text-white font-black text-[9px] uppercase'>Solo Lectura</Badge>}
                         </div>
                         
                         <Textarea 
-                            className="font-mono text-[13px] h-[450px] bg-slate-900 text-green-400 border-none focus:ring-0 leading-relaxed rounded-2xl p-6 shadow-inner resize-none scrollbar-hide"
+                            className="font-mono text-[11px] md:text-[13px] h-[400px] md:h-[450px] bg-slate-900 text-green-400 border-none focus:ring-0 leading-relaxed rounded-2xl p-4 md:p-6 shadow-inner resize-none"
                             value={jsonEditorContent}
                             readOnly={isReadOnly}
                             onChange={e => setJsonEditorContent(e.target.value)}
                         />
                         
                         {!isReadOnly && (
-                            <div className='mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-2xl flex items-start gap-3 animate-in shake-in duration-500'>
-                                <ShieldAlert className='h-6 w-6 text-red-600 shrink-0 mt-0.5' />
+                            <div className='mt-4 p-3 md:p-4 bg-red-50 border-2 border-red-200 rounded-2xl flex items-start gap-3 animate-in shake-in duration-500'>
+                                <ShieldAlert className='h-5 w-5 md:h-6 md:w-6 text-red-600 shrink-0 mt-0.5' />
                                 <div className='space-y-1'>
-                                    <p className='text-[10px] font-black text-red-800 uppercase'>ADVERTENCIA DE INTEGRIDAD</p>
+                                    <p className='text-[10px] font-black text-red-800 uppercase'>Protocolo de Escritura Activo</p>
                                     <p className='text-[9px] font-bold text-red-700 leading-tight'>
-                                        Estás modificando un registro directamente en producción. El cambio será irreversible y quedará vinculado a tu IP: {serverInfo?.ip || 'Detectada'}.
+                                        La modificación manual puede corromper la integridad de la aplicación si los tipos de datos (BSON) no se mantienen. El cambio será registrado en auditoría.
                                     </p>
                                 </div>
                             </div>
                         )}
                     </div>
                     
-                    <DialogFooter className="p-6 bg-slate-50 border-t flex justify-between items-center sm:justify-between">
-                        <Button variant="ghost" onClick={() => setEditingDoc(null)} className="font-black uppercase text-xs">Cerrar Inspector</Button>
+                    <DialogFooter className="p-4 md:p-6 bg-slate-50 border-t flex flex-row justify-between items-center gap-2 shrink-0">
+                        <Button variant="ghost" onClick={() => setEditingDoc(null)} className="font-black uppercase text-[10px] md:text-xs">Cerrar</Button>
                         {!isReadOnly && (
-                            <Button onClick={handleSaveDocument} className="font-black uppercase px-10 h-12 shadow-2xl rounded-xl bg-primary hover:scale-105 transition-transform">
+                            <Button onClick={handleSaveDocument} className="font-black uppercase px-6 md:px-10 h-10 md:h-12 shadow-xl bg-primary">
                                 <Save className="mr-2 h-4 w-4" /> Aplicar Cambios
                             </Button>
                         )}

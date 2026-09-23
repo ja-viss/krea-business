@@ -33,7 +33,9 @@ import {
     ArrowUpRight,
     Search,
     Trash2,
-    AlertCircle
+    AlertCircle,
+    Copy,
+    Check
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +63,7 @@ export default function AdminStoresPage() {
     const [creating, setCreating] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     // Estados para Gestión de Datos
     const [isDataModalOpen, setIsDataModalOpen] = useState(false);
@@ -102,6 +105,13 @@ export default function AdminStoresPage() {
     useEffect(() => {
         fetchStores();
     }, []);
+
+    const copyToClipboard = (text: string, id: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        toast({ title: "Copiado", description: "URI almacenada en portapapeles." });
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -230,32 +240,32 @@ export default function AdminStoresPage() {
     );
 
     return (
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col bg-slate-50/50">
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
                 <PageHeader 
                     title="Control de Empresas" 
-                    description="Supervisa el despliegue de clientes y gestiona la portabilidad de sus datos."
+                    description="Supervisa y gestiona la portabilidad de tus clientes."
                     actions={
-                        <div className='flex gap-2'>
-                            <Button variant="outline" onClick={fetchStores} disabled={loading} className='h-11 px-4'>
+                        <div className='flex gap-2 w-full sm:w-auto'>
+                            <Button variant="outline" onClick={fetchStores} disabled={loading} className='h-11 px-4 flex-1 sm:flex-none'>
                                 <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
                             </Button>
                             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                                 <DialogTrigger asChild>
-                                    <Button className="font-black shadow-lg shadow-primary/20 h-11 px-6">
-                                        <Store className="mr-2 h-4 w-4" /> Nueva Empresa
+                                    <Button className="font-black shadow-lg shadow-primary/20 h-11 px-6 flex-1 sm:flex-none">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Nueva Empresa
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto border-4">
+                                <DialogContent className="sm:max-w-[550px] max-h-[95vh] overflow-y-auto border-4 rounded-t-3xl sm:rounded-3xl">
                                     <DialogHeader>
                                         <DialogTitle className="text-xl font-black uppercase">Provisionar Empresa</DialogTitle>
-                                        <DialogDescription className="font-bold">Define la modalidad y capacidades del nuevo cliente.</DialogDescription>
+                                        <DialogDescription className="font-bold">Configura el entorno del nuevo cliente.</DialogDescription>
                                     </DialogHeader>
                                     <form onSubmit={handleCreate} className="space-y-6 pt-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2 col-span-2">
                                                 <Label className="text-[10px] font-black uppercase">Razón Social</Label>
-                                                <Input value={form.storeName} onChange={e => setForm({...form, storeName: e.target.value})} required />
+                                                <Input value={form.storeName} onChange={e => setForm({...form, storeName: e.target.value})} required className="h-12 border-2" />
                                             </div>
                                             
                                             <div className="space-y-2 col-span-2">
@@ -265,16 +275,16 @@ export default function AdminStoresPage() {
                                                     onValueChange={v => setForm({...form, deploymentMode: v})}
                                                     className="grid grid-cols-2 gap-3"
                                                 >
-                                                    <div className={`flex items-center space-x-2 rounded-lg p-3 border-2 transition-all ${form.deploymentMode === 'Online' ? 'bg-primary/5 border-primary' : 'border-muted'}`}>
+                                                    <div className={cn("flex items-center space-x-2 rounded-xl p-3 border-2 transition-all cursor-pointer", form.deploymentMode === 'Online' ? 'bg-primary/5 border-primary shadow-sm' : 'border-muted')}>
                                                         <RadioGroupItem value="Online" id="mode-online" />
-                                                        <Label htmlFor="mode-online" className="font-bold flex items-center gap-2 cursor-pointer">
-                                                            <Globe className="h-4 w-4" /> Cloud (Atlas)
+                                                        <Label htmlFor="mode-online" className="font-bold flex items-center gap-2 cursor-pointer text-xs uppercase">
+                                                            <Globe className="h-4 w-4" /> Cloud
                                                         </Label>
                                                     </div>
-                                                    <div className={`flex items-center space-x-2 rounded-lg p-3 border-2 transition-all ${form.deploymentMode === 'Offline' ? 'bg-amber-50 border-amber-500' : 'border-muted'}`}>
+                                                    <div className={cn("flex items-center space-x-2 rounded-xl p-3 border-2 transition-all cursor-pointer", form.deploymentMode === 'Offline' ? 'bg-amber-50 border-amber-500 shadow-sm' : 'border-muted')}>
                                                         <RadioGroupItem value="Offline" id="mode-offline" />
-                                                        <Label htmlFor="mode-offline" className="font-bold flex items-center gap-2 cursor-pointer">
-                                                            <HardDrive className="h-4 w-4" /> Local (Node.js)
+                                                        <Label htmlFor="mode-offline" className="font-bold flex items-center gap-2 cursor-pointer text-xs uppercase">
+                                                            <HardDrive className="h-4 w-4" /> Local
                                                         </Label>
                                                     </div>
                                                 </RadioGroup>
@@ -282,73 +292,53 @@ export default function AdminStoresPage() {
 
                                             {form.deploymentMode === 'Online' && (
                                                 <div className="space-y-2 col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <Label className="text-[10px] font-black uppercase text-primary">URI MongoDB (Atlas)</Label>
+                                                    <Label className="text-[10px] font-black uppercase text-primary">URI MongoDB (Cifrada al guardar)</Label>
                                                     <Input 
                                                         placeholder="mongodb+srv://..." 
                                                         value={form.tenantDbUri}
                                                         onChange={e => setForm({...form, tenantDbUri: e.target.value})}
                                                         required
-                                                        className="font-mono text-xs"
+                                                        className="font-mono text-[10px] h-12 border-2"
                                                     />
                                                 </div>
                                             )}
 
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase">Plan</Label>
+                                            <div className="space-y-2 col-span-2">
+                                                <Label className="text-[10px] font-black uppercase">Plan de Almacenamiento</Label>
                                                 <Select value={form.plan} onValueChange={v => setForm({...form, plan: v})}>
-                                                    <SelectTrigger className="font-bold"><SelectValue /></SelectTrigger>
+                                                    <SelectTrigger className="font-bold h-12 border-2"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Basic">Pequeño (500 docs)</SelectItem>
-                                                        <SelectItem value="Pro">Mediano (2k docs)</SelectItem>
-                                                        <SelectItem value="Premium">Grande (10k docs)</SelectItem>
+                                                        <SelectItem value="Basic" className="font-bold uppercase text-[10px]">Pequeño (Abasto)</SelectItem>
+                                                        <SelectItem value="Pro" className="font-bold uppercase text-[10px]">Mediano (Supermercado)</SelectItem>
+                                                        <SelectItem value="Premium" className="font-bold uppercase text-[10px]">Grande (Distribuidora)</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                         </div>
 
-                                        <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed space-y-3">
-                                            <p className="text-[10px] font-black uppercase text-primary">Módulos Habilitados</p>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                {[
-                                                    { id: 'inventory', label: 'Inventario', icon: Package },
-                                                    { id: 'sales', label: 'Ventas', icon: ShoppingCart },
-                                                    { id: 'expenses', label: 'Finanzas', icon: Receipt },
-                                                    { id: 'reports', label: 'Reportes', icon: BarChart3 },
-                                                ].map((m) => (
-                                                    <div key={m.id} className="flex items-center justify-between p-2 bg-background rounded-lg border">
-                                                        <div className="flex items-center gap-2">
-                                                            <m.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                                                            <span className="text-[11px] font-bold uppercase">{m.label}</span>
-                                                        </div>
-                                                        <Switch checked={(form.enabledModules as any)[m.id]} onCheckedChange={() => toggleModule(m.id as any)} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
                                         <div className="border-t pt-4 space-y-4">
                                             <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2">
-                                                <UserPlus className="h-3 w-3" /> Credenciales Administrador
+                                                <UserPlus className="h-3 w-3" /> Dueño de Cuenta (Padre)
                                             </p>
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase">Nombre</Label>
-                                                    <Input value={form.adminName} onChange={e => setForm({...form, adminName: e.target.value})} required />
+                                                    <Label className="text-[10px] font-black uppercase">Nombre Real</Label>
+                                                    <Input value={form.adminName} onChange={e => setForm({...form, adminName: e.target.value})} required className="h-11 border-2" />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase">Usuario</Label>
-                                                    <Input value={form.adminUser} onChange={e => setForm({...form, adminUser: e.target.value})} required className="font-mono" />
+                                                    <Label className="text-[10px] font-black uppercase">Usuario de Acceso</Label>
+                                                    <Input value={form.adminUser} onChange={e => setForm({...form, adminUser: e.target.value})} required className="font-mono h-11 border-2" />
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase">Password Inicial</Label>
-                                                <Input type="password" value={form.adminPassword} onChange={e => setForm({...form, adminPassword: e.target.value})} required />
+                                                <Label className="text-[10px] font-black uppercase">Password Maestro</Label>
+                                                <Input type="password" value={form.adminPassword} onChange={e => setForm({...form, adminPassword: e.target.value})} required className="h-11 border-2" />
                                             </div>
                                         </div>
                                         <DialogFooter className="pt-2">
-                                            <Button type="submit" disabled={creating} className="w-full font-black uppercase h-12">
+                                            <Button type="submit" disabled={creating} className="w-full font-black uppercase h-14 text-base shadow-2xl">
                                                 {creating ? <Loader2 className="animate-spin mr-2" /> : <ShieldCheck className="mr-2" />}
-                                                Activar Empresa
+                                                Provisionar Ecosistema
                                             </Button>
                                         </DialogFooter>
                                     </form>
@@ -358,120 +348,152 @@ export default function AdminStoresPage() {
                     }
                 />
 
-                <div className="flex items-center gap-4">
-                    <div className="relative flex-1 max-w-md">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative flex-1 w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Filtrar por Empresa o Dueño..." 
-                            className="pl-9 h-11 border-2 font-bold"
+                            placeholder="Buscar empresa, dueño o identificador..." 
+                            className="pl-9 h-12 border-2 font-bold shadow-sm"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
-                    <Badge variant="outline" className="h-11 px-4 font-black bg-primary/5 uppercase">
-                        {filteredStores.length} Empresas Activas
+                    <Badge variant="outline" className="h-12 px-6 font-black bg-primary/5 uppercase hidden sm:flex">
+                        {filteredStores.length} Activas
                     </Badge>
                 </div>
 
-                <Card className="border-2 shadow-xl overflow-hidden rounded-2xl">
+                {/* VISTA MÓVIL: TARJETAS */}
+                <div className="grid grid-cols-1 gap-4 lg:hidden">
+                    {filteredStores.map((s) => (
+                        <Card key={s._id} className="border-2 shadow-sm overflow-hidden active:scale-[0.98] transition-all">
+                            <CardHeader className="bg-muted/10 p-4 border-b flex flex-row justify-between items-start space-y-0">
+                                <div className="space-y-1 flex-1 min-w-0 pr-2">
+                                    <h3 className="font-black uppercase text-xs truncate">{s.name}</h3>
+                                    <p className="text-[10px] font-mono opacity-60">ID: {String(s._id).slice(-8).toUpperCase()}</p>
+                                </div>
+                                {getStatusBadge(s.status || 'Active')}
+                            </CardHeader>
+                            <CardContent className="p-4 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary"><User className="h-4 w-4" /></div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[10px] font-black uppercase truncate">{s.owner?.name || '---'}</span>
+                                        <span className="text-[8px] font-mono opacity-50 truncate">{s.owner?.email}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between pt-2 border-t border-dashed">
+                                    <Badge variant="secondary" className="text-[9px] font-black uppercase">{s.plan}</Badge>
+                                    <div className="flex gap-1">
+                                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2" asChild>
+                                            <Link href={`/admin/stores/${s._id}`}><Settings2 className="h-4 w-4" /></Link>
+                                        </Button>
+                                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2 text-primary" onClick={() => { setSelectedStore(s); setIsDataModalOpen(true); }}>
+                                            <Database className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    {filteredStores.length === 0 && !loading && (
+                        <div className="py-20 text-center text-muted-foreground italic text-xs uppercase font-black opacity-30">Sin resultados</div>
+                    )}
+                </div>
+
+                {/* VISTA DESKTOP: TABLA ROBUSTA */}
+                <Card className="hidden lg:flex flex-col border-2 shadow-xl overflow-hidden rounded-2xl">
                     <CardHeader className="bg-muted/10 border-b">
-                        <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 italic">
-                            <Database className="h-5 w-5 text-primary" /> Directorio de Infraestructura y Portabilidad
+                        <CardTitle className="text-lg font-black uppercase flex items-center gap-2 italic">
+                            <Database className="h-5 w-5 text-primary" /> Inventario de Infraestructura y Portabilidad
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Estado</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase">Empresa / Razón Social</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase">Usuario Padre (Owner)</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase">Plan / Despliegue</TableHead>
-                                        <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acciones Maestras</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        Array.from({ length: 3 }).map((_, i) => (
-                                            <TableRow key={i}><TableCell colSpan={5}><div className="h-12 bg-muted animate-pulse rounded m-2" /></TableCell></TableRow>
-                                        ))
-                                    ) : filteredStores.length > 0 ? (
-                                        filteredStores.map((s) => (
-                                            <TableRow key={s._id} className="hover:bg-primary/[0.02] transition-colors">
-                                                <TableCell className="pl-6">{getStatusBadge(s.status || 'Active')}</TableCell>
-                                                <TableCell>
+                    <CardContent className="p-0 overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Estado</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Empresa / Razón Social</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Dueño de Cuenta (Padre)</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Infraestructura (URI)</TableHead>
+                                    <TableHead className="font-black text-[10px] uppercase">Plan</TableHead>
+                                    <TableHead className="text-right font-black text-[10px] uppercase pr-6">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    Array.from({ length: 3 }).map((_, i) => (
+                                        <TableRow key={i}><TableCell colSpan={6}><div className="h-12 bg-muted animate-pulse rounded m-2" /></TableCell></TableRow>
+                                    ))
+                                ) : filteredStores.map((s) => (
+                                    <TableRow key={s._id} className="hover:bg-primary/[0.02] transition-colors group">
+                                        <TableCell className="pl-6">{getStatusBadge(s.status || 'Active')}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-black uppercase text-xs">{s.name}</span>
+                                                <span className="font-mono text-[9px] text-muted-foreground uppercase opacity-40">ID: {s._id}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {s.owner ? (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                                        <User className="h-4 w-4" />
+                                                    </div>
                                                     <div className="flex flex-col">
-                                                        <span className="font-black uppercase text-xs">{s.name}</span>
-                                                        <span className="font-mono text-[9px] text-muted-foreground uppercase">{s._id}</span>
+                                                        <span className="font-black uppercase text-[10px]">{s.owner.name}</span>
+                                                        <span className="text-[9px] font-mono text-muted-foreground opacity-60">{s.owner.email}</span>
                                                     </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {s.owner ? (
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                                                                <User className="h-4 w-4" />
-                                                            </div>
-                                                            <div className="flex flex-col">
-                                                                <span className="font-black uppercase text-[10px]">{s.owner.name}</span>
-                                                                <span className="text-[9px] font-mono text-muted-foreground">{s.owner.email}</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-[10px] italic text-muted-foreground">Sin owner registrado</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-col gap-1">
-                                                        <Badge variant="outline" className="w-fit font-black text-[9px] uppercase border-primary/30 text-primary bg-primary/5">
-                                                            {s.plan || 'BASIC'}
-                                                        </Badge>
-                                                        <span className="text-[9px] font-bold text-muted-foreground flex items-center gap-1">
-                                                            {s.deploymentMode === 'Offline' ? <HardDrive className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
-                                                            {s.deploymentMode || 'Online'}
-                                                        </span>
+                                                </div>
+                                            ) : <span className="text-[10px] italic opacity-40">Huerfano</span>}
+                                        </TableCell>
+                                        <TableCell>
+                                            {s.tenantDbUri ? (
+                                                <div className="flex items-center gap-2 group/uri">
+                                                    <div className="p-1.5 px-3 rounded-full bg-green-50 text-green-700 border-2 border-green-100 flex items-center gap-2 max-w-[150px]">
+                                                        <Zap className="h-2.5 w-2.5 fill-green-600" />
+                                                        <span className="text-[9px] font-black uppercase">Atlas Link</span>
                                                     </div>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-6 space-x-2">
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
-                                                        className='font-black text-[9px] uppercase h-9 border-2'
-                                                        onClick={() => { setSelectedStore(s); setIsDataModalOpen(true); }}
-                                                    >
-                                                        <Database className="mr-1.5 h-3.5 w-3.5 text-primary" /> MIGRAR / DATA
-                                                    </Button>
-                                                    <Button asChild variant="ghost" size="icon" className='h-9 w-9 rounded-full hover:bg-primary/10 hover:text-primary'>
-                                                        <Link href={`/admin/stores/${s._id}`}>
-                                                            <Settings2 className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
-                                                        className='h-9 w-9 rounded-full text-red-300 hover:text-red-600 hover:bg-red-50'
-                                                        onClick={() => { setSelectedStore(s); setIsDeleteDialogOpen(true); }}
+                                                        className="h-7 w-7 opacity-0 group-hover/uri:opacity-100 transition-opacity"
+                                                        onClick={() => copyToClipboard(s.tenantDbUri, s._id)}
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        {copiedId === s._id ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                                                     </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No se encontraron empresas registradas.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                                </div>
+                                            ) : (
+                                                <Badge variant="outline" className="text-[8px] font-black opacity-30">SHARED DB</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="font-black text-[9px] uppercase border-primary/30 text-primary bg-primary/5">
+                                                {s.plan || 'BASIC'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right pr-6 space-x-1">
+                                            <Button variant="outline" size="sm" className='font-black text-[9px] uppercase h-9 border-2' onClick={() => { setSelectedStore(s); setIsDataModalOpen(true); }}>
+                                                <Database className="mr-1.5 h-3.5 w-3.5 text-primary" /> Portabilidad
+                                            </Button>
+                                            <Button asChild variant="ghost" size="icon" className='h-9 w-9 rounded-full hover:bg-primary/10'>
+                                                <Link href={`/admin/stores/${s._id}`}><Settings2 className="h-4 w-4" /></Link>
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className='h-9 w-9 rounded-full text-red-300 hover:text-red-600 hover:bg-red-50' onClick={() => { setSelectedStore(s); setIsDeleteDialogOpen(true); }}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </CardContent>
                 </Card>
             </main>
 
-            {/* MODAL DE GESTIÓN DE DATOS AVANZADO */}
+            {/* MODAL DE GESTIÓN DE DATOS (Bottom Sheet en móvil) */}
             <Dialog open={isDataModalOpen} onOpenChange={setIsDataModalOpen}>
-                <DialogContent className='sm:max-w-[550px] border-4 border-primary p-0 overflow-hidden rounded-3xl'>
+                <DialogContent className='sm:max-w-[550px] border-4 border-primary p-0 overflow-hidden rounded-t-3xl sm:rounded-3xl'>
                     <div className='bg-primary p-6 text-white'>
                         <DialogHeader>
                             <DialogTitle className='text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3'>
@@ -479,24 +501,23 @@ export default function AdminStoresPage() {
                             </DialogTitle>
                             <DialogDescription asChild>
                                 <div className='text-white/80 font-bold text-xs uppercase tracking-widest'>
-                                    Empresa: {selectedStore?.name} • Owner: {selectedStore?.owner?.name || 'S/N'}
+                                    Empresa: {selectedStore?.name}
                                 </div>
                             </DialogDescription>
                         </DialogHeader>
                     </div>
                     
-                    <div className='p-6 space-y-8'>
-                        {/* SECCIÓN 1: PORTABILIDAD (DOWNLOAD) */}
+                    <div className='p-6 space-y-6 max-h-[70vh] overflow-y-auto'>
                         <div className='space-y-4'>
                             <div className='flex items-center gap-2 text-[11px] font-black uppercase text-slate-500'>
-                                <Download className='h-4 w-4' /> Portabilidad de Datos (Descarga)
+                                <Download className='h-4 w-4' /> Portabilidad (Descarga)
                             </div>
                             <div className='p-5 bg-slate-50 border-2 border-dashed rounded-2xl flex flex-col items-center gap-4 text-center'>
                                 <p className='text-[10px] font-bold text-muted-foreground leading-relaxed italic px-4 uppercase'>
-                                    Extrae el lote completo de documentos (Ventas, Stock, Gastos) en formato JSON estructurado para portabilidad inmediata.
+                                    Extrae el lote completo de documentos en formato JSON para auditoría externa.
                                 </p>
                                 <Button 
-                                    className='w-full h-14 font-black uppercase bg-white text-primary border-2 border-primary/20 hover:bg-primary hover:text-white transition-all shadow-lg'
+                                    className='w-full h-14 font-black uppercase bg-white text-primary border-2 border-primary/20 hover:bg-primary transition-all shadow-lg'
                                     onClick={() => handleDownloadBackup(selectedStore._id, selectedStore.name)}
                                 >
                                     <Download className='mr-2 h-5 w-5' /> Descargar Base de Datos (.json)
@@ -506,90 +527,75 @@ export default function AdminStoresPage() {
 
                         <Separator className='border-2' />
 
-                        {/* SECCIÓN 2: MIGRACIÓN DE CLÚSTER (UPLOAD/LOAD) */}
                         <div className='space-y-4'>
                             <div className='flex items-center gap-2 text-[11px] font-black uppercase text-amber-600'>
-                                <ArrowRightLeft className='h-4 w-4' /> Migración de Carga (DB Externa)
+                                <ArrowRightLeft className='h-4 w-4' /> Carga a DB Externa
                             </div>
                             <div className='space-y-4'>
                                 <div className='space-y-2'>
                                     <Label className='text-[10px] font-black uppercase ml-1 flex items-center gap-2'>
-                                        <Zap className='h-3 w-3 text-amber-500' /> URI de Conexión Destino (Target)
+                                        <Zap className='h-3 w-3 text-amber-500' /> URI Target (Atlas/Dedicada)
                                     </Label>
                                     <Input 
-                                        placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname" 
-                                        className='font-mono text-xs h-14 border-2 focus:ring-4 focus:ring-amber-500/20'
+                                        placeholder="mongodb+srv://..." 
+                                        className='font-mono text-xs h-12 border-2'
                                         value={migrationUri}
                                         onChange={e => setMigrationUri(e.target.value)}
                                     />
-                                    <p className='text-[8px] font-bold text-slate-400 italic px-1'>
-                                        Esta acción moverá físicamente los datos desde el clúster central hacia el clúster dedicado del cliente.
-                                    </p>
                                 </div>
 
                                 <div className='p-4 bg-amber-50 border-2 border-amber-200 border-dashed rounded-2xl flex items-start gap-3'>
-                                    <ShieldAlert className='h-6 w-6 text-amber-600 shrink-0 mt-0.5' />
-                                    <div className='space-y-1'>
-                                        <p className='text-[10px] font-black text-amber-800 uppercase leading-tight'>
-                                            PROTOCOLO DE MANTENIMIENTO ACTIVO
-                                        </p>
-                                        <p className='text-[9px] font-bold text-amber-700 leading-tight'>
-                                            La empresa será bloqueada durante la transferencia. Se copiarán esquemas, índices y documentos de forma íntegra.
-                                        </p>
-                                    </div>
+                                    <ShieldAlert className='h-5 w-5 text-amber-600 shrink-0 mt-0.5' />
+                                    <p className='text-[9px] font-bold text-amber-700 leading-tight uppercase'>
+                                        PROTOCOLO DE MANTENIMIENTO: La empresa será bloqueada durante la transferencia de carga.
+                                    </p>
                                 </div>
 
                                 <Button 
-                                    className='w-full h-16 font-black uppercase bg-amber-600 hover:bg-amber-700 text-white shadow-xl shadow-amber-200 rounded-2xl text-lg group'
+                                    className='w-full h-16 font-black uppercase bg-amber-600 hover:bg-amber-700 text-white shadow-xl rounded-2xl'
                                     disabled={isMigrating || !migrationUri}
                                     onClick={handleMigrate}
                                 >
-                                    {isMigrating ? <Loader2 className='mr-2 h-6 w-6 animate-spin' /> : <Zap className='mr-2 h-6 w-6 group-hover:scale-125 transition-transform' />}
-                                    {isMigrating ? 'MIGRANDO CARGA...' : 'CARGAR A DB DEDICADA'}
+                                    {isMigrating ? <Loader2 className='mr-2 h-6 w-6 animate-spin' /> : <Zap className='mr-2 h-6 w-6' />}
+                                    {isMigrating ? 'MIGRANDO...' : 'CARGAR A DB DEDICADA'}
                                 </Button>
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className='p-6 bg-slate-50 border-t'>
-                        <Button variant="ghost" className='font-black uppercase text-[10px]' onClick={() => setIsDataModalOpen(false)}>Cerrar Consola</Button>
+                    <DialogFooter className='p-4 md:p-6 bg-slate-50 border-t'>
+                        <Button variant="ghost" className='w-full font-black uppercase text-[10px]' onClick={() => setIsDataModalOpen(false)}>Cerrar Consola</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* DIÁLOGO DE ELIMINACIÓN CRÍTICA */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent className="border-4 border-red-500">
+                <AlertDialogContent className="border-4 border-red-500 rounded-t-3xl sm:rounded-3xl mx-4">
                     <AlertDialogHeader>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
                                 <AlertCircle className="h-8 w-8" />
                             </div>
-                            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tighter">ELIMINACIÓN TOTAL</AlertDialogTitle>
+                            <AlertDialogTitle className="text-xl md:text-2xl font-black uppercase tracking-tighter">ELIMINACIÓN TOTAL</AlertDialogTitle>
                         </div>
                         <AlertDialogDescription asChild>
-                            <div className="text-base font-bold text-foreground">
+                            <div className="text-sm md:text-base font-bold text-foreground">
                                 Estás a punto de borrar la empresa <span className="text-red-600 uppercase font-black">"{selectedStore?.name}"</span>. 
                                 <br/><br/>
-                                Esta acción es <span className="underline">irreversible</span> y resultará en la eliminación de:
-                                <ul className="list-disc pl-5 mt-2 space-y-1 text-sm font-medium italic">
-                                    <li>Todos los usuarios y credenciales vinculadas.</li>
-                                    <li>Todo el catálogo de productos e inventario.</li>
-                                    <li>Historial completo de ventas y facturación.</li>
-                                    <li>Configuraciones fiscales y registros de auditoría.</li>
-                                </ul>
+                                Esta acción es <span className="underline">irreversible</span> y purgará usuarios, inventario y facturación del núcleo maestro.
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="font-bold uppercase">Cancelar</AlertDialogCancel>
+                    <AlertDialogFooter className="mt-6 flex flex-col gap-2">
+                        <AlertDialogCancel className="font-bold uppercase w-full">Cancelar</AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={handleDeleteStore} 
                             disabled={isDeleting}
-                            className="bg-red-600 font-black uppercase shadow-xl hover:bg-red-700"
+                            className="bg-red-600 font-black uppercase shadow-xl hover:bg-red-700 w-full h-12"
                         >
                             {isDeleting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                            Confirmar Borrado Absoluto
+                            Confirmar Borrado
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -597,3 +603,4 @@ export default function AdminStoresPage() {
         </div>
     );
 }
+
