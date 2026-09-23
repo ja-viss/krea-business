@@ -72,7 +72,7 @@ export const navLinks: NavLink[] = [
   },
   {
     href: '/admin/stores',
-    label: 'Agencias y Datos',
+    label: 'Empresas e Infra',
     icon: Database,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
@@ -111,7 +111,7 @@ export const navLinks: NavLink[] = [
     category: 'Estrategia',
   },
 
-  // --- SECCION OPERATIVA (TIENDAS) ---
+  // --- SECCION OPERATIVA (EMPRESAS) ---
   {
     href: '/dashboard',
     label: 'Resumen Diario',

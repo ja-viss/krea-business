@@ -29,7 +29,9 @@ import {
     LogIn,
     Activity,
     HeartPulse,
-    ShieldAlert
+    ShieldAlert,
+    Trash2,
+    Save
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,6 +39,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function StoreAdminDetailPage() {
     const params = useParams();
@@ -54,6 +66,8 @@ export default function StoreAdminDetailPage() {
 
     // Modal states
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [tempPassword, setTempPassword] = useState('Krea2026*');
 
@@ -112,6 +126,23 @@ export default function StoreAdminDetailPage() {
             toast({ variant: 'destructive', title: "Error", description: "No se pudo actualizar." });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleDeleteStore = async () => {
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/admin/stores/${params.storeId}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('Error al eliminar');
+            
+            toast({ title: "Empresa Eliminada", description: "Los datos han sido purgados del sistema." });
+            router.push('/admin/stores');
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Error Fatal", description: "No se pudo completar la purga de datos." });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -229,7 +260,7 @@ export default function StoreAdminDetailPage() {
                         <div className="grid gap-6 md:grid-cols-3">
                             <Card className="md:col-span-2 border-2 shadow-sm">
                                 <CardHeader className="bg-muted/10 border-b">
-                                    <CardTitle className="text-lg font-black uppercase">Control Maestro de Agencia</CardTitle>
+                                    <CardTitle className="text-lg font-black uppercase">Control Maestro de Empresa</CardTitle>
                                     <CardDescription>Configuración de acceso y herramientas contratadas.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="pt-6 space-y-8">
@@ -326,10 +357,20 @@ export default function StoreAdminDetailPage() {
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    <div className="pt-6 border-t">
+                                        <Button 
+                                            variant="destructive" 
+                                            className="w-full font-black uppercase shadow-lg h-12"
+                                            onClick={() => setIsDeleteDialogOpen(true)}
+                                        >
+                                            <Trash2 className="mr-2 h-5 w-5" /> Eliminar Empresa Permanentemente
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-2 border-primary/10 bg-primary/[0.02] shadow-xl">
+                            <Card className="border-2 border-primary/10 bg-primary/[0.02] shadow-xl h-fit">
                                 <CardHeader className="bg-primary/5 border-b">
                                     <CardTitle className="text-sm font-black uppercase italic">Límites del Plan</CardTitle>
                                 </CardHeader>
@@ -368,7 +409,7 @@ export default function StoreAdminDetailPage() {
                                 </CardContent>
                                 <CardFooter className="pt-2 bg-muted/5 py-4 border-t">
                                     <p className="text-[9px] text-muted-foreground italic leading-tight text-center w-full">
-                                        * Los cambios se aplican en tiempo real al motor de validación de la tienda.
+                                        * Los cambios se aplican en tiempo real al motor de validación de la empresa.
                                     </p>
                                 </CardFooter>
                             </Card>
@@ -461,6 +502,33 @@ export default function StoreAdminDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="border-4 border-red-600">
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            <ShieldAlert className="h-10 w-10 text-red-600" />
+                            <AlertDialogTitle className="text-2xl font-black uppercase tracking-tighter">ELIMINACIÓN IRREVERSIBLE</AlertDialogTitle>
+                        </div>
+                        <AlertDialogDescription className="text-base font-bold text-foreground">
+                            Estás a punto de borrar definitivamente la empresa <span className="text-red-600 font-black">"{store.name}"</span>. 
+                            <br/><br/>
+                            Esto eliminará todos los usuarios, productos, ventas y configuraciones vinculadas de forma inmediata y absoluta.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel className="font-bold uppercase">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDeleteStore} 
+                            disabled={isDeleting}
+                            className="bg-red-600 font-black uppercase shadow-xl hover:bg-red-700"
+                        >
+                            {isDeleting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Confirmar Borrado de Empresa
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
