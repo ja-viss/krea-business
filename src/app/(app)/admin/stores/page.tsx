@@ -477,8 +477,10 @@ export default function AdminStoresPage() {
                             <DialogTitle className='text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3'>
                                 <Database className='h-7 w-7' /> Centro de Datos Maestra
                             </DialogTitle>
-                            <DialogDescription className='text-white/80 font-bold text-xs uppercase tracking-widest'>
-                                Empresa: {selectedStore?.name} • Owner: {selectedStore?.owner?.name || 'S/N'}
+                            <DialogDescription asChild>
+                                <div className='text-white/80 font-bold text-xs uppercase tracking-widest'>
+                                    Empresa: {selectedStore?.name} • Owner: {selectedStore?.owner?.name || 'S/N'}
+                                </div>
                             </DialogDescription>
                         </DialogHeader>
                     </div>
@@ -565,16 +567,18 @@ export default function AdminStoresPage() {
                             </div>
                             <AlertDialogTitle className="text-2xl font-black uppercase tracking-tighter">ELIMINACIÓN TOTAL</AlertDialogTitle>
                         </div>
-                        <AlertDialogDescription className="text-base font-bold text-foreground">
-                            Estás a punto de borrar la empresa <span className="text-red-600 uppercase font-black">"{selectedStore?.name}"</span>. 
-                            <br/><br/>
-                            Esta acción es <span className="underline">irreversible</span> y resultará en la eliminación de:
-                            <ul className="list-disc pl-5 mt-2 space-y-1 text-sm font-medium italic">
-                                <li>Todos los usuarios y credenciales vinculadas.</li>
-                                <li>Todo el catálogo de productos e inventario.</li>
-                                <li>Historial completo de ventas y facturación.</li>
-                                <li>Configuraciones fiscales y registros de auditoría.</li>
-                            </ul>
+                        <AlertDialogDescription asChild>
+                            <div className="text-base font-bold text-foreground">
+                                Estás a punto de borrar la empresa <span className="text-red-600 uppercase font-black">"{selectedStore?.name}"</span>. 
+                                <br/><br/>
+                                Esta acción es <span className="underline">irreversible</span> y resultará en la eliminación de:
+                                <ul className="list-disc pl-5 mt-2 space-y-1 text-sm font-medium italic">
+                                    <li>Todos los usuarios y credenciales vinculadas.</li>
+                                    <li>Todo el catálogo de productos e inventario.</li>
+                                    <li>Historial completo de ventas y facturación.</li>
+                                    <li>Configuraciones fiscales y registros de auditoría.</li>
+                                </ul>
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
