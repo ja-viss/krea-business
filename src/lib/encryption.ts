@@ -3,7 +3,7 @@ import crypto from 'crypto';
 
 /**
  * Utilidad de cifrado de grado militar para Krea Business.
- * Implementa AES-256-GCM para asegurar confidencialidad e integridad.
+ * Implementa AES-256-GCM para asegurar confidencialidad e integridad de las URIs de los clientes.
  */
 
 const ALGORITHM = 'aes-256-gcm';

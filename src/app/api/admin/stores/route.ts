@@ -6,41 +6,15 @@ import UserModel from '@/models/User';
 import RoleModel from '@/models/Role';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
-import { encrypt, generateActivationToken } from '@/lib/encryption';
-import crypto from 'crypto';
+import { encrypt } from '@/lib/encryption';
+import { getTenantDb } from '@/lib/tenant-manager';
 
 /**
- * API de Gestión de Infraestructura (Multi-Tenant).
- * Retorna tiendas con información del Usuario Padre (Owner).
+ * API de Provisión de Infraestructura (Multi-Tenant).
+ * Crea el registro en la DB Maestra e inicializa la DB Aislada del cliente.
  */
-export async function GET(req: NextRequest) {
-    try {
-        await dbConnect();
-        
-        // Buscamos las tiendas
-        const stores = await StoreModel.find().sort({ createdAt: -1 }).lean();
-        
-        // Buscamos el administrador principal de cada tienda (Usuario Padre)
-        const storesWithOwners = await Promise.all(stores.map(async (store) => {
-            const owner = await UserModel.findOne({ store: store._id })
-                .populate({ path: 'role', model: RoleModel })
-                .select('name email active')
-                .lean();
-            
-            return {
-                ...store,
-                owner: owner || null
-            };
-        }));
-
-        return NextResponse.json(storesWithOwners);
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
-    }
-}
-
 export async function POST(req: NextRequest) {
-    await dbConnect();
+    await dbConnect(); // Conexión a DB Maestra
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -52,54 +26,35 @@ export async function POST(req: NextRequest) {
             adminUser, 
             adminPassword, 
             tenantDbUri, 
-            plan = 'Basic', 
-            deploymentMode = 'Online',
-            enabledModules 
+            plan = 'Basic' 
         } = body;
 
-        // Definir límites basados en el plan
-        let maxInvoices = 500;
-        let maxUsers = 3;
+        if (!tenantDbUri) throw new Error("La URI de MongoDB para el aislamiento es obligatoria.");
 
-        if (plan === 'Pro') {
-            maxInvoices = 2000;
-            maxUsers = 10;
-        } else if (plan === 'Premium') {
-            maxInvoices = 10000;
-            maxUsers = 99;
+        // 1. TEST DE CONECTIVIDAD (Pre-check)
+        try {
+            const testConn = mongoose.createConnection(tenantDbUri.trim());
+            await testConn.asPromise();
+            await testConn.close();
+        } catch (e: any) {
+            throw new Error(`Fallo de conexión a la DB del cliente: ${e.message}`);
         }
 
-        const storeData: any = {
+        // 2. REGISTRO EN BASE MAESTRA
+        const encryptedUri = encrypt(tenantDbUri.trim());
+        
+        const newStore = new StoreModel({
             name: storeName,
-            address: 'Dirección pendiente',
-            seniatCondition: 'Contribuyente Ordinario',
-            status: (tenantDbUri || deploymentMode === 'Offline') ? 'Active' : 'Demo',
+            status: 'Active',
             plan,
-            maxInvoicesPerMonth: maxInvoices,
-            maxUsers: maxUsers,
-            storageLimitMB: 500,
-            deploymentMode,
-            enabledModules: enabledModules || { inventory: true, sales: true, expenses: true, reports: true }
-        };
+            tenantDbUri: encryptedUri,
+            maxUsers: plan === 'Premium' ? 99 : plan === 'Pro' ? 10 : 3,
+            maxInvoicesPerMonth: plan === 'Premium' ? 10000 : plan === 'Pro' ? 2000 : 500,
+        });
 
-        if (deploymentMode === 'Online' && tenantDbUri && tenantDbUri.trim() !== '') {
-            storeData.tenantDbUri = encrypt(tenantDbUri.trim());
-        }
-
-        if (deploymentMode === 'Offline') {
-            const secretKey = crypto.randomBytes(32).toString('hex');
-            storeData.secretKey = secretKey;
-            storeData.activationToken = generateActivationToken('PENDING', secretKey);
-        }
-
-        const newStore = new StoreModel(storeData);
         await newStore.save({ session });
 
-        if (deploymentMode === 'Offline') {
-            newStore.activationToken = generateActivationToken(String(newStore._id), storeData.secretKey);
-            await newStore.save({ session });
-        }
-
+        // 3. REGISTRO DE USUARIO Y ROL (En Base Maestra para Auth Centralizada)
         const adminRole = new RoleModel({
             store: newStore._id,
             name: 'Administrador Principal',
@@ -120,18 +75,43 @@ export async function POST(req: NextRequest) {
         });
         await newUser.save({ session });
 
+        // 4. INICIALIZACIÓN DE ESQUEMAS EN LA DB AISLADA (Seeding)
+        const { models } = await getTenantDb(String(newStore._id), encryptedUri);
+        
+        // Inyectar producto de bienvenida en su propia DB
+        await models.Product.create({
+            name: 'Producto de Bienvenida (Krea)',
+            productType: 'No Inventariable',
+            price: 0,
+            status: 'En Stock',
+            store: newStore._id // Mantenemos referencia para compatibilidad
+        });
+
         await session.commitTransaction();
         return NextResponse.json({ 
-            message: 'Empresa provisionada con éxito.',
-            storeId: newStore._id,
-            activationToken: newStore.activationToken
+            message: 'Infraestructura aislada provisionada con éxito.',
+            storeId: newStore._id
         }, { status: 201 });
 
     } catch (error: any) {
         await session.abortTransaction();
-        console.error('Error Provisión:', error);
-        return NextResponse.json({ message: error.message || 'Error interno' }, { status: 500 });
+        console.error('FALLO EN PROVISIÓN DE TENANT:', error);
+        return NextResponse.json({ message: error.message || 'Error interno de infraestructura' }, { status: 500 });
     } finally {
         session.endSession();
+    }
+}
+
+export async function GET(req: NextRequest) {
+    try {
+        await dbConnect();
+        const stores = await StoreModel.find().sort({ createdAt: -1 }).lean();
+        const storesWithOwners = await Promise.all(stores.map(async (store) => {
+            const owner = await UserModel.findOne({ store: store._id }).select('name email').lean();
+            return { ...store, owner };
+        }));
+        return NextResponse.json(storesWithOwners);
+    } catch (error: any) {
+        return NextResponse.json({ message: error.message }, { status: 500 });
     }
 }

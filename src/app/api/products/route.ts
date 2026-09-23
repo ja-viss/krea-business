@@ -1,45 +1,35 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import StoreModel from '@/models/Store';
-import ProductModel from '@/models/Product';
 import { getTenantDb } from '@/lib/tenant-manager';
 import mongoose from 'mongoose';
 
 /**
- * Endpoint de Productos (Híbrido: Central + Tenant DB).
- * Soporta filtrado por búsqueda en el servidor.
+ * Endpoint de Productos (Arquitectura de Aislamiento Total).
+ * Recupera los datos de la base de datos física del inquilino.
  */
 export async function GET(req: NextRequest) {
   try {
-    await dbConnect();
+    await dbConnect(); // Conexión a DB Maestra para buscar la URI
     const storeId = req.nextUrl.searchParams.get('storeId');
     const search = req.nextUrl.searchParams.get('search');
 
-    if (!storeId || storeId === 'SYSTEM_MASTER') {
-      return NextResponse.json({ message: 'Acceso no permitido.' }, { status: 400 });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(storeId)) {
-        return NextResponse.json({ message: 'ID de tienda inválido.' }, { status: 400 });
+    if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
+        return NextResponse.json({ message: 'Identificador de empresa inválido.' }, { status: 400 });
     }
 
     const store = await StoreModel.findById(storeId);
-    if (!store) return NextResponse.json({ message: 'Tienda inexistente.' }, { status: 404 });
+    if (!store) return NextResponse.json({ message: 'Agencia no reconocida.' }, { status: 404 });
 
-    // --- PROTECCIÓN POR MÓDULO (BACKEND) ---
-    if (store.enabledModules && store.enabledModules.inventory === false) {
-        return NextResponse.json({ 
-            message: 'Módulo de Inventario deshabilitado para esta empresa.',
-            code: 'MODULE_DISABLED'
-        }, { status: 403 });
+    if (store.status === 'Suspended') {
+      return NextResponse.json({ message: 'Empresa suspendida por falta de pago.' }, { status: 403 });
     }
 
-    if (store.status === 'Suspended' || store.status === 'Expired') {
-      return NextResponse.json({ message: 'Suscripción inactiva.' }, { status: 403 });
-    }
-
-    let products;
-    const query: any = {};
+    // --- CONECTAR AL NODO AISLADO DEL CLIENTE ---
+    const { models } = await getTenantDb(String(store._id), store.tenantDbUri || '');
+    
+    let query: any = {};
     if (search) {
         query.$or = [
             { name: { $regex: search, $options: 'i' } },
@@ -48,20 +38,13 @@ export async function GET(req: NextRequest) {
         ];
     }
 
-    // Si tiene una base de datos aislada, usar el Tenant Manager
-    if (store.tenantDbUri) {
-      const { models } = await getTenantDb(String(store._id), store.tenantDbUri);
-      products = await models.Product.find(query).sort({ createdAt: -1 });
-    } else {
-      // Fallback a base de datos central
-      const centralQuery = { ...query, store: storeId };
-      products = await ProductModel.find(centralQuery).sort({ createdAt: -1 });
-    }
+    // Ejecutar consulta en la base de datos exclusiva del cliente
+    const products = await models.Product.find(query).sort({ createdAt: -1 });
 
     return NextResponse.json(products || [], { status: 200 });
 
   } catch (error: any) {
-    console.error('Error GET Products:', error);
-    return NextResponse.json({ message: 'Error al procesar la solicitud de inventario.' }, { status: 500 });
+    console.error('Error Crítico de Infraestructura (GET Products):', error);
+    return NextResponse.json({ message: 'Fallo al contactar con el nodo de base de datos de la empresa.' }, { status: 500 });
   }
 }
