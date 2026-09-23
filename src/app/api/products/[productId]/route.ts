@@ -1,125 +1,109 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
-import ProductModel, { IProduct } from '@/models/Product';
+import ProductModel from '@/models/Product';
+import StoreModel from '@/models/Store';
+import { getTenantDb } from '@/lib/tenant-manager';
 import mongoose from 'mongoose';
 import { createLog } from '@/app/api/audit-logs/route';
 
-
-// GET a single product by ID
 export async function GET(req: NextRequest, { params }: { params: { productId: string } }) {
   try {
     await dbConnect();
     const { productId } = params;
+    const storeId = req.nextUrl.searchParams.get('storeId');
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-        return NextResponse.json({ message: 'ID de producto inválido.' }, { status: 400 });
+    if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) {
+        return NextResponse.json({ message: 'ID tienda inválido.' }, { status: 400 });
     }
 
-    const product = await ProductModel.findById(productId);
+    const store = await StoreModel.findById(storeId);
+    if (!store) throw new Error("Tienda no encontrada");
 
-    if (!product) {
-      return NextResponse.json({ message: 'Producto no encontrado.' }, { status: 404 });
-    }
+    const { models } = await getTenantDb(storeId, store.tenantDbUri || '');
+    const product = await models.Product.findById(productId).lean();
 
-    return NextResponse.json(product, { status: 200 });
+    if (!product) return NextResponse.json({ message: 'Producto no encontrado.' }, { status: 404 });
 
-  } catch (error) {
-    console.error('Error al obtener el producto:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor.';
-    return NextResponse.json({ message: 'Error al obtener el producto.', error: errorMessage }, { status: 500 });
+    return NextResponse.json(product);
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
 
-// PUT to update a product by ID (CON AUDITORÍA DE PRECIOS Y STOCK)
 export async function PUT(req: NextRequest, { params }: { params: { productId: string } }) {
   try {
     await dbConnect();
     const { productId } = params;
     const body = await req.json();
-    const userId = body.userId || 'SISTEMA';
-    const userName = body.userName || 'Admin';
+    const { storeId, userId, userName, ...updateData } = body;
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-        return NextResponse.json({ message: 'ID de producto inválido.' }, { status: 400 });
-    }
+    if (!storeId) throw new Error("ID tienda requerido");
+    const store = await StoreModel.findById(storeId);
+    if (!store) throw new Error("Tienda no encontrada");
+
+    const { models } = await getTenantDb(storeId, store.tenantDbUri || '');
     
-    const oldProduct = await ProductModel.findById(productId);
-    if (!oldProduct) return NextResponse.json({ message: 'No encontrado' }, { status: 404 });
+    // AUDITORÍA: Capturar estado previo
+    const previousState = await models.Product.findById(productId).lean();
+    if (!previousState) throw new Error("Producto no encontrado");
 
-    const updateData: Partial<IProduct> = { ...body };
-    
-    // Sanitize unique fields to avoid empty string collisions
-    if (updateData.barcode === '') (updateData as any).barcode = undefined;
-    if (updateData.sku === '') (updateData as any).sku = undefined;
-
-    // Recalcular estado si cambia stock
-    if (updateData.stock !== undefined || updateData.minStock !== undefined) {
-        const stock = updateData.stock ?? oldProduct.stock;
-        const minStock = updateData.minStock ?? oldProduct.minStock;
-        let status: 'En Stock' | 'Stock Bajo' | 'Sin Stock' = 'Sin Stock';
-        if (stock > minStock) status = 'En Stock';
-        else if (stock > 0) status = 'Stock Bajo';
-        updateData.status = status;
+    // Recalcular estado si hay cambios en stock
+    if (updateData.stock !== undefined) {
+        const min = updateData.minStock ?? previousState.minStock;
+        if (updateData.stock <= 0) updateData.status = 'Sin Stock';
+        else if (updateData.stock <= min) updateData.status = 'Stock Bajo';
+        else updateData.status = 'En Stock';
     }
 
-    const updatedProduct = await ProductModel.findByIdAndUpdate(productId, updateData, { new: true });
+    const updatedProduct = await models.Product.findByIdAndUpdate(productId, updateData, { new: true }).lean();
 
-    // AUDITORÍA: Detectar cambios críticos
-    let changesDetected = [];
-    if (oldProduct.price !== updatedProduct.price) changesDetected.push(`Precio: ${oldProduct.price} -> ${updatedProduct.price}`);
-    if (oldProduct.stock !== updatedProduct.stock) changesDetected.push(`Stock: ${oldProduct.stock} -> ${updatedProduct.stock}`);
-    
-    if (changesDetected.length > 0) {
-        await createLog({
-            store: String(oldProduct.store),
-            user: userId,
-            userName: userName,
-            action: 'PRODUCTO_MODIFICADO',
-            module: 'Inventario',
-            details: `Cambio en '${oldProduct.name}': ${changesDetected.join(', ')}`,
-            targetId: String(oldProduct._id),
-            previousState: { price: oldProduct.price, stock: oldProduct.stock },
-            newState: { price: updatedProduct.price, stock: updatedProduct.stock }
-        });
-    }
+    // Registro Forense Asíncrono
+    createLog({
+        store: storeId,
+        user: userId || 'SYSTEM',
+        userName: userName || 'Admin',
+        action: 'PRODUCTO_MODIFICADO',
+        module: 'Inventario',
+        details: `Actualización de ficha: ${updatedProduct.name}`,
+        targetId: productId,
+        previousState,
+        newState: updatedProduct
+    });
 
     return NextResponse.json(updatedProduct);
-
   } catch (error: any) {
-    console.error('Error al actualizar el producto:', error);
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
-      return NextResponse.json({ 
-        message: `El ${field === 'barcode' ? 'código de barras' : 'SKU'} ya está registrado en otro producto.` 
-      }, { status: 409 });
-    }
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }
 
-// DELETE a product by ID
 export async function DELETE(req: NextRequest, { params }: { params: { productId: string } }) {
     try {
         await dbConnect();
         const { productId } = params;
+        const storeId = req.nextUrl.searchParams.get('storeId');
 
-        const deletedProduct = await ProductModel.findByIdAndDelete(productId);
+        if (!storeId) throw new Error("ID tienda requerido");
+        const store = await StoreModel.findById(storeId);
+        if (!store) throw new Error("Tienda no encontrada");
 
-        if (deletedProduct) {
-            await createLog({
-                store: String(deletedProduct.store),
-                user: 'SISTEMA',
+        const { models } = await getTenantDb(storeId, store.tenantDbUri || '');
+        const previousState = await models.Product.findByIdAndDelete(productId).lean();
+
+        if (previousState) {
+            createLog({
+                store: storeId,
+                user: 'SYSTEM',
                 userName: 'Admin',
                 action: 'PRODUCTO_ELIMINADO',
                 module: 'Inventario',
-                details: `Producto eliminado: ${deletedProduct.name}`,
-                targetId: String(deletedProduct._id),
-                previousState: deletedProduct.toObject()
+                details: `Eliminación definitiva de: ${previousState.name}`,
+                targetId: productId,
+                previousState
             });
         }
 
-        return NextResponse.json({ message: 'Producto eliminado exitosamente.' });
+        return NextResponse.json({ message: 'Producto purgado exitosamente.' });
     } catch (error: any) {
         return NextResponse.json({ message: error.message }, { status: 500 });
     }

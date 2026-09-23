@@ -8,19 +8,17 @@ export async function GET(req: NextRequest) {
     try {
         await dbConnect();
         const storeId = req.nextUrl.searchParams.get('storeId');
-        if (!storeId) return NextResponse.json({ message: 'ID Requerido' }, { status: 400 });
-
-        const query: any = { store: storeId };
         
-        // Filtros opcionales
-        const module = req.nextUrl.searchParams.get('module');
-        const action = req.nextUrl.searchParams.get('action');
-        if (module) query.module = module;
-        if (action) query.action = action;
+        // El Super Dev puede ver todo si storeId es SYSTEM_MASTER
+        let query: any = {};
+        if (storeId && storeId !== 'SYSTEM_MASTER') {
+            query.store = storeId;
+        }
 
         const logs = await AuditLogModel.find(query)
             .sort({ createdAt: -1 })
-            .limit(200);
+            .limit(100)
+            .lean();
             
         return NextResponse.json(logs);
     } catch (e: any) {
@@ -29,7 +27,8 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * Utilidad robusta para registrar auditoría desde cualquier endpoint interno.
+ * createLog: Utilidad centralizada para auditoría forense.
+ * Se conecta a la DB Maestra y guarda el rastro de la operación.
  */
 export async function createLog(data: { 
     store: string, 
@@ -51,8 +50,11 @@ export async function createLog(data: {
             ...data,
             ipAddress: ip.split(',')[0]
         });
+        
+        // Guardado persistente en DB Maestra
         await log.save();
+        console.log(`[AUDIT] Acción registrada: ${data.action} por ${data.userName}`);
     } catch (e) {
-        console.error('CRITICAL: Failed to save audit log:', e);
+        console.error('CRITICAL: Fallo al guardar log de auditoría:', e);
     }
 }

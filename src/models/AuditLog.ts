@@ -2,22 +2,22 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IAuditLog extends Document {
-  store: Types.ObjectId;
-  user: Types.ObjectId;
+  store: Types.ObjectId | string;
+  user: Types.ObjectId | string;
   userName: string;
-  action: string; // e.g., 'SALE_ANNULLED', 'PRODUCT_PRICE_UPDATED', 'CONFIG_CHANGED'
-  module: string; // e.g., 'Ventas', 'Inventario', 'Seguridad', 'Configuración'
+  action: string; 
+  module: string; 
   details: string;
-  previousState?: any; // Snapshot antes del cambio
-  newState?: any;      // Snapshot después del cambio
-  targetId?: string;   // ID del documento afectado (Factura, Producto, etc)
+  previousState?: any; 
+  newState?: any;      
+  targetId?: string;   
   ipAddress?: string;
   createdAt: Date;
 }
 
 const AuditLogSchema: Schema = new Schema({
-  store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
-  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  store: { type: Schema.Types.Mixed, required: true, index: true }, // Puede ser ID o 'SYSTEM'
+  user: { type: Schema.Types.Mixed, required: true },
   userName: { type: String, required: true },
   action: { type: String, required: true },
   module: { type: String, required: true },
@@ -27,13 +27,12 @@ const AuditLogSchema: Schema = new Schema({
   targetId: { type: String },
   ipAddress: { type: String },
 }, { 
-  timestamps: { createdAt: true, updatedAt: false }, // Inmutable: No hay updatedAt
-  capped: { size: 52428800 } // Opcional: 50MB de historial circular si se desea limitar
+  timestamps: { createdAt: true, updatedAt: false },
+  capped: { size: 52428800 } // 50MB de historial inmutable
 });
 
-// Índice para búsquedas rápidas por fecha y acción
 AuditLogSchema.index({ store: 1, createdAt: -1 });
-AuditLogSchema.index({ store: 1, action: 1 });
+AuditLogSchema.index({ action: 1 });
 
 const AuditLogModel = mongoose.models.AuditLog || mongoose.model<IAuditLog>('AuditLog', AuditLogSchema);
 export default AuditLogModel;
