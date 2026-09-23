@@ -6,6 +6,10 @@ import { ExpenseSchema } from '@/models/schemas/ExpenseSchema';
 import { CustomerSchema } from '@/models/schemas/CustomerSchema';
 import { AuditLogSchema } from '@/models/schemas/AuditLogSchema';
 import { CashSessionSchema } from '@/models/schemas/CashSessionSchema';
+import { QuotationSchema } from '@/models/Quotation';
+import { AccountPayableSchema } from '@/models/AccountPayable';
+import { AccountReceivableSchema } from '@/models/AccountReceivable';
+import { CreditNoteSchema } from '@/models/CreditNote';
 import { decrypt } from './encryption';
 
 /**
@@ -21,6 +25,10 @@ interface TenantModels {
   Customer: Model<any>;
   AuditLog: Model<any>;
   CashSession: Model<any>;
+  Quotation: Model<any>;
+  AccountPayable: Model<any>;
+  AccountReceivable: Model<any>;
+  CreditNote: Model<any>;
 }
 
 // Cache en memoria para reutilizar conexiones activas
@@ -73,5 +81,9 @@ function getModels(conn: Connection): TenantModels {
     Customer: conn.models.Customer || conn.model('Customer', CustomerSchema),
     AuditLog: conn.models.AuditLog || conn.model('AuditLog', AuditLogSchema),
     CashSession: conn.models.CashSession || conn.model('CashSession', CashSessionSchema),
+    Quotation: conn.models.Quotation || conn.model('Quotation', QuotationSchema),
+    AccountPayable: conn.models.AccountPayable || conn.model('AccountPayable', AccountPayableSchema),
+    AccountReceivable: conn.models.AccountReceivable || conn.model('AccountReceivable', AccountReceivableSchema),
+    CreditNote: conn.models.CreditNote || conn.model('CreditNote', CreditNoteSchema),
   };
 }

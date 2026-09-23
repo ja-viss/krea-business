@@ -31,6 +31,19 @@ export async function PUT(req: NextRequest, { params }: { params: { storeId: str
 
         if (!mongoose.Types.ObjectId.isValid(storeId)) return NextResponse.json({ message: 'ID Inválido' }, { status: 400 });
 
+        // INVALIDACIÓN DE CACHÉ: Si la URI cambió, cerramos el pool viejo
+        const currentStore = await StoreModel.findById(storeId);
+        if (currentStore && body.tenantDbUri && currentStore.tenantDbUri !== body.tenantDbUri) {
+            console.log(`[INFRAESTRUCTURA] URI de empresa ${storeId} modificada. Purgando Pool...`);
+            if (connectionPool.has(storeId)) {
+                const entry = connectionPool.get(storeId);
+                if (entry) {
+                    await entry.connection.close();
+                    connectionPool.delete(storeId);
+                }
+            }
+        }
+
         const updatedStore = await StoreModel.findByIdAndUpdate(storeId, body, { new: true });
         
         await createLog({
@@ -74,13 +87,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { storeId: 
         }
 
         // 2. Borrado Cascada en DB Maestra
-        // Borrar todos los usuarios
         await UserModel.deleteMany({ store: storeId }).session(session);
-        
-        // Borrar todos los roles
         await RoleModel.deleteMany({ store: storeId }).session(session);
-        
-        // Borrar la empresa
         await StoreModel.findByIdAndDelete(storeId).session(session);
 
         // 3. Auditoría Global
@@ -90,7 +98,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { storeId: 
             userName: 'Super Desarrollador',
             action: 'BORRADO_TOTAL_EMPRESA',
             module: 'Infraestructura',
-            details: `Eliminación absoluta de la empresa ${store.name} (${storeId}) y toda su información vinculada en DB Maestra.`,
+            details: `Eliminación absoluta de la empresa ${store.name} (${storeId}) y toda su información vinculada.`,
             previousState: store.toObject()
         });
 

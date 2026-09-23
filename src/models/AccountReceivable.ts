@@ -1,3 +1,4 @@
+
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { IStore } from './Store';
 
@@ -11,7 +12,7 @@ export interface IAccountReceivable extends Document {
   updatedAt: Date;
 }
 
-const AccountReceivableSchema: Schema = new Schema({
+export const AccountReceivableSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   customer: { type: String, required: true },
   dueDate: { type: Date, required: true },

@@ -32,7 +32,7 @@ export interface IQuotation extends Document {
   updatedAt: Date;
 }
 
-const QuotationSchema: Schema = new Schema({
+export const QuotationSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   quotationNumber: { type: Number, required: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },

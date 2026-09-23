@@ -12,7 +12,7 @@ export interface IAccountPayable extends Document {
   updatedAt: Date;
 }
 
-const AccountPayableSchema: Schema = new Schema({
+export const AccountPayableSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   vendor: { type: String, required: true },
   dueDate: { type: Date, required: true },

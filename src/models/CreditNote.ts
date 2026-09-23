@@ -13,7 +13,7 @@ export interface ICreditNote extends Document {
   createdAt: Date;
 }
 
-const CreditNoteSchema: Schema = new Schema({
+export const CreditNoteSchema: Schema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, required: true },
