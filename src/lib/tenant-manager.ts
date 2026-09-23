@@ -24,7 +24,7 @@ interface TenantModels {
 }
 
 // Cache en memoria para reutilizar conexiones activas
-const connectionPool: Map<string, Connection> = new Map();
+export const connectionPool: Map<string, { connection: Connection, createdAt: Date }> = new Map();
 
 export async function getTenantDb(tenantId: string, encryptedUri: string): Promise<{ connection: Connection, models: TenantModels }> {
   if (!encryptedUri) {
@@ -33,9 +33,9 @@ export async function getTenantDb(tenantId: string, encryptedUri: string): Promi
 
   // 1. Si ya existe una conexión saludable en el pool, la reutilizamos
   if (connectionPool.has(tenantId)) {
-    const conn = connectionPool.get(tenantId)!;
-    if (conn.readyState === 1) {
-      return { connection: conn, models: getModels(conn) };
+    const entry = connectionPool.get(tenantId)!;
+    if (entry.connection.readyState === 1) {
+      return { connection: entry.connection, models: getModels(entry.connection) };
     }
     // Si la conexión murió, la removemos para crear una nueva
     connectionPool.delete(tenantId);
@@ -54,8 +54,8 @@ export async function getTenantDb(tenantId: string, encryptedUri: string): Promi
 
   await tenantConnection.asPromise();
   
-  // Guardar en cache
-  connectionPool.set(tenantId, tenantConnection);
+  // Guardar en cache con fecha de creación para telemetría
+  connectionPool.set(tenantId, { connection: tenantConnection, createdAt: new Date() });
 
   console.log(`[INFRAESTRUCTURA] Conexión establecida para el Tenant Aislado: ${tenantId}`);
 

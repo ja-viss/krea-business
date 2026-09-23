@@ -27,7 +27,8 @@ import {
   Zap,
   Settings2,
   Activity,
-  ScrollText
+  ScrollText,
+  Code2
 } from 'lucide-react';
 
 export type NavLink = {
@@ -49,6 +50,14 @@ export const navLinks: NavLink[] = [
     href: '/dashboard',
     label: 'Consola Maestra',
     icon: Monitor,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+    category: 'Infraestructura',
+  },
+  {
+    href: '/admin/data-studio',
+    label: 'Data Studio',
+    icon: Code2,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
     category: 'Infraestructura',
