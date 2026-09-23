@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 export default function SystemMonitoringPage() {
     const { toast } = useToast();
@@ -46,10 +47,11 @@ export default function SystemMonitoringPage() {
             const logsData = await logsRes.json();
             const statsData = await statsRes.json();
             
-            setLogs(logsData);
+            setLogs(Array.isArray(logsData) ? logsData : []);
             setStats(statsData);
         } catch (e) {
             toast({ variant: 'destructive', title: "Error", description: "No se pudo cargar la telemetría." });
+            setLogs([]);
         } finally {
             setLoading(false);
         }
@@ -61,13 +63,14 @@ export default function SystemMonitoringPage() {
         return () => clearInterval(interval);
     }, []);
 
-    const filteredLogs = logs.filter(log => 
-        log.userName.toLowerCase().includes(search.toLowerCase()) ||
-        log.details.toLowerCase().includes(search.toLowerCase()) ||
-        log.action.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredLogs = Array.isArray(logs) ? logs.filter(log => 
+        (log.userName || '').toLowerCase().includes(search.toLowerCase()) ||
+        (log.details || '').toLowerCase().includes(search.toLowerCase()) ||
+        (log.action || '').toLowerCase().includes(search.toLowerCase())
+    ) : [];
 
     const getActionColor = (action: string) => {
+        if (!action) return 'bg-slate-500 text-white';
         if (action.includes('ANULADA') || action.includes('ELIMINADO')) return 'bg-red-500 text-white';
         if (action.includes('APERTURA') || action.includes('LOGIN')) return 'bg-blue-500 text-white';
         if (action.includes('MIGRACION') || action.includes('MASTER')) return 'bg-amber-600 text-white';
@@ -169,7 +172,7 @@ export default function SystemMonitoringPage() {
                                                 <TableCell className="pl-6 py-4">
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-[11px] flex items-center gap-1">
-                                                            <Clock className='h-2.5 w-2.5 opacity-40' /> {format(new Date(log.createdAt), 'HH:mm:ss dd/MM')}
+                                                            <Clock className='h-2.5 w-2.5 opacity-40' /> {log.createdAt ? format(new Date(log.createdAt), 'HH:mm:ss dd/MM') : 'N/A'}
                                                         </span>
                                                         <span className="text-[9px] font-mono text-muted-foreground flex items-center gap-1">
                                                             <Globe className='h-2.5 w-2.5' /> {log.ipAddress || '0.0.0.0'}
@@ -182,19 +185,19 @@ export default function SystemMonitoringPage() {
                                                             <User className='h-3.5 w-3.5 text-muted-foreground' />
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="font-black text-[10px] uppercase">{log.userName}</span>
-                                                            <span className='text-[8px] font-mono opacity-40'>{log.user}</span>
+                                                            <span className="font-black text-[10px] uppercase">{log.userName || 'Sistema'}</span>
+                                                            <span className='text-[8px] font-mono opacity-40'>{log.user || 'N/A'}</span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge className={cn("text-[8px] font-black uppercase px-2 py-0.5 border-none", getActionColor(log.action))}>
-                                                        {log.action}
+                                                        {log.action || 'DESCONOCIDO'}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <p className="text-[10px] font-medium leading-tight max-w-[350px] italic opacity-80 line-clamp-2">
-                                                        {log.details}
+                                                        {log.details || 'Sin detalles registrados.'}
                                                     </p>
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6">
