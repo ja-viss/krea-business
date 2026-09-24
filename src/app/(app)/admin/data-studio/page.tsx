@@ -35,7 +35,9 @@ import {
     HardDrive,
     Cloud,
     Trash2,
-    Edit3
+    Edit3,
+    Unlock,
+    Lock
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,6 +48,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 
 // Utilidad para aplanar objetos anidados
 function flattenObject(obj: any, prefix = ''): any {
@@ -294,7 +297,7 @@ export default function DataStudioPage() {
                             </Button>
                             <Button 
                                 variant={isReadOnly ? "secondary" : "destructive"} 
-                                className="font-black text-[10px] uppercase h-10 px-6"
+                                className="font-black text-[10px] uppercase h-10 px-6 transition-all"
                                 onClick={() => setIsReadOnly(!isReadOnly)}
                             >
                                 {isReadOnly ? <Eye className="mr-2 h-4 w-4" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
@@ -536,7 +539,7 @@ export default function DataStudioPage() {
                                                                 {header}
                                                             </TableHead>
                                                         ))}
-                                                        <TableHead className="sticky right-0 bg-white border-l z-30 font-black text-[9px] uppercase px-4 text-center">⚙️</TableHead>
+                                                        <TableHead className="sticky right-0 bg-white border-l z-30 font-black text-[9px] uppercase px-4 text-center">GESTIÓN</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -551,11 +554,11 @@ export default function DataStudioPage() {
                                                                 </TableCell>
                                                             ))}
                                                             <TableCell className="sticky right-0 bg-white border-l z-10 p-0 text-center shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
-                                                                <div className="flex">
+                                                                <div className="flex items-center h-full">
                                                                     <Button 
                                                                         variant="ghost" 
                                                                         size="sm" 
-                                                                        className="h-10 flex-1 rounded-none font-black text-[9px] uppercase hover:bg-primary hover:text-white"
+                                                                        className="h-10 flex-1 rounded-none font-black text-[10px] uppercase hover:bg-primary hover:text-white"
                                                                         onClick={() => {
                                                                             setEditingDoc(documents[idx]);
                                                                             setJsonEditorContent(JSON.stringify(documents[idx], null, 2));
@@ -563,16 +566,14 @@ export default function DataStudioPage() {
                                                                     >
                                                                         {isReadOnly ? 'Ver' : 'Editar'}
                                                                     </Button>
-                                                                    {!isReadOnly && (
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            className="h-10 w-10 rounded-none text-red-400 hover:bg-red-500 hover:text-white border-l"
-                                                                            onClick={() => handleDeleteDocument(documents[idx]._id)}
-                                                                        >
-                                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                                        </Button>
-                                                                    )}
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-10 w-10 rounded-none text-red-400 hover:bg-red-500 hover:text-white border-l"
+                                                                        onClick={() => handleDeleteDocument(documents[idx]._id)}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>
@@ -587,16 +588,14 @@ export default function DataStudioPage() {
                                                     <CardHeader className="bg-muted/5 p-3 flex flex-row justify-between items-center space-y-0">
                                                         <code className="text-[10px] font-black text-primary truncate max-w-[150px]">ID: {doc._id}</code>
                                                         <div className="flex gap-1">
-                                                            {!isReadOnly && (
-                                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-red-400 hover:bg-red-50" onClick={() => handleDeleteDocument(doc._id)}>
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            )}
-                                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:bg-red-50" onClick={() => handleDeleteDocument(doc._id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
                                                                 setEditingDoc(doc);
                                                                 setJsonEditorContent(JSON.stringify(doc, null, 2));
                                                             }}>
-                                                                {isReadOnly ? <Eye className="h-3.5 w-3.5" /> : <Edit3 className="h-3.5 w-3.5" />}
+                                                                {isReadOnly ? <Eye className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
                                                             </Button>
                                                         </div>
                                                     </CardHeader>
@@ -735,16 +734,34 @@ export default function DataStudioPage() {
                                     </DialogDescription>
                                 </DialogHeader>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => setEditingDoc(null)} className="text-white hover:bg-white/10 rounded-full">
-                                <X className="h-6 w-6" />
-                            </Button>
+                            <div className='flex items-center gap-4'>
+                                <div className='flex items-center gap-2 bg-black/20 p-2 rounded-xl border border-white/10'>
+                                    <Label className='text-[10px] font-black uppercase tracking-tight text-white cursor-pointer select-none' htmlFor="modal-write-toggle">
+                                        {isReadOnly ? <Lock className='h-3 w-3 inline mr-1'/> : <Unlock className='h-3 w-3 inline mr-1'/>}
+                                        Modo Escritura
+                                    </Label>
+                                    <Switch 
+                                        id="modal-write-toggle"
+                                        checked={!isReadOnly} 
+                                        onCheckedChange={(checked) => setIsReadOnly(!checked)}
+                                        className="data-[state=checked]:bg-green-500"
+                                    />
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingDoc(null)} className="text-white hover:bg-white/10 rounded-full">
+                                    <X className="h-6 w-6" />
+                                </Button>
+                            </div>
                         </div>
                     </div>
                     
                     <div className="p-4 md:p-6 bg-white overflow-y-auto flex-1">
                         <div className='mb-4 flex justify-between items-center'>
                             <Label className='text-[10px] font-black uppercase text-muted-foreground'>Contenido JSON (Sintaxis Protegida)</Label>
-                            {isReadOnly && <Badge className='bg-amber-500 text-white font-black text-[9px] uppercase'>Solo Lectura</Badge>}
+                            {isReadOnly ? (
+                                <Badge className='bg-amber-500 text-white font-black text-[9px] uppercase'>Solo Lectura</Badge>
+                            ) : (
+                                <Badge className='bg-green-600 text-white font-black text-[9px] uppercase'>Escritura Habilitada</Badge>
+                            )}
                         </div>
                         
                         <Textarea 
@@ -768,24 +785,30 @@ export default function DataStudioPage() {
                     </div>
                     
                     <DialogFooter className="p-4 md:p-6 bg-slate-50 border-t flex flex-row justify-between items-center gap-2 shrink-0">
-                        <Button variant="ghost" onClick={() => setEditingDoc(null)} className="font-black uppercase text-[10px] md:text-xs">Cerrar</Button>
-                        {!isReadOnly && (
-                            <div className="flex gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    className="font-black text-red-600 border-red-200 uppercase px-4 h-10 md:h-12"
-                                    onClick={() => handleDeleteDocument(editingDoc._id)}
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Purgar Doc.
-                                </Button>
-                                <Button onClick={handleSaveDocument} className="font-black uppercase px-6 md:px-10 h-10 md:h-12 shadow-xl bg-primary">
-                                    <Save className="mr-2 h-4 w-4" /> Aplicar Cambios
-                                </Button>
-                            </div>
-                        )}
+                        <Button variant="ghost" onClick={() => setEditingDoc(null)} className="font-black uppercase text-[10px] md:text-xs">Cerrar Inspector</Button>
+                        <div className="flex gap-2">
+                            <Button 
+                                variant="outline" 
+                                className="font-black text-red-600 border-red-200 uppercase px-4 h-10 md:h-12 hover:bg-red-50"
+                                onClick={() => handleDeleteDocument(editingDoc._id)}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" /> Purgar Doc.
+                            </Button>
+                            <Button 
+                                onClick={handleSaveDocument} 
+                                disabled={isReadOnly}
+                                className={cn(
+                                    "font-black uppercase px-6 md:px-10 h-10 md:h-12 shadow-xl transition-all",
+                                    isReadOnly ? "bg-muted text-muted-foreground opacity-50 cursor-not-allowed" : "bg-primary text-white"
+                                )}
+                            >
+                                <Save className="mr-2 h-4 w-4" /> Aplicar Cambios
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
     );
 }
+
