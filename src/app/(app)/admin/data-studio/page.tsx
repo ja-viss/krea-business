@@ -31,7 +31,9 @@ import {
     Filter,
     ChevronLeft,
     Copy,
-    ArrowRight
+    ArrowRight,
+    HardDrive,
+    Cloud
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -41,6 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 
 // Utilidad para aplanar objetos anidados
 function flattenObject(obj: any, prefix = ''): any {
@@ -72,6 +75,8 @@ export default function DataStudioPage() {
     const [documents, setDocuments] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [serverInfo, setServerInfo] = useState<any>(null);
+    const [dbStats, setDbStats] = useState<any>(null);
+    const [loadingStats, setLoadingStats] = useState(false);
     
     // UI State
     const [isReadOnly, setIsReadOnly] = useState(true);
@@ -81,6 +86,17 @@ export default function DataStudioPage() {
     const [editingDoc, setEditingDoc] = useState<any>(null);
     const [jsonEditorContent, setJsonEditorContent] = useState('');
     const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+
+    // Provision Form State
+    const [isProvisionOpen, setIsProvisionOpen] = useState(false);
+    const [provisioning, setProvisioning] = useState(false);
+    const [provisionForm, setProvisionForm] = useState({
+        atlasUri: '',
+        user: '',
+        password: '',
+        dbName: '',
+        collectionName: 'config_init'
+    });
 
     const fetchData = async () => {
         try {
@@ -104,7 +120,21 @@ export default function DataStudioPage() {
             setServerInfo(data.serverInfo);
             setSelectedCol('');
             setDocuments([]);
+            setDbStats(null);
         } catch (e) {}
+    };
+
+    const fetchSpaceStats = async () => {
+        setLoadingStats(true);
+        try {
+            const res = await fetch(`/api/admin/db/stats?storeId=${selectedStoreId}`);
+            const data = await res.json();
+            setDbStats(data);
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Error", description: "No se pudieron obtener estadísticas de espacio." });
+        } finally {
+            setLoadingStats(false);
+        }
     };
 
     useEffect(() => {
@@ -134,6 +164,31 @@ export default function DataStudioPage() {
             toast({ variant: 'destructive', title: "Error de Consulta", description: e.message });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleProvisionAtlas = async () => {
+        setProvisioning(true);
+        try {
+            const res = await fetch('/api/admin/db/provision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...provisionForm,
+                    userId: localStorage.getItem('userId'),
+                    userName: localStorage.getItem('userName')
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+
+            toast({ title: "Provisión Exitosa", description: "Base de datos creada físicamente en Atlas." });
+            setIsProvisionOpen(false);
+            fetchData();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: "Fallo de Provisión", description: e.message });
+        } finally {
+            setProvisioning(false);
         }
     };
 
@@ -199,10 +254,17 @@ export default function DataStudioPage() {
             <main className="flex-1 flex flex-col p-2 md:p-6 space-y-4">
                 <PageHeader 
                     title="Data Studio" 
-                    description="Gestión técnica de infraestructura."
+                    description="Gestión técnica de infraestructura y provisión Atlas."
                     className="hidden lg:flex"
                     actions={
                         <div className='flex gap-2'>
+                            <Button 
+                                variant="outline" 
+                                className="font-black text-[10px] uppercase h-10 border-2"
+                                onClick={() => setIsProvisionOpen(true)}
+                            >
+                                <Cloud className="mr-2 h-4 w-4 text-primary" /> Provisionar Atlas
+                            </Button>
                             <Button 
                                 variant={isReadOnly ? "secondary" : "destructive"} 
                                 className="font-black text-[10px] uppercase h-10 px-6"
@@ -336,6 +398,16 @@ export default function DataStudioPage() {
                                     <span className='text-[9px] md:text-[10px] font-black uppercase italic tracking-widest'>Query Console</span>
                                 </div>
                                 <div className='flex items-center gap-2'>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-7 text-[8px] font-black uppercase text-primary-foreground hover:bg-white/10"
+                                        onClick={fetchSpaceStats}
+                                        disabled={loadingStats}
+                                    >
+                                        {loadingStats ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <HardDrive className="mr-1 h-3 w-3" />} 
+                                        Espacio DB
+                                    </Button>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-primary-foreground hover:bg-white/10">
@@ -375,20 +447,31 @@ export default function DataStudioPage() {
                                     )}
                                 </div>
                             </div>
-                            <CardContent className='p-3 flex gap-2'>
-                                <div className='relative flex-1'>
-                                    <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-                                    <Input 
-                                        className='pl-9 font-mono text-xs h-11 bg-muted/30 border-2'
-                                        placeholder='db.find(...)'
-                                        value={queryFilter}
-                                        onChange={e => setQueryFilter(e.target.value)}
-                                    />
+                            <CardContent className='p-3 flex flex-col gap-3'>
+                                {dbStats && (
+                                    <div className="flex flex-wrap gap-2 animate-in slide-in-from-top-1">
+                                        <Badge variant="secondary" className="text-[9px] font-black uppercase bg-primary/10 text-primary">📦 Data: {dbStats.dataSize} MB</Badge>
+                                        <Badge variant="secondary" className="text-[9px] font-black uppercase bg-blue-50 text-blue-700">🔍 Índices: {dbStats.indexSize} MB</Badge>
+                                        <Badge variant="secondary" className="text-[9px] font-black uppercase bg-green-50 text-green-700">📄 Docs: {dbStats.documents}</Badge>
+                                        <Badge variant="secondary" className="text-[9px] font-black uppercase bg-slate-100">💿 Total: {dbStats.totalSize} MB</Badge>
+                                        <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setDbStats(null)}><X className="h-3 w-3" /></Button>
+                                    </div>
+                                )}
+                                <div className='flex gap-2'>
+                                    <div className='relative flex-1'>
+                                        <Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+                                        <Input 
+                                            className='pl-9 font-mono text-xs h-11 bg-muted/30 border-2'
+                                            placeholder='db.find(...)'
+                                            value={queryFilter}
+                                            onChange={e => setQueryFilter(e.target.value)}
+                                        />
+                                    </div>
+                                    <Button onClick={runQuery} disabled={loading || !selectedCol} className='h-11 px-4 md:px-8 font-black uppercase shadow-lg'>
+                                        {loading ? <Loader2 className='animate-spin' /> : <Play className='md:mr-2 h-4 w-4' />}
+                                        <span className="hidden md:inline">Ejecutar</span>
+                                    </Button>
                                 </div>
-                                <Button onClick={runQuery} disabled={loading || !selectedCol} className='h-11 px-4 md:px-8 font-black uppercase shadow-lg'>
-                                    {loading ? <Loader2 className='animate-spin' /> : <Play className='md:mr-2 h-4 w-4' />}
-                                    <span className="hidden md:inline">Ejecutar</span>
-                                </Button>
                             </CardContent>
                         </Card>
 
@@ -522,7 +605,76 @@ export default function DataStudioPage() {
                 </div>
             </main>
 
-            {/* MODAL EDITOR JSON (Bottom Sheet en móvil) */}
+            {/* MODAL PROVISIÓN ATLAS */}
+            <Dialog open={isProvisionOpen} onOpenChange={setIsProvisionOpen}>
+                <DialogContent className="sm:max-w-[500px] border-4">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase italic tracking-tight flex items-center gap-2">
+                            <Cloud className="h-6 w-6 text-primary" /> Provisionar en Atlas
+                        </DialogTitle>
+                        <DialogDescription className="font-bold">Inicializa una base de datos físicamente en un clúster remoto.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase">Atlas URI (Host)</Label>
+                            <Input 
+                                placeholder="mongodb+srv://cluster0.abcde.mongodb.net" 
+                                value={provisionForm.atlasUri}
+                                onChange={e => setProvisionForm({...provisionForm, atlasUri: e.target.value})}
+                                className="font-mono text-xs border-2"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase">Usuario DB</Label>
+                                <Input 
+                                    value={provisionForm.user}
+                                    onChange={e => setProvisionForm({...provisionForm, user: e.target.value})}
+                                    className="font-bold border-2"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase">Password DB</Label>
+                                <Input 
+                                    type="password"
+                                    value={provisionForm.password}
+                                    onChange={e => setProvisionForm({...provisionForm, password: e.target.value})}
+                                    className="border-2"
+                                />
+                            </div>
+                        </div>
+                        <Separator />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-primary">Nombre Nueva DB</Label>
+                                <Input 
+                                    placeholder="krea_cliente_xyz" 
+                                    value={provisionForm.dbName}
+                                    onChange={e => setProvisionForm({...provisionForm, dbName: e.target.value})}
+                                    className="font-black border-2 border-primary/20"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase opacity-60">Colección Inicial</Label>
+                                <Input 
+                                    value={provisionForm.collectionName}
+                                    onChange={e => setProvisionForm({...provisionForm, collectionName: e.target.value})}
+                                    className="font-bold border-2"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsProvisionOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleProvisionAtlas} disabled={provisioning} className="font-black uppercase shadow-xl h-12 px-8">
+                            {provisioning ? <Loader2 className="animate-spin mr-2" /> : <Zap className="mr-2" />}
+                            Ejecutar Provisión Atlas
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* MODAL EDITOR JSON */}
             <Dialog open={!!editingDoc} onOpenChange={() => setEditingDoc(null)}>
                 <DialogContent className="sm:max-w-[800px] h-[95vh] md:h-auto border-[6px] border-primary/20 overflow-hidden p-0 rounded-t-3xl md:rounded-3xl">
                     <div className='bg-primary p-4 md:p-6 text-white shrink-0'>
@@ -582,4 +734,3 @@ export default function DataStudioPage() {
         </div>
     );
 }
-
