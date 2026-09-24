@@ -33,7 +33,8 @@ import {
     Copy,
     ArrowRight,
     HardDrive,
-    Cloud
+    Cloud,
+    Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -167,28 +168,29 @@ export default function DataStudioPage() {
         }
     };
 
-    const handleProvisionAtlas = async () => {
-        setProvisioning(true);
+    const handleDeleteDocument = async (docId: string) => {
+        if (!window.confirm("¿Está seguro de eliminar este registro permanentemente de la base de datos?")) return;
+        
         try {
-            const res = await fetch('/api/admin/db/provision', {
-                method: 'POST',
+            const res = await fetch('/api/admin/db/document', {
+                method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...provisionForm,
+                    storeId: selectedStoreId,
+                    collectionName: selectedCol,
+                    documentId: docId,
                     userId: localStorage.getItem('userId'),
                     userName: localStorage.getItem('userName')
                 })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message);
-
-            toast({ title: "Provisión Exitosa", description: "Base de datos creada físicamente en Atlas." });
-            setIsProvisionOpen(false);
-            fetchData();
+            
+            if (!res.ok) throw new Error("Fallo al eliminar");
+            
+            toast({ title: "Registro Purgado", description: "El documento ha sido eliminado físicamente." });
+            setEditingDoc(null);
+            runQuery();
         } catch (e: any) {
-            toast({ variant: 'destructive', title: "Fallo de Provisión", description: e.message });
-        } finally {
-            setProvisioning(false);
+            toast({ variant: 'destructive', title: "Error", description: e.message });
         }
     };
 
@@ -514,7 +516,7 @@ export default function DataStudioPage() {
                                                 </TableHeader>
                                                 <TableBody>
                                                     {flattenedDocs.map((doc, idx) => (
-                                                        <TableRow key={doc._id || idx} className="hover:bg-primary/[0.03] border-b">
+                                                        <TableRow key={doc._id || idx} className="hover:bg-primary/[0.03] border-b transition-colors group">
                                                             {visibleHeaders.map(header => (
                                                                 <TableCell key={header} className={cn(
                                                                     "text-[10px] font-medium border-r px-4 py-2.5 whitespace-nowrap truncate max-w-[200px]",
@@ -524,17 +526,29 @@ export default function DataStudioPage() {
                                                                 </TableCell>
                                                             ))}
                                                             <TableCell className="sticky right-0 bg-white border-l z-10 p-0 text-center shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="sm" 
-                                                                    className="h-10 w-full rounded-none font-black text-[9px] uppercase hover:bg-primary hover:text-white"
-                                                                    onClick={() => {
-                                                                        setEditingDoc(documents[idx]);
-                                                                        setJsonEditorContent(JSON.stringify(documents[idx], null, 2));
-                                                                    }}
-                                                                >
-                                                                    Ver
-                                                                </Button>
+                                                                <div className="flex">
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="sm" 
+                                                                        className="h-10 flex-1 rounded-none font-black text-[9px] uppercase hover:bg-primary hover:text-white"
+                                                                        onClick={() => {
+                                                                            setEditingDoc(documents[idx]);
+                                                                            setJsonEditorContent(JSON.stringify(documents[idx], null, 2));
+                                                                        }}
+                                                                    >
+                                                                        Ver
+                                                                    </Button>
+                                                                    {!isReadOnly && (
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="h-10 w-10 rounded-none text-red-400 hover:bg-red-500 hover:text-white border-l"
+                                                                            onClick={() => handleDeleteDocument(documents[idx]._id)}
+                                                                        >
+                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
@@ -546,13 +560,20 @@ export default function DataStudioPage() {
                                             {documents.map((doc, idx) => (
                                                 <Card key={doc._id || idx} className="border-2 shadow-sm hover:shadow-md transition-all group overflow-hidden">
                                                     <CardHeader className="bg-muted/5 p-3 flex flex-row justify-between items-center space-y-0">
-                                                        <code className="text-[10px] font-black text-primary truncate max-w-[180px]">ID: {doc._id}</code>
-                                                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
-                                                            setEditingDoc(doc);
-                                                            setJsonEditorContent(JSON.stringify(doc, null, 2));
-                                                        }}>
-                                                            <Eye className="h-3.5 w-3.5" />
-                                                        </Button>
+                                                        <code className="text-[10px] font-black text-primary truncate max-w-[150px]">ID: {doc._id}</code>
+                                                        <div className="flex gap-1">
+                                                            {!isReadOnly && (
+                                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-red-400 hover:bg-red-50" onClick={() => handleDeleteDocument(doc._id)}>
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            )}
+                                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                                                                setEditingDoc(doc);
+                                                                setJsonEditorContent(JSON.stringify(doc, null, 2));
+                                                            }}>
+                                                                <Eye className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
                                                     </CardHeader>
                                                     <CardContent className="p-3">
                                                         <pre className="text-[10px] font-mono text-muted-foreground whitespace-pre-wrap line-clamp-6 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -676,7 +697,7 @@ export default function DataStudioPage() {
 
             {/* MODAL EDITOR JSON */}
             <Dialog open={!!editingDoc} onOpenChange={() => setEditingDoc(null)}>
-                <DialogContent className="sm:max-w-[800px] h-[95vh] md:h-auto border-[6px] border-primary/20 overflow-hidden p-0 rounded-t-3xl md:rounded-3xl">
+                <DialogContent className="sm:max-w-[800px] h-[95vh] md:h-auto border-[6px] border-primary/20 overflow-hidden p-0 rounded-t-3xl md:rounded-3xl flex flex-col">
                     <div className='bg-primary p-4 md:p-6 text-white shrink-0'>
                         <div className='flex items-center justify-between'>
                             <div>
@@ -714,7 +735,7 @@ export default function DataStudioPage() {
                                 <div className='space-y-1'>
                                     <p className='text-[10px] font-black text-red-800 uppercase'>Protocolo de Escritura Activo</p>
                                     <p className='text-[9px] font-bold text-red-700 leading-tight'>
-                                        La modificación manual puede corromper la integridad de la aplicación si los tipos de datos (BSON) no se mantienen. El cambio será registrado en auditoría.
+                                        La modificación manual puede corromper la integridad si los tipos (BSON) no se mantienen. El cambio será registrado en auditoría.
                                     </p>
                                 </div>
                             </div>
@@ -724,9 +745,18 @@ export default function DataStudioPage() {
                     <DialogFooter className="p-4 md:p-6 bg-slate-50 border-t flex flex-row justify-between items-center gap-2 shrink-0">
                         <Button variant="ghost" onClick={() => setEditingDoc(null)} className="font-black uppercase text-[10px] md:text-xs">Cerrar</Button>
                         {!isReadOnly && (
-                            <Button onClick={handleSaveDocument} className="font-black uppercase px-6 md:px-10 h-10 md:h-12 shadow-xl bg-primary">
-                                <Save className="mr-2 h-4 w-4" /> Aplicar Cambios
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    className="font-black text-red-600 border-red-200 uppercase px-4 h-10 md:h-12"
+                                    onClick={() => handleDeleteDocument(editingDoc._id)}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Purgar Doc.
+                                </Button>
+                                <Button onClick={handleSaveDocument} className="font-black uppercase px-6 md:px-10 h-10 md:h-12 shadow-xl bg-primary">
+                                    <Save className="mr-2 h-4 w-4" /> Aplicar Cambios
+                                </Button>
+                            </div>
                         )}
                     </DialogFooter>
                 </DialogContent>
