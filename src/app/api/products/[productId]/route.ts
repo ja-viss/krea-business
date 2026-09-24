@@ -83,28 +83,54 @@ export async function DELETE(req: NextRequest, { params }: { params: { productId
         const { productId } = params;
         const storeId = req.nextUrl.searchParams.get('storeId');
 
-        if (!storeId) throw new Error("ID tienda requerido");
+        if (!storeId) {
+            return NextResponse.json({ message: 'El ID de la empresa es obligatorio para el borrado.' }, { status: 400 });
+        }
+
         const store = await StoreModel.findById(storeId);
-        if (!store) throw new Error("Tienda no encontrada");
+        if (!store) {
+            return NextResponse.json({ message: 'La empresa especificada no existe.' }, { status: 404 });
+        }
 
         const { models } = await getTenantDb(storeId, store.tenantDbUri || '');
-        const previousState = await models.Product.findByIdAndDelete(productId).lean();
+
+        // Intentar obtener el estado previo para el log
+        let previousState = null;
+        try {
+            previousState = await models.Product.findById(productId).lean();
+        } catch (e) {
+            console.warn("No se pudo recuperar el estado previo del producto (posible ID malformado)");
+        }
+
+        // BORRADO RESILIENTE: Usamos deleteOne directamente sobre la colección para evitar bloqueos de validación de Mongoose
+        // Esto permite borrar incluso si al documento le faltan campos obligatorios.
+        const query = mongoose.Types.ObjectId.isValid(productId) 
+            ? { _id: new mongoose.Types.ObjectId(productId) } 
+            : { _id: productId as any };
+
+        const result = await models.Product.collection.deleteOne(query);
+
+        if (result.deletedCount === 0) {
+            return NextResponse.json({ message: 'El producto no existe o ya fue eliminado.' }, { status: 404 });
+        }
 
         if (previousState) {
-            createLog({
+            // Registro de auditoría
+            await createLog({
                 store: storeId,
                 user: 'SYSTEM',
                 userName: 'Admin',
                 action: 'PRODUCTO_ELIMINADO',
                 module: 'Inventario',
-                details: `Eliminación definitiva de: ${previousState.name}`,
+                details: `Eliminación definitiva de: ${previousState.name || 'Producto sin nombre'}`,
                 targetId: productId,
                 previousState
             });
         }
 
-        return NextResponse.json({ message: 'Producto purgado exitosamente.' });
+        return NextResponse.json({ message: 'Producto purgado exitosamente del sistema.' });
     } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
+        console.error("Error crítico en DELETE product:", error);
+        return NextResponse.json({ message: 'Fallo al purgar el registro: ' + error.message }, { status: 500 });
     }
 }

@@ -122,17 +122,27 @@ export default function InventoryPage() {
     if (!productToDelete) return;
     try {
       const storeId = localStorage.getItem('storeId');
-      const response = await fetch(`/api/products/${productToDelete._id}?storeId=${storeId}`, { method: 'DELETE' });
+      if (!storeId) throw new Error("No se pudo identificar la empresa actual.");
+
+      const response = await fetch(`/api/products/${productToDelete._id}?storeId=${storeId}`, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
       
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'No se pudo eliminar.');
+        throw new Error(result.message || 'No se pudo eliminar el registro.');
       }
 
-      toast({ title: 'Producto Eliminado' });
+      toast({ title: 'Producto Eliminado', description: 'El registro ha sido removido de la base de datos.' });
       fetchProducts();
     } catch (err: any) {
-       toast({ variant: 'destructive', title: 'Error', description: err.message });
+       toast({ 
+         variant: 'destructive', 
+         title: 'Error al eliminar', 
+         description: err.message 
+       });
     } finally {
         setProductToDelete(null);
     }
@@ -178,9 +188,9 @@ export default function InventoryPage() {
     if (!searchQuery) return products;
     const q = searchQuery.toLowerCase();
     return products.filter(p => 
-        p.name.toLowerCase().includes(q) || 
-        String(p.sku).toLowerCase().includes(q) ||
-        String(p.barcode).includes(q)
+        (p.name || '').toLowerCase().includes(q) || 
+        String(p.sku || '').toLowerCase().includes(q) ||
+        String(p.barcode || '').includes(q)
     );
   }, [products, searchQuery]);
 
@@ -291,17 +301,17 @@ export default function InventoryPage() {
                                 <TableCell className="pl-6 py-4">
                                     <div className="flex items-center gap-3">
                                         <div className="h-10 w-10 rounded bg-muted relative overflow-hidden shrink-0 border">
-                                            {p.imageUrl ? <Image src={p.imageUrl} alt={p.name} fill className="object-cover" sizes="40px" unoptimized /> : <Package className="h-5 w-5 m-auto opacity-20" />}
+                                            {p.imageUrl ? <Image src={p.imageUrl} alt={p.name || 'Producto'} fill className="object-cover" sizes="40px" unoptimized /> : <Package className="h-5 w-5 m-auto opacity-20" />}
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="font-black text-[11px] uppercase truncate max-w-[180px]">{p.name}</span>
+                                            <span className="font-black text-[11px] uppercase truncate max-w-[180px]">{p.name || 'PRODUCTO SIN NOMBRE'}</span>
                                             {p.expiryDate && <span className="text-[8px] font-bold text-red-600 uppercase">Vence: {format(new Date(p.expiryDate), 'dd/MM/yy')}</span>}
                                         </div>
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-right font-black text-xs md:text-sm">{formatCurrency(p.price)}</TableCell>
-                                <TableCell className='text-right font-black text-primary text-xs md:text-sm'>{p.stock}</TableCell>
-                                <TableCell className="hidden lg:table-cell"><Badge variant={p.status === 'En Stock' ? 'secondary' : 'destructive'} className="text-[9px] font-black uppercase">{p.status}</Badge></TableCell>
+                                <TableCell className="text-right font-black text-xs md:text-sm">{formatCurrency(p.price || 0)}</TableCell>
+                                <TableCell className='text-right font-black text-primary text-xs md:text-sm'>{p.stock || 0}</TableCell>
+                                <TableCell className="hidden lg:table-cell"><Badge variant={p.status === 'En Stock' ? 'secondary' : 'destructive'} className="text-[9px] font-black uppercase">{p.status || 'S/E'}</Badge></TableCell>
                                 <TableCell className="pr-6 text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -349,7 +359,7 @@ export default function InventoryPage() {
                     </div>
                     <div className='space-y-2'>
                         <Label className='text-[10px] font-black uppercase'>Justificación</Label>
-                        <Textarea placeholder="Ej: Producto dañado por transporte..." value={adjustmentReason} onChange={e => setAdjustmentReason(e.target.value)} />
+                        <Textarea placeholder="Ej: Producto con defecto..." value={adjustmentReason} onChange={e => setAdjustmentReason(e.target.value)} />
                     </div>
                 </div>
                 <DialogFooter><Button disabled={isAdjusting} className='w-full font-black uppercase bg-amber-600' onClick={handleRegisterLoss}>Confirmar Merma</Button></DialogFooter>
@@ -358,8 +368,18 @@ export default function InventoryPage() {
 
         <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
             <AlertDialogContent className="border-4 mx-4">
-                <AlertDialogHeader><AlertDialogTitle className="font-black uppercase italic">¿Eliminar Producto?</AlertDialogTitle></AlertDialogHeader>
-                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600 uppercase font-black">Eliminar</AlertDialogAction></AlertDialogFooter>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="font-black uppercase italic text-red-600">¿Eliminar Producto?</AlertDialogTitle>
+                    <AlertDialogDescription className="font-bold text-foreground">
+                        Esta acción purgará el registro permanentemente de la base de datos, incluso si tiene campos incompletos.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel className="font-bold">Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600 uppercase font-black shadow-lg">
+                        Confirmar Borrado
+                    </AlertDialogAction>
+                </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
       </main>
