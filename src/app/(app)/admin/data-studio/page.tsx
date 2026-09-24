@@ -34,7 +34,8 @@ import {
     ArrowRight,
     HardDrive,
     Cloud,
-    Trash2
+    Trash2,
+    Edit3
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -219,6 +220,30 @@ export default function DataStudioPage() {
         }
     };
 
+    const handleProvisionAtlas = async () => {
+        setProvisioning(true);
+        try {
+            const res = await fetch('/api/admin/db/provision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...provisionForm,
+                    userId: localStorage.getItem('userId'),
+                    userName: localStorage.getItem('userName')
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            toast({ title: "Atlas Provisionado", description: "Base de datos creada exitosamente." });
+            setIsProvisionOpen(false);
+            fetchData();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: "Fallo de Provisión", description: e.message });
+        } finally {
+            setProvisioning(false);
+        }
+    };
+
     const flattenedDocs = useMemo(() => documents.map(doc => flattenObject(doc)), [documents]);
     
     const allHeaders = useMemo(() => {
@@ -256,7 +281,7 @@ export default function DataStudioPage() {
             <main className="flex-1 flex flex-col p-2 md:p-6 space-y-4">
                 <PageHeader 
                     title="Data Studio" 
-                    description="Gestión técnica de infraestructura y provisión Atlas."
+                    description="Gestión técnica de infraestructura y depuración MongoDB."
                     className="hidden lg:flex"
                     actions={
                         <div className='flex gap-2'>
@@ -536,7 +561,7 @@ export default function DataStudioPage() {
                                                                             setJsonEditorContent(JSON.stringify(documents[idx], null, 2));
                                                                         }}
                                                                     >
-                                                                        Ver
+                                                                        {isReadOnly ? 'Ver' : 'Editar'}
                                                                     </Button>
                                                                     {!isReadOnly && (
                                                                         <Button 
@@ -571,7 +596,7 @@ export default function DataStudioPage() {
                                                                 setEditingDoc(doc);
                                                                 setJsonEditorContent(JSON.stringify(doc, null, 2));
                                                             }}>
-                                                                <Eye className="h-3.5 w-3.5" />
+                                                                {isReadOnly ? <Eye className="h-3.5 w-3.5" /> : <Edit3 className="h-3.5 w-3.5" />}
                                                             </Button>
                                                         </div>
                                                     </CardHeader>
@@ -695,7 +720,7 @@ export default function DataStudioPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* MODAL EDITOR JSON */}
+            {/* MODAL EDITOR JSON INTEGRAL */}
             <Dialog open={!!editingDoc} onOpenChange={() => setEditingDoc(null)}>
                 <DialogContent className="sm:max-w-[800px] h-[95vh] md:h-auto border-[6px] border-primary/20 overflow-hidden p-0 rounded-t-3xl md:rounded-3xl flex flex-col">
                     <div className='bg-primary p-4 md:p-6 text-white shrink-0'>
