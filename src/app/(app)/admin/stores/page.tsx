@@ -35,7 +35,8 @@ import {
     Trash2,
     AlertCircle,
     Copy,
-    Check
+    Check,
+    PlusCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -603,4 +604,3 @@ export default function AdminStoresPage() {
         </div>
     );
 }
-
