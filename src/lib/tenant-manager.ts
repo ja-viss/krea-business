@@ -35,8 +35,9 @@ interface TenantModels {
 export const connectionPool: Map<string, { connection: Connection, createdAt: Date }> = new Map();
 
 export async function getTenantDb(tenantId: string, encryptedUri: string): Promise<{ connection: Connection, models: TenantModels }> {
-  if (!encryptedUri) {
-      throw new Error('La empresa no tiene una base de datos aislada configurada.');
+  // Redundancia: Si no hay URI, operamos sobre la conexión maestra (Modo Compartido / Fallback)
+  if (!encryptedUri || encryptedUri.trim() === '') {
+    return { connection: mongoose.connection, models: getModels(mongoose.connection) };
   }
 
   // 1. Si ya existe una conexión saludable en el pool, la reutilizamos

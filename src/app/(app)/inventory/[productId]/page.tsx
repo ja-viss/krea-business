@@ -28,9 +28,11 @@ export default function ProductDetailsPage() {
             const fetchProduct = async () => {
                 try {
                     setLoading(true);
-                    const response = await fetch(`/api/products/${productId}`);
+                    const storeId = localStorage.getItem('storeId');
+                    const response = await fetch(`/api/products/${productId}?storeId=${storeId}`);
                     if (!response.ok) {
-                        throw new Error('No se pudo encontrar el producto.');
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'No se pudo encontrar el producto.');
                     }
                     const data = await response.json();
                     setProduct(data);

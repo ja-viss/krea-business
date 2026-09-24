@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -105,7 +106,7 @@ export default function InventoryPage() {
   }, []);
 
   const calculateMetrics = (productsData: IProduct[]) => {
-    const totalValue = productsData.reduce((acc, p) => acc + (p.stock * p.cost || 0), 0);
+    const totalValue = productsData.reduce((acc, p) => acc + (p.stock * (p.cost || 0)), 0);
     const lowStockCount = productsData.filter(p => p.status === 'Stock Bajo').length;
     const outOfStockCount = productsData.filter(p => p.status === 'Sin Stock').length;
     const nearExpiryCount = productsData.filter(p => {
@@ -120,8 +121,14 @@ export default function InventoryPage() {
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
     try {
-      const response = await fetch(`/api/products/${productToDelete._id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('No se pudo eliminar.');
+      const storeId = localStorage.getItem('storeId');
+      const response = await fetch(`/api/products/${productToDelete._id}?storeId=${storeId}`, { method: 'DELETE' });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar.');
+      }
+
       toast({ title: 'Producto Eliminado' });
       fetchProducts();
     } catch (err: any) {
