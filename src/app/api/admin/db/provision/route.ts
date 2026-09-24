@@ -5,7 +5,7 @@ import { createLog } from '@/app/api/audit-logs/route';
 
 /**
  * API de Aprovisionamiento Físico de Base de Datos en Atlas.
- * Conecta a un cluster remoto, crea la base de datos y una colección inicial.
+ * Conecta a un clúster remoto, crea la base de datos y una colección inicial.
  */
 export async function POST(req: NextRequest) {
     try {
@@ -16,25 +16,40 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Todos los parámetros son obligatorios.' }, { status: 400 });
         }
 
-        // 1. Construir URI Dinámica (Sanitizada)
-        // Eliminamos el protocolo original para reconstruirlo con las credenciales
-        const host = atlasUri.replace('mongodb+srv://', '').split('/')[0];
+        // 1. Extraer el HOST de forma robusta
+        // Si el usuario pega una URI completa (mongodb+srv://user:pass@host/db), 
+        // extraemos solo la parte del host después del '@'.
+        let host = atlasUri
+            .replace('mongodb+srv://', '')
+            .replace('mongodb://', '')
+            .split('/')[0];
+        
+        if (host.includes('@')) {
+            host = host.split('@').pop() || host;
+        }
+
+        // 2. Construir URI Dinámica Limpia
+        // Usamos encodeURIComponent para manejar caracteres especiales en el password
         const finalUri = `mongodb+srv://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}/${dbName}?retryWrites=true&w=majority`;
 
-        // 2. Establecer Conexión Temporal
-        const connection = mongoose.createConnection(finalUri);
+        console.log(`[ATLAS PROVISION] Intentando conectar a: mongodb+srv://${user}:****@${host}/${dbName}`);
+
+        // 3. Establecer Conexión Temporal
+        const connection = mongoose.createConnection(finalUri, {
+            serverSelectionTimeoutMS: 8000, // Timeout de 8 segundos para feedback rápido
+        });
         
         try {
             await connection.asPromise();
         } catch (connErr: any) {
+            console.error('[ATLAS CONNECTION ERROR]', connErr.message);
             return NextResponse.json({ 
                 message: 'Error de autenticación o red en Atlas.', 
                 details: connErr.message 
             }, { status: 401 });
         }
 
-        // 3. Crear Base de Datos y Colección (Efecto Lazy)
-        // En MongoDB, no existe físicamente hasta que insertamos el primer dato.
+        // 4. Crear Base de Datos y Colección (Efecto Lazy)
         const db = connection.db;
         if (!db) throw new Error("No se pudo obtener el descriptor de base de datos");
 
@@ -45,20 +60,21 @@ export async function POST(req: NextRequest) {
             _krea_init: true,
             createdAt: new Date(),
             description: "Base de datos aprovisionada por Krea Data Studio",
+            provisionedBy: userName || 'Super Admin',
             version: "2.0"
         });
 
-        // 4. Registro de Auditoría Maestra
+        // 5. Registro de Auditoría Maestra
         await createLog({
             store: 'SYSTEM_MASTER',
             user: userId || 'SYSTEM',
             userName: userName || 'Super Admin',
             action: 'ATLAS_DB_PROVISIONED',
             module: 'Infraestructura',
-            details: `Creación exitosa de base de datos '${dbName}' en cluster remoto Atlas.`
+            details: `Creación exitosa de base de datos '${dbName}' en cluster remoto '${host}'.`
         });
 
-        // Cerrar conexión efímera
+        // Cerrar conexión efímera inmediatamente
         await connection.close();
 
         return NextResponse.json({ 
