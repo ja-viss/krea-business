@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/User';
@@ -7,32 +8,32 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
 /**
- * Inicializador de Roles Estratégicos.
+ * Motor de Inicialización de Roles v2.0
+ * Crea la jerarquía necesaria para que la empresa opere bajo el modelo Krea.
  */
-async function getOrCreateRole(storeId: mongoose.Types.ObjectId | null, session: mongoose.ClientSession, roleName: string, isMaster: boolean): Promise<IRole> {
-    let role = await RoleModel.findOne({ store: storeId, name: roleName }).session(session);
-    
-    if (!role) {
-        let permissions = ['view_dashboard'];
-        
-        // Asignación de permisos por jerarquía
-        if (isMaster || roleName === 'SUPER_ADMIN_MASTER' || roleName === 'Administrador Principal') {
-            permissions = ['all'];
-        } else if (roleName.includes('Ventas')) {
-            permissions = ['view_dashboard', 'manage_sales', 'view_reports'];
-        } else if (roleName.includes('Inventario')) {
-            permissions = ['view_dashboard', 'manage_inventory', 'view_reports'];
-        }
+async function seedStoreRoles(storeId: mongoose.Types.ObjectId, session: mongoose.ClientSession) {
+    const rolesConfig = [
+        { name: 'Administrador Principal', permissions: ['all'] },
+        { name: 'Vendedor', permissions: ['manage_sales', 'view_dashboard'] },
+        { name: 'Almacenista', permissions: ['manage_inventory'] },
+        { name: 'Contador', permissions: ['view_reports', 'manage_expenses'] }
+    ];
 
-        role = new RoleModel({
-            name: roleName,
-            store: storeId,
-            permissions: permissions,
-            isSystemRole: isMaster
-        });
-        await role.save({ session });
+    const createdRoles = [];
+    for (const config of rolesConfig) {
+        let role = await RoleModel.findOne({ store: storeId, name: config.name }).session(session);
+        if (!role) {
+            role = new RoleModel({
+                name: config.name,
+                store: storeId,
+                permissions: config.permissions,
+                isSystemRole: false
+            });
+            await role.save({ session });
+        }
+        createdRoles.push(role);
     }
-    return role;
+    return createdRoles;
 }
 
 export async function POST(req: NextRequest) {
@@ -48,38 +49,51 @@ export async function POST(req: NextRequest) {
     }
 
     let storeId = null;
+    let finalRoleId = null;
 
-    // 1. Gestión de Empresa (Tenants)
+    // 1. GESTIÓN DE EMPRESA
     if (!isGlobalAdmin) {
-        if (!businessName) {
-            return NextResponse.json({ message: 'El nombre del negocio es obligatorio.' }, { status: 400 });
-        }
+        if (!businessName) return NextResponse.json({ message: 'El nombre del negocio es obligatorio.' }, { status: 400 });
         
         const newStore = new StoreModel({
           name: businessName,
-          address: 'Ubicación por definir',
-          seniatCondition: 'Contribuyente Ordinario',
-          status: 'Demo'
+          status: 'Demo',
+          plan: 'Basic'
         });
         
         await newStore.save({ session });
         storeId = newStore._id as mongoose.Types.ObjectId;
+
+        // SEEDING DE ROLES PARA LA NUEVA EMPRESA
+        const storeRoles = await seedStoreRoles(storeId, session);
+        
+        // El creador de la empresa siempre es Administrador Principal
+        const adminRole = storeRoles.find(r => r.name === 'Administrador Principal');
+        finalRoleId = adminRole?._id;
+    } else {
+        // ROL DE SUPER DESARROLLADOR
+        let masterRole = await RoleModel.findOne({ isSystemRole: true, name: 'SUPER_ADMIN_MASTER' }).session(session);
+        if (!masterRole) {
+            masterRole = new RoleModel({
+                name: 'SUPER_ADMIN_MASTER',
+                permissions: ['all'],
+                isSystemRole: true
+            });
+            await masterRole.save({ session });
+        }
+        finalRoleId = masterRole._id;
     }
 
-    // 2. Creación de Rol
-    const finalRoleName = isGlobalAdmin ? 'SUPER_ADMIN_MASTER' : (roleName || 'Administrador Principal');
-    const role = await getOrCreateRole(storeId, session, finalRoleName, !!isGlobalAdmin);
-
-    // 3. Seguridad de Acceso
+    // 2. SEGURIDAD DE ACCESO
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 4. Registro de Usuario
+    // 3. REGISTRO DE USUARIO
     const newUser = new UserModel({
       store: storeId,
       name,
       email: email.trim().toLowerCase(),
       password: hashedPassword,
-      role: role._id,
+      role: finalRoleId,
       active: true,
       isGlobalAdmin: !!isGlobalAdmin
     });
@@ -88,7 +102,7 @@ export async function POST(req: NextRequest) {
     await session.commitTransaction();
 
     return NextResponse.json({ 
-      message: isGlobalAdmin ? 'Perfil de Desarrollador Maestro activado.' : 'Empresa y administrador registrados exitosamente.',
+      message: isGlobalAdmin ? 'Perfil de Desarrollador Maestro activado.' : 'Empresa registrada con éxito.',
       user: {
         id: newUser._id.toString(),
         name: newUser.name,
@@ -103,10 +117,10 @@ export async function POST(req: NextRequest) {
     console.error('REGISTRATION FAILURE:', error);
     
     if (error.code === 11000) {
-      return NextResponse.json({ message: 'El nombre de usuario o email ya existe en el sistema.' }, { status: 409 });
+      return NextResponse.json({ message: 'El usuario o email ya existe en Krea.' }, { status: 409 });
     }
     
-    return NextResponse.json({ message: 'Fallo en la creación de cuenta.' }, { status: 500 });
+    return NextResponse.json({ message: 'Fallo en la creación de cuenta: ' + error.message }, { status: 500 });
   } finally {
     session.endSession();
   }
