@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 
 export default function SystemMonitoringPage() {
     const { toast } = useToast();
@@ -338,7 +339,7 @@ export default function SystemMonitoringPage() {
                                 <div className="space-y-3">
                                     <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg animate-pulse">
                                         <p className="text-[9px] font-black text-red-400 uppercase">Intento Brute-Force Detectado</p>
-                                        <p className="text-[8px] text-red-400/60 font-mono">Source: 190.x.x.x -> /api/login</p>
+                                        <p className="text-[8px] text-red-400/60 font-mono">Source: 190.x.x.x {"->"} /api/login</p>
                                     </div>
                                     <p className="text-[9px] font-medium text-white/20 italic leading-tight">
                                         El sistema aplica Rate-Limiting automático sobre IPs sospechosas. Todas las firmas de sesión se validan contra el secreto del servidor.
