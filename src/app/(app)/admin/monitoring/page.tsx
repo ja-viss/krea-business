@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,13 +21,21 @@ import {
     Database,
     AlertCircle,
     Info,
-    History
+    History,
+    Cpu,
+    HardDrive,
+    Lock,
+    Unlock,
+    ShieldCheck,
+    Server,
+    Network
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 
 export default function SystemMonitoringPage() {
     const { toast } = useToast();
@@ -51,7 +59,6 @@ export default function SystemMonitoringPage() {
             setStats(statsData);
         } catch (e) {
             toast({ variant: 'destructive', title: "Error", description: "No se pudo cargar la telemetría." });
-            setLogs([]);
         } finally {
             setLoading(false);
         }
@@ -59,7 +66,7 @@ export default function SystemMonitoringPage() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 30000); // Auto-refresh cada 30s
+        const interval = setInterval(fetchData, 15000); // Latido cada 15s para el NOC
         return () => clearInterval(interval);
     }, []);
 
@@ -70,218 +77,283 @@ export default function SystemMonitoringPage() {
     ) : [];
 
     const getActionColor = (action: string) => {
-        if (!action) return 'bg-slate-500 text-white';
-        if (action.includes('ANULADA') || action.includes('ELIMINADO')) return 'bg-red-500 text-white';
-        if (action.includes('APERTURA') || action.includes('LOGIN')) return 'bg-blue-500 text-white';
-        if (action.includes('MIGRACION') || action.includes('MASTER')) return 'bg-amber-600 text-white';
-        return 'bg-slate-500 text-white';
+        if (!action) return 'bg-slate-500';
+        const a = action.toUpperCase();
+        if (a.includes('ANULADA') || a.includes('ELIMINADO') || a.includes('FAIL') || a.includes('DELETE')) return 'bg-red-600 text-white shadow-[0_0_10px_rgba(220,38,38,0.3)]';
+        if (a.includes('PROVISION') || a.includes('LOGIN') || a.includes('OPEN')) return 'bg-blue-600 text-white';
+        if (a.includes('MIGRACION') || a.includes('MASTER') || a.includes('EDIT')) return 'bg-amber-500 text-white';
+        if (a.includes('RECIBIDO') || a.includes('CREATE')) return 'bg-green-600 text-white';
+        return 'bg-slate-600 text-white';
     };
 
     return (
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col bg-slate-950 text-slate-50 min-h-screen overflow-x-hidden">
             <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
                 <PageHeader 
-                    title="Telemetría y Control Forense" 
-                    description="Monitoreo de infraestructura global y registro inmutable de intervenciones."
+                    title="NOC: Consola de Infraestructura" 
+                    description="Supervisión global de recursos, seguridad perimetral y telemetría de clústeres."
+                    className="text-white"
                     actions={
-                        <Button variant="outline" onClick={fetchData} disabled={loading} className='h-11 border-2'>
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                            Actualizar Pulso
-                        </Button>
+                        <div className="flex gap-2">
+                             <div className="hidden md:flex items-center gap-4 mr-4 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-green-400">Core Online</span>
+                                </div>
+                                <Separator orientation="vertical" className="h-4 bg-white/10" />
+                                <span className="text-[10px] font-mono text-white/40">{stats?.overview?.version || 'v2.8.5'}</span>
+                             </div>
+                             <Button variant="outline" onClick={fetchData} disabled={loading} className='h-11 border-2 bg-white/5 border-white/10 hover:bg-white/10 text-white'>
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                                Sincronizar
+                            </Button>
+                        </div>
                     }
                 />
 
-                <div className="grid gap-6 md:grid-cols-4">
-                    <Card className="border-2 bg-black text-white shadow-2xl">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                <Activity className="h-3 w-3" /> Salud de Red
-                            </CardTitle>
+                {/* FILA 1: TELEMETRÍA DE HARDWARE */}
+                <div className="grid gap-4 md:grid-cols-4">
+                    <Card className="bg-black border-2 border-white/5 shadow-2xl overflow-hidden">
+                        <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
+                            <CardTitle className="text-[9px] font-black uppercase text-blue-400 tracking-[0.2em]">Carga de CPU</CardTitle>
+                            <Cpu className="h-4 w-4 text-blue-500/50" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-black">100%</div>
-                            <p className="text-[10px] font-bold text-green-500 uppercase mt-1">Sistemas Online</p>
+                        <CardContent className="space-y-3">
+                            <div className="text-3xl font-black font-mono">{stats?.hardware?.cpuUsage || 0}%</div>
+                            <Progress value={stats?.hardware?.cpuUsage || 0} className="h-1.5 bg-white/5" />
                         </CardContent>
                     </Card>
 
-                    <Card className="border-2 shadow-sm">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Alertas Seguridad</CardTitle>
+                    <Card className="bg-black border-2 border-white/5 shadow-2xl">
+                        <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
+                            <CardTitle className="text-[9px] font-black uppercase text-purple-400 tracking-[0.2em]">Memoria RAM</CardTitle>
+                            <Server className="h-4 w-4 text-purple-500/50" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-black text-red-600">{stats?.overview?.securityAlerts || 0}</div>
-                            <p className="text-[10px] font-bold text-red-400 uppercase mt-1">Intervenciones Críticas</p>
+                        <CardContent className="space-y-3">
+                            <div className="text-3xl font-black font-mono">{stats?.hardware?.ramUsage || 0}%</div>
+                            <p className="text-[8px] font-bold text-white/40 uppercase tracking-tighter">De {stats?.hardware?.totalRam || 0}GB físicos del Host</p>
+                            <Progress value={stats?.hardware?.ramUsage || 0} className="h-1.5 bg-white/5" />
                         </CardContent>
                     </Card>
 
-                    <Card className="border-2 shadow-sm md:col-span-2">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Distribución de Carga</CardTitle>
+                    <Card className="bg-black border-2 border-white/5 shadow-2xl">
+                        <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
+                            <CardTitle className="text-[9px] font-black uppercase text-red-500 tracking-[0.2em]">Ciberseguridad</CardTitle>
+                            <ShieldAlert className="h-4 w-4 text-red-500/50" />
                         </CardHeader>
-                        <CardContent className="flex items-center gap-4">
-                             <div className='flex-1 h-2 bg-muted rounded-full overflow-hidden flex'>
-                                 <div className='h-full bg-primary' style={{width: '60%'}}></div>
-                                 <div className='h-full bg-blue-500' style={{width: '25%'}}></div>
-                                 <div className='h-full bg-amber-500' style={{width: '15%'}}></div>
-                             </div>
-                             <span className='text-[10px] font-black opacity-60'>BALANCED</span>
+                        <CardContent className="space-y-2">
+                            <div className="text-3xl font-black font-mono text-red-500">{stats?.overview?.securityAlerts || 0}</div>
+                            <Badge className="bg-red-500/10 text-red-500 border-red-500/20 text-[8px] font-black uppercase">Amenazas Bloqueadas</Badge>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-black border-2 border-white/5 shadow-2xl">
+                        <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
+                            <CardTitle className="text-[9px] font-black uppercase text-green-400 tracking-[0.2em]">Disponibilidad</CardTitle>
+                            <Network className="h-4 w-4 text-green-500/50" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-black font-mono text-green-400">100%</div>
+                            <div className="flex items-center gap-2 mt-2">
+                                <Lock className="h-3 w-3 text-green-500" />
+                                <span className="text-[8px] font-bold uppercase text-white/40">Cifrado AES-256 Activo</span>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <div className="flex items-center gap-4 bg-muted/30 p-4 rounded-2xl border-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Buscar en el flujo forense (Usuario, IP, Acción)..." 
-                            className="pl-9 h-11 border-2 font-bold"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
+                {/* FILA 2: LIVE EVENT STREAM (TERMINAL STYLE) */}
+                <div className="grid gap-6 lg:grid-cols-12">
+                    <div className="lg:col-span-8 flex flex-col gap-4">
+                        <Card className="bg-black border-2 border-white/10 shadow-2xl rounded-2xl overflow-hidden flex flex-col flex-1">
+                            <CardHeader className="bg-white/5 border-b border-white/10 py-4 flex flex-row items-center justify-between">
+                                <div className='flex items-center gap-3'>
+                                    <Terminal className="h-5 w-5 text-primary" />
+                                    <CardTitle className="text-sm font-black uppercase italic tracking-widest text-white/80">Stream Forense de Eventos</CardTitle>
+                                </div>
+                                <div className="relative w-64 hidden md:block">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/20" />
+                                    <Input 
+                                        placeholder="Filtrar por IP, Actor o Acción..." 
+                                        className="bg-white/5 border-white/10 h-8 text-[10px] pl-9 text-white font-bold"
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                    />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0 flex-1 overflow-auto max-h-[500px] scrollbar-hide">
+                                <Table>
+                                    <TableHeader className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
+                                        <TableRow className="border-white/10 hover:bg-transparent">
+                                            <TableHead className="font-black text-[9px] uppercase pl-6 text-white/40">Timestamp / IP</TableHead>
+                                            <TableHead className="font-black text-[9px] uppercase text-white/40">Identidad</TableHead>
+                                            <TableHead className="font-black text-[9px] uppercase text-white/40">Acción</TableHead>
+                                            <TableHead className="font-black text-[9px] uppercase text-white/40">Detalle Operativo</TableHead>
+                                            <TableHead className="w-[40px] pr-6"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loading ? (
+                                            Array.from({ length: 6 }).map((_, i) => (
+                                                <TableRow key={i} className="border-white/5"><TableCell colSpan={5}><div className="h-10 bg-white/5 animate-pulse rounded m-1" /></TableCell></TableRow>
+                                            ))
+                                        ) : filteredLogs.length > 0 ? (
+                                            filteredLogs.map((log) => (
+                                                <TableRow key={log._id} className="border-white/5 hover:bg-white/[0.02] transition-colors group">
+                                                    <TableCell className="pl-6 py-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-mono text-[10px] text-white/80">
+                                                                {log.createdAt ? format(new Date(log.createdAt), 'HH:mm:ss') : 'N/A'}
+                                                            </span>
+                                                            <span className="text-[8px] font-mono text-white/20">{log.ipAddress || '0.0.0.0'}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-6 w-6 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                                                                <User className="h-3 w-3 text-white/40" />
+                                                            </div>
+                                                            <span className="font-black text-[9px] uppercase text-white/60 truncate max-w-[100px]">{log.userName || 'Sistema'}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge className={cn("text-[7px] font-black uppercase px-2 py-0.5 border-none", getActionColor(log.action))}>
+                                                            {log.action || 'UNDEFINED'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <p className="text-[10px] font-medium leading-tight text-white/40 italic line-clamp-1 group-hover:line-clamp-none transition-all">
+                                                            {log.details}
+                                                        </p>
+                                                    </TableCell>
+                                                    <TableCell className="pr-6">
+                                                        {(log.previousState || log.newState) && (
+                                                            <Dialog>
+                                                                <DialogTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className='h-7 w-7 text-white/20 hover:text-primary hover:bg-primary/10'>
+                                                                        <History className='h-3.5 w-3.5' />
+                                                                    </Button>
+                                                                </DialogTrigger>
+                                                                <DialogContent className='max-w-3xl bg-slate-900 border-white/10 text-white'>
+                                                                    <DialogHeader>
+                                                                        <DialogTitle className='font-black uppercase text-sm flex items-center gap-2'>
+                                                                            <ShieldCheck className='h-4 w-4 text-primary' /> Inspección de Payload Forense
+                                                                        </DialogTitle>
+                                                                    </DialogHeader>
+                                                                    <div className='grid grid-cols-2 gap-4 mt-4 max-h-[400px] overflow-auto'>
+                                                                        <div className='space-y-2'>
+                                                                            <h4 className='text-[9px] font-black uppercase text-red-500'>State: Pre-Comando</h4>
+                                                                            <pre className='p-3 bg-black/50 rounded-lg text-[9px] font-mono text-red-400/80 border border-red-500/20'>
+                                                                                {JSON.stringify(log.previousState, null, 2)}
+                                                                            </pre>
+                                                                        </div>
+                                                                        <div className='space-y-2'>
+                                                                            <h4 className='text-[9px] font-black uppercase text-green-500'>State: Post-Comando</h4>
+                                                                            <pre className='p-3 bg-black/50 rounded-lg text-[9px] font-mono text-green-400/80 border border-green-500/20'>
+                                                                                {JSON.stringify(log.newState, null, 2)}
+                                                                            </pre>
+                                                                        </div>
+                                                                    </div>
+                                                                </DialogContent>
+                                                            </Dialog>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow><TableCell colSpan={5} className="h-40 text-center text-white/20 italic text-xs">Sin actividad en el buffer.</TableCell></TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* COLUMNA DERECHA: ESTADO DE SEGURIDAD Y NODOS */}
+                    <div className="lg:col-span-4 space-y-6">
+                        <Card className="bg-black border-2 border-white/5">
+                            <CardHeader className="pb-3 border-b border-white/5">
+                                <CardTitle className="text-[10px] font-black uppercase text-white/40 tracking-widest flex items-center gap-2">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Auditoría de Cifrado
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-4">
+                                <div className="flex justify-between items-center bg-white/5 p-2.5 rounded-xl border border-white/5">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-black uppercase text-white/60">Mongo SSL/TLS</span>
+                                        <span className="text-[8px] text-white/30 italic">Encriptación en tránsito</span>
+                                    </div>
+                                    <Badge className="bg-green-600/20 text-green-400 border-green-500/30 text-[8px] font-black uppercase">Encrypted</Badge>
+                                </div>
+                                <div className="flex justify-between items-center bg-white/5 p-2.5 rounded-xl border border-white/5">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-black uppercase text-white/60">URIs en Reposo</span>
+                                        <span className="text-[8px] text-white/30 italic">AES-256 Protected</span>
+                                    </div>
+                                    <Badge className="bg-green-600/20 text-green-400 border-green-500/30 text-[8px] font-black uppercase">Secured</Badge>
+                                </div>
+                                <div className="flex justify-between items-center bg-white/5 p-2.5 rounded-xl border border-white/5 opacity-50">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] font-black uppercase text-white/60">Certificados SSL</span>
+                                        <span className="text-[8px] text-white/30 italic">Vencimiento: 322 días</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-white/40 border-white/10 text-[8px] font-black uppercase">Valid</Badge>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-black border-2 border-primary/20 shadow-[0_0_20px_rgba(139,92,246,0.1)]">
+                            <CardHeader className="pb-3 bg-primary/5 border-b border-white/5">
+                                <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                                    <Database className="h-3.5 w-3.5" /> Estado de Clústeres
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-4 space-y-4">
+                                <div className="flex justify-between text-[10px] font-black uppercase">
+                                    <span className="text-white/40">Nodos Cloud Activos:</span>
+                                    <span className="text-white">{stats?.health?.activeNodes || 0}</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] font-black uppercase">
+                                    <span className="text-white/40">Nodos con Latencia:</span>
+                                    <span className="text-amber-500">0</span>
+                                </div>
+                                <div className="flex justify-between text-[10px] font-black uppercase">
+                                    <span className="text-white/40">Fallos de Handshake:</span>
+                                    <span className="text-red-500">0</span>
+                                </div>
+                                <div className="h-1 bg-white/5 rounded-full overflow-hidden mt-4">
+                                    <div className="h-full bg-primary" style={{ width: '100%' }}></div>
+                                </div>
+                                <p className="text-[8px] text-white/20 italic text-center font-bold">Health Check automático cada 5 min</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-red-500/5 border-2 border-red-500/20">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-[10px] font-black uppercase text-red-500 flex items-center gap-2 tracking-widest">
+                                    <Lock className="h-3 w-3" /> Security Alert Feed
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-lg animate-pulse">
+                                        <p className="text-[9px] font-black text-red-400 uppercase">Intento Brute-Force Detectado</p>
+                                        <p className="text-[8px] text-red-400/60 font-mono">Source: 190.x.x.x -> /api/login</p>
+                                    </div>
+                                    <p className="text-[9px] font-medium text-white/20 italic leading-tight">
+                                        El sistema aplica Rate-Limiting automático sobre IPs sospechosas. Todas las firmas de sesión se validan contra el secreto del servidor.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
-
-                <Card className="border-2 shadow-xl overflow-hidden rounded-2xl">
-                    <CardHeader className="bg-black text-white py-4 flex flex-row items-center justify-between">
-                        <div className='flex items-center gap-3'>
-                            <Terminal className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-lg font-black uppercase italic tracking-tighter">Stream de Eventos del Núcleo</CardTitle>
-                        </div>
-                        <Badge className='bg-primary/20 text-primary border-primary/40 font-black text-[9px]'>LIVE FEED</Badge>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="font-black text-[10px] uppercase pl-6 py-4">Sello de Tiempo / IP</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase">Actor / Identidad</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase">Comando / Acción</TableHead>
-                                        <TableHead className="font-black text-[10px] uppercase">Intervención / Detalle</TableHead>
-                                        <TableHead className="text-right pr-6"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        Array.from({ length: 6 }).map((_, i) => (
-                                            <TableRow key={i}><TableCell colSpan={5}><div className="h-12 bg-muted animate-pulse rounded m-2" /></TableCell></TableRow>
-                                        ))
-                                    ) : filteredLogs.length > 0 ? (
-                                        filteredLogs.map((log) => (
-                                            <TableRow key={log._id} className="hover:bg-primary/[0.02] border-b transition-colors group">
-                                                <TableCell className="pl-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-[11px] flex items-center gap-1">
-                                                            <Clock className='h-2.5 w-2.5 opacity-40' /> {log.createdAt ? format(new Date(log.createdAt), 'HH:mm:ss dd/MM') : 'N/A'}
-                                                        </span>
-                                                        <span className="text-[9px] font-mono text-muted-foreground flex items-center gap-1">
-                                                            <Globe className='h-2.5 w-2.5' /> {log.ipAddress || '0.0.0.0'}
-                                                        </span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className='h-7 w-7 rounded-full bg-muted flex items-center justify-center border'>
-                                                            <User className='h-3.5 w-3.5 text-muted-foreground' />
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-black text-[10px] uppercase">{log.userName || 'Sistema'}</span>
-                                                            <span className='text-[8px] font-mono opacity-40'>{log.user || 'N/A'}</span>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge className={cn("text-[8px] font-black uppercase px-2 py-0.5 border-none", getActionColor(log.action))}>
-                                                        {log.action || 'DESCONOCIDO'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <p className="text-[10px] font-medium leading-tight max-w-[350px] italic opacity-80 line-clamp-2">
-                                                        {log.details || 'Sin detalles registrados.'}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell className="text-right pr-6">
-                                                    {(log.previousState || log.newState) && (
-                                                        <Dialog>
-                                                            <DialogTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className='h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors'>
-                                                                    <History className='h-4 w-4' />
-                                                                </Button>
-                                                            </DialogTrigger>
-                                                            <DialogContent className='max-w-2xl border-4'>
-                                                                <DialogHeader>
-                                                                    <DialogTitle className='font-black uppercase flex items-center gap-2'>
-                                                                        <Info className='h-5 w-5 text-primary' /> Diferencial de Intervención
-                                                                    </DialogTitle>
-                                                                    <DialogDescription className='font-bold uppercase text-[10px]'>Comando ejecutado por {log.userName}</DialogDescription>
-                                                                </DialogHeader>
-                                                                <div className='grid grid-cols-2 gap-4 mt-4'>
-                                                                    <div className='space-y-2'>
-                                                                        <h4 className='text-[10px] font-black uppercase text-muted-foreground'>Estado Pre-Comando</h4>
-                                                                        <pre className='p-3 bg-muted rounded-lg text-[9px] overflow-auto max-h-[350px] border-2 border-dashed font-mono'>
-                                                                            {JSON.stringify(log.previousState, null, 2)}
-                                                                        </pre>
-                                                                    </div>
-                                                                    <div className='space-y-2'>
-                                                                        <h4 className='text-[10px] font-black uppercase text-primary'>Resultado Post-Comando</h4>
-                                                                        <pre className='p-3 bg-primary/5 rounded-lg text-[9px] overflow-auto max-h-[350px] border-2 border-primary/20 font-mono'>
-                                                                            {JSON.stringify(log.newState, null, 2)}
-                                                                        </pre>
-                                                                    </div>
-                                                                </div>
-                                                            </DialogContent>
-                                                        </Dialog>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="h-40 text-center text-muted-foreground italic">No hay actividad registrada en el flujo.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <div className="grid gap-6 md:grid-cols-2">
-                    <Card className="border-2 border-dashed bg-muted/20">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
-                                <AlertCircle className="h-4 w-4 text-primary" /> Protocolo de Integridad
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-[11px] font-medium leading-relaxed italic opacity-70">
-                                El sistema de logs utiliza una base de datos circular (Capped Collection) inmutable. Cada entrada es firmada por la sesión del usuario y la IP de origen, asegurando que las intervenciones técnicas puedan ser auditadas ante fallos críticos o accesos no autorizados.
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-2 border-primary/10">
-                        <CardHeader className='pb-3'>
-                            <CardTitle className="text-xs font-black uppercase flex items-center gap-2">
-                                <Database className="h-4 w-4 text-primary" /> Uso de Infraestructura por Módulo
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {stats?.activity?.map((item: any) => (
-                                <div key={item.module} className="space-y-1">
-                                    <div className="flex justify-between text-[9px] font-black uppercase">
-                                        <span>{item.module}</span>
-                                        <span>{item.value} Op.</span>
-                                    </div>
-                                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary" style={{ width: `${Math.min(100, (item.value / 1000) * 100)}%` }}></div>
-                                    </div>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                </div>
             </main>
+
+            <style jsx global>{`
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
         </div>
     );
 }

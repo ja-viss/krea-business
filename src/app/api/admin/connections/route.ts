@@ -9,7 +9,8 @@ export async function GET(req: NextRequest) {
             status: entry.connection.readyState === 1 ? 'Connected' : 'Disconnected',
             uptime: Math.floor((Date.now() - entry.createdAt.getTime()) / 1000),
             models: Object.keys(entry.connection.models).length,
-            host: entry.connection.host
+            host: entry.connection.host,
+            latency: '42ms' // Mock de latencia de red hacia Atlas
         }));
 
         return NextResponse.json(metrics);
