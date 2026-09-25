@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,7 +28,8 @@ import {
     Unlock,
     ShieldCheck,
     Server,
-    Network
+    Network,
+    Pulse
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
@@ -42,40 +43,63 @@ export default function SystemMonitoringPage() {
     const { toast } = useToast();
     const [logs, setLogs] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const [loadingLogs, setLoadingLogs] = useState(true);
+    const [loadingStats, setLoadingStats] = useState(true);
     const [search, setSearch] = useState('');
+    const [lastStatsUpdate, setLastStatsUpdate] = useState<Date>(new Date());
 
-    const fetchData = async () => {
+    // FETCH LOGS: Datos pesados, frecuencia baja (30s)
+    const fetchLogs = useCallback(async (isManual = false) => {
+        if (isManual) setLoadingLogs(true);
         try {
-            setLoading(true);
-            const [logsRes, statsRes] = await Promise.all([
-                fetch('/api/audit-logs?storeId=SYSTEM_MASTER'),
-                fetch('/api/admin/system-stats')
-            ]);
-            
-            const logsData = await logsRes.json();
-            const statsData = await statsRes.json();
-            
-            setLogs(Array.isArray(logsData) ? logsData : []);
-            setStats(statsData);
+            const res = await fetch('/api/audit-logs?storeId=SYSTEM_MASTER');
+            const data = await res.json();
+            setLogs(Array.isArray(data) ? data : []);
         } catch (e) {
-            toast({ variant: 'destructive', title: "Error", description: "No se pudo cargar la telemetría." });
+            if (isManual) toast({ variant: 'destructive', title: "Error", description: "No se pudo cargar el stream de logs." });
         } finally {
-            setLoading(false);
+            setLoadingLogs(false);
         }
-    };
+    }, [toast]);
 
-    useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 15000); // Latido cada 15s para el NOC
-        return () => clearInterval(interval);
+    // FETCH STATS: Datos ligeros, frecuencia alta (5s)
+    const fetchStats = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/system-stats');
+            const data = await res.json();
+            setStats(data);
+            setLastStatsUpdate(new Date());
+        } catch (e) {
+            console.warn("Fallo latido de telemetría");
+        } finally {
+            setLoadingStats(false);
+        }
     }, []);
 
-    const filteredLogs = Array.isArray(logs) ? logs.filter(log => 
-        (log.userName || '').toLowerCase().includes(search.toLowerCase()) ||
-        (log.details || '').toLowerCase().includes(search.toLowerCase()) ||
-        (log.action || '').toLowerCase().includes(search.toLowerCase())
-    ) : [];
+    useEffect(() => {
+        // Carga inicial
+        fetchLogs(true);
+        fetchStats();
+
+        // Intervalos independientes para optimización
+        const statsInterval = setInterval(fetchStats, 5000); // Latido de hardware cada 5s
+        const logsInterval = setInterval(() => fetchLogs(false), 30000); // Eventos cada 30s
+
+        return () => {
+            clearInterval(statsInterval);
+            clearInterval(logsInterval);
+        };
+    }, [fetchLogs, fetchStats]);
+
+    // Optimización: Filtrado memorizado para evitar lag en la UI
+    const filteredLogs = useMemo(() => {
+        if (!Array.isArray(logs)) return [];
+        return logs.filter(log => 
+            (log.userName || '').toLowerCase().includes(search.toLowerCase()) ||
+            (log.details || '').toLowerCase().includes(search.toLowerCase()) ||
+            (log.action || '').toLowerCase().includes(search.toLowerCase())
+        );
+    }, [logs, search]);
 
     const getActionColor = (action: string) => {
         if (!action) return 'bg-slate-500';
@@ -101,19 +125,23 @@ export default function SystemMonitoringPage() {
                                     <span className="text-[10px] font-black uppercase tracking-widest text-green-600">Core Online</span>
                                 </div>
                                 <Separator orientation="vertical" className="h-4" />
-                                <span className="text-[10px] font-mono text-muted-foreground">{stats?.overview?.version || 'v2.8.5'}</span>
+                                <div className="flex items-center gap-2">
+                                    <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
+                                    <span className="text-[10px] font-mono text-muted-foreground">Live: {format(lastStatsUpdate, 'HH:mm:ss')}</span>
+                                </div>
                              </div>
-                             <Button variant="outline" onClick={fetchData} disabled={loading} className='h-11 border-2 bg-white hover:bg-slate-50 font-bold'>
-                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                             <Button variant="outline" onClick={() => { fetchLogs(true); fetchStats(); }} disabled={loadingLogs} className='h-11 border-2 bg-white hover:bg-slate-50 font-bold'>
+                                {loadingLogs ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
                                 Sincronizar
                             </Button>
                         </div>
                     }
                 />
 
-                {/* FILA 1: TELEMETRÍA DE HARDWARE */}
+                {/* FILA 1: TELEMETRÍA DE HARDWARE (Auto-Update cada 5s) */}
                 <div className="grid gap-4 md:grid-cols-4">
-                    <Card className="bg-white border-2 shadow-sm overflow-hidden">
+                    <Card className="bg-white border-2 shadow-sm overflow-hidden relative group">
+                        <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity" title="Latido cada 5s" />
                         <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
                             <CardTitle className="text-[9px] font-black uppercase text-blue-600 tracking-[0.2em]">Carga de CPU</CardTitle>
                             <Cpu className="h-4 w-4 text-blue-500/30" />
@@ -124,7 +152,8 @@ export default function SystemMonitoringPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-white border-2 shadow-sm">
+                    <Card className="bg-white border-2 shadow-sm relative group">
+                        <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity" />
                         <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
                             <CardTitle className="text-[9px] font-black uppercase text-purple-600 tracking-[0.2em]">Memoria RAM</CardTitle>
                             <Server className="h-4 w-4 text-purple-500/30" />
@@ -162,7 +191,7 @@ export default function SystemMonitoringPage() {
                     </Card>
                 </div>
 
-                {/* FILA 2: LIVE EVENT STREAM (CLEAN STYLE) */}
+                {/* FILA 2: LIVE EVENT STREAM */}
                 <div className="grid gap-6 lg:grid-cols-12">
                     <div className="lg:col-span-8 flex flex-col gap-4">
                         <Card className="bg-white border-2 shadow-xl rounded-2xl overflow-hidden flex flex-col flex-1">
@@ -170,6 +199,7 @@ export default function SystemMonitoringPage() {
                                 <div className='flex items-center gap-3'>
                                     <Terminal className="h-5 w-5 text-primary" />
                                     <CardTitle className="text-sm font-black uppercase italic tracking-widest text-slate-700">Stream Forense de Eventos</CardTitle>
+                                    <Badge variant="outline" className="text-[8px] font-bold opacity-40">Sync: 30s</Badge>
                                 </div>
                                 <div className="relative w-64 hidden md:block">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -193,7 +223,7 @@ export default function SystemMonitoringPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {loading ? (
+                                        {loadingLogs && logs.length === 0 ? (
                                             Array.from({ length: 8 }).map((_, i) => (
                                                 <TableRow key={i} className="border-slate-100"><TableCell colSpan={5}><div className="h-10 bg-slate-50 animate-pulse rounded m-1" /></TableCell></TableRow>
                                             ))
@@ -269,7 +299,7 @@ export default function SystemMonitoringPage() {
                         </Card>
                     </div>
 
-                    {/* COLUMNA DERECHA: ESTADO DE SEGURIDAD Y NODOS */}
+                    {/* COLUMNA DERECHA */}
                     <div className="lg:col-span-4 space-y-6">
                         <Card className="bg-white border-2 shadow-sm">
                             <CardHeader className="pb-3 border-b bg-slate-50/50">
@@ -292,13 +322,6 @@ export default function SystemMonitoringPage() {
                                     </div>
                                     <Badge className="bg-green-100 text-green-700 border-green-200 text-[8px] font-black uppercase">Secured</Badge>
                                 </div>
-                                <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 opacity-60">
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-black uppercase text-slate-700">Certificados SSL</span>
-                                        <span className="text-[8px] text-muted-foreground italic">Vencimiento: 322 días</span>
-                                    </div>
-                                    <Badge variant="outline" className="text-slate-500 border-slate-200 text-[8px] font-black uppercase">Valid</Badge>
-                                </div>
                             </CardContent>
                         </Card>
 
@@ -316,10 +339,6 @@ export default function SystemMonitoringPage() {
                                 <div className="flex justify-between text-[10px] font-black uppercase">
                                     <span className="text-muted-foreground">Nodos con Latencia:</span>
                                     <span className="text-amber-600 font-bold">0</span>
-                                </div>
-                                <div className="flex justify-between text-[10px] font-black uppercase">
-                                    <span className="text-muted-foreground">Fallos de Handshake:</span>
-                                    <span className="text-red-600 font-bold">0</span>
                                 </div>
                                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-4">
                                     <div className="h-full bg-primary" style={{ width: '100%' }}></div>
@@ -341,7 +360,7 @@ export default function SystemMonitoringPage() {
                                         <p className="text-[8px] text-red-600/70 font-mono">Source: 190.x.x.x {"->"} /api/login</p>
                                     </div>
                                     <p className="text-[9px] font-medium text-red-600/60 italic leading-tight uppercase font-bold">
-                                        El sistema aplica Rate-Limiting automático sobre IPs sospechosas. Todas las firmas de sesión se validan contra el secreto del servidor.
+                                        Rate-Limiting automático activo sobre IPs sospechosas.
                                     </p>
                                 </div>
                             </CardContent>
