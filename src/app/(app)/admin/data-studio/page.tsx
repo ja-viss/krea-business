@@ -199,6 +199,7 @@ export default function DataStudioPage() {
     };
 
     const handleSaveDocument = async () => {
+        if (!jsonEditorContent.trim()) return;
         try {
             const updatedData = JSON.parse(jsonEditorContent);
             const res = await fetch('/api/admin/db/document', {
@@ -811,4 +812,3 @@ export default function DataStudioPage() {
         </div>
     );
 }
-
