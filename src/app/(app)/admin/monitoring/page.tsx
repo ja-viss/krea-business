@@ -22,7 +22,8 @@ import {
     Lock,
     ShieldCheck,
     Server,
-    Network
+    Network,
+    Database
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
