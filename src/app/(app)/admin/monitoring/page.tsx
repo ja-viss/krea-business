@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,26 +15,19 @@ import {
     RefreshCcw, 
     Loader2, 
     User, 
-    Globe, 
     Search,
     Clock,
-    Database,
-    AlertCircle,
-    Info,
     History,
     Cpu,
-    HardDrive,
     Lock,
-    Unlock,
     ShieldCheck,
     Server,
-    Network,
-    Pulse
+    Network
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -48,9 +41,16 @@ export default function SystemMonitoringPage() {
     const [search, setSearch] = useState('');
     const [lastStatsUpdate, setLastStatsUpdate] = useState<Date>(new Date());
 
+    // Refs para evitar peticiones solapadas si el servidor tarda en responder
+    const isFetchingLogs = useRef(false);
+    const isFetchingStats = useRef(false);
+
     // FETCH LOGS: Datos pesados, frecuencia baja (30s)
     const fetchLogs = useCallback(async (isManual = false) => {
+        if (isFetchingLogs.current) return;
         if (isManual) setLoadingLogs(true);
+        isFetchingLogs.current = true;
+        
         try {
             const res = await fetch('/api/audit-logs?storeId=SYSTEM_MASTER');
             const data = await res.json();
@@ -58,20 +58,27 @@ export default function SystemMonitoringPage() {
         } catch (e) {
             if (isManual) toast({ variant: 'destructive', title: "Error", description: "No se pudo cargar el stream de logs." });
         } finally {
+            isFetchingLogs.current = false;
             setLoadingLogs(false);
         }
     }, [toast]);
 
     // FETCH STATS: Datos ligeros, frecuencia alta (5s)
     const fetchStats = useCallback(async () => {
+        if (isFetchingStats.current) return;
+        isFetchingStats.current = true;
+
         try {
             const res = await fetch('/api/admin/system-stats');
-            const data = await res.json();
-            setStats(data);
-            setLastStatsUpdate(new Date());
+            if (res.ok) {
+                const data = await res.json();
+                setStats(data);
+                setLastStatsUpdate(new Date());
+            }
         } catch (e) {
             console.warn("Fallo latido de telemetría");
         } finally {
+            isFetchingStats.current = false;
             setLoadingStats(false);
         }
     }, []);
@@ -81,23 +88,50 @@ export default function SystemMonitoringPage() {
         fetchLogs(true);
         fetchStats();
 
-        // Intervalos independientes para optimización
-        const statsInterval = setInterval(fetchStats, 5000); // Latido de hardware cada 5s
-        const logsInterval = setInterval(() => fetchLogs(false), 30000); // Eventos cada 30s
+        // Control de intervalos con sensor de visibilidad para ahorrar recursos
+        let statsInterval: NodeJS.Timeout;
+        let logsInterval: NodeJS.Timeout;
 
-        return () => {
+        const startPolling = () => {
+            statsInterval = setInterval(fetchStats, 5000); // Hardware cada 5s
+            logsInterval = setInterval(() => fetchLogs(false), 30000); // Eventos cada 30s
+        };
+
+        const stopPolling = () => {
             clearInterval(statsInterval);
             clearInterval(logsInterval);
         };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                stopPolling();
+                console.log("[NOC] Monitoreo en pausa (pestaña oculta)");
+            } else {
+                startPolling();
+                fetchStats(); // Forzar actualización al volver
+                console.log("[NOC] Monitoreo reactivado");
+            }
+        };
+
+        if (!document.hidden) startPolling();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            stopPolling();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [fetchLogs, fetchStats]);
 
-    // Optimización: Filtrado memorizado para evitar lag en la UI
+    // Optimización: Filtrado memorizado para evitar lag en la UI al actualizar stats
     const filteredLogs = useMemo(() => {
         if (!Array.isArray(logs)) return [];
+        if (!search) return logs;
+        const q = search.toLowerCase();
         return logs.filter(log => 
-            (log.userName || '').toLowerCase().includes(search.toLowerCase()) ||
-            (log.details || '').toLowerCase().includes(search.toLowerCase()) ||
-            (log.action || '').toLowerCase().includes(search.toLowerCase())
+            (log.userName || '').toLowerCase().includes(q) ||
+            (log.details || '').toLowerCase().includes(q) ||
+            (log.action || '').toLowerCase().includes(q) ||
+            (log.ipAddress || '').includes(q)
         );
     }, [logs, search]);
 
@@ -138,28 +172,28 @@ export default function SystemMonitoringPage() {
                     }
                 />
 
-                {/* FILA 1: TELEMETRÍA DE HARDWARE (Auto-Update cada 5s) */}
+                {/* FILA 1: TELEMETRÍA DE HARDWARE (Optimizado) */}
                 <div className="grid gap-4 md:grid-cols-4">
                     <Card className="bg-white border-2 shadow-sm overflow-hidden relative group">
-                        <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity" title="Latido cada 5s" />
+                        <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" title="Actualizando cada 5s" />
                         <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
                             <CardTitle className="text-[9px] font-black uppercase text-blue-600 tracking-[0.2em]">Carga de CPU</CardTitle>
                             <Cpu className="h-4 w-4 text-blue-500/30" />
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div className="text-3xl font-black">{stats?.hardware?.cpuUsage || 0}%</div>
+                            <div className="text-3xl font-black">{loadingStats ? <Loader2 className="h-6 w-6 animate-spin opacity-20" /> : `${stats?.hardware?.cpuUsage || 0}%`}</div>
                             <Progress value={stats?.hardware?.cpuUsage || 0} className="h-1.5 bg-slate-100" />
                         </CardContent>
                     </Card>
 
                     <Card className="bg-white border-2 shadow-sm relative group">
-                        <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
                         <CardHeader className="pb-2 space-y-0 flex flex-row items-center justify-between">
                             <CardTitle className="text-[9px] font-black uppercase text-purple-600 tracking-[0.2em]">Memoria RAM</CardTitle>
                             <Server className="h-4 w-4 text-purple-500/30" />
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div className="text-3xl font-black">{stats?.hardware?.ramUsage || 0}%</div>
+                            <div className="text-3xl font-black">{loadingStats ? <Loader2 className="h-6 w-6 animate-spin opacity-20" /> : `${stats?.hardware?.ramUsage || 0}%`}</div>
                             <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">De {stats?.hardware?.totalRam || 0}GB físicos del Host</p>
                             <Progress value={stats?.hardware?.ramUsage || 0} className="h-1.5 bg-slate-100" />
                         </CardContent>
@@ -191,7 +225,7 @@ export default function SystemMonitoringPage() {
                     </Card>
                 </div>
 
-                {/* FILA 2: LIVE EVENT STREAM */}
+                {/* FILA 2: LIVE EVENT STREAM (Pausado si la pestaña no es visible) */}
                 <div className="grid gap-6 lg:grid-cols-12">
                     <div className="lg:col-span-8 flex flex-col gap-4">
                         <Card className="bg-white border-2 shadow-xl rounded-2xl overflow-hidden flex flex-col flex-1">
@@ -328,7 +362,7 @@ export default function SystemMonitoringPage() {
                         <Card className="bg-white border-2 border-primary/10 shadow-lg shadow-primary/5">
                             <CardHeader className="pb-3 bg-primary/5 border-b">
                                 <CardTitle className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                    <Database className="h-3.5 w-3.5" /> Estado de Clústeres
+                                    <Database className="h-3.5 w-3.5" /> Estado de Clústeres (Live)
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-4 space-y-4">
@@ -343,7 +377,7 @@ export default function SystemMonitoringPage() {
                                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-4">
                                     <div className="h-full bg-primary" style={{ width: '100%' }}></div>
                                 </div>
-                                <p className="text-[8px] text-muted-foreground italic text-center font-bold">Health Check automático cada 5 min</p>
+                                <p className="text-[8px] text-muted-foreground italic text-center font-bold">Health Check dinámico activo</p>
                             </CardContent>
                         </Card>
 
