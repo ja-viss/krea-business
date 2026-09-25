@@ -567,14 +567,16 @@ export default function DataStudioPage() {
                                                                     >
                                                                         {isReadOnly ? 'Ver' : 'Editar'}
                                                                     </Button>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="sm" 
-                                                                        className="h-10 w-10 rounded-none text-red-400 hover:bg-red-500 hover:text-white border-l"
-                                                                        onClick={() => handleDeleteDocument(documents[idx]._id)}
-                                                                    >
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
+                                                                    {!isReadOnly && (
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="h-10 w-10 rounded-none text-red-400 hover:bg-red-500 hover:text-white border-l animate-in fade-in zoom-in-50"
+                                                                            onClick={() => handleDeleteDocument(documents[idx]._id)}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
                                                                 </div>
                                                             </TableCell>
                                                         </TableRow>
@@ -589,9 +591,11 @@ export default function DataStudioPage() {
                                                     <CardHeader className="bg-muted/5 p-3 flex flex-row justify-between items-center space-y-0">
                                                         <code className="text-[10px] font-black text-primary truncate max-w-[150px]">ID: {doc._id}</code>
                                                         <div className="flex gap-1">
-                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:bg-red-50" onClick={() => handleDeleteDocument(doc._id)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                                                            {!isReadOnly && (
+                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-400 hover:bg-red-50 animate-in zoom-in-50" onClick={() => handleDeleteDocument(doc._id)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
                                                             <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
                                                                 setEditingDoc(doc);
                                                                 setJsonEditorContent(JSON.stringify(doc, null, 2));
@@ -788,13 +792,15 @@ export default function DataStudioPage() {
                     <DialogFooter className="p-4 md:p-6 bg-slate-50 border-t flex flex-row justify-between items-center gap-2 shrink-0">
                         <Button variant="ghost" onClick={() => setEditingDoc(null)} className="font-black uppercase text-[10px] md:text-xs">Cerrar Inspector</Button>
                         <div className="flex gap-2">
-                            <Button 
-                                variant="outline" 
-                                className="font-black text-red-600 border-red-200 uppercase px-4 h-10 md:h-12 hover:bg-red-50"
-                                onClick={() => handleDeleteDocument(editingDoc._id)}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" /> Purgar Doc.
-                            </Button>
+                            {!isReadOnly && (
+                                <Button 
+                                    variant="outline" 
+                                    className="font-black text-red-600 border-red-200 uppercase px-4 h-10 md:h-12 hover:bg-red-50 animate-in slide-in-from-right-2"
+                                    onClick={() => handleDeleteDocument(editingDoc._id)}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Purgar Doc.
+                                </Button>
+                            )}
                             <Button 
                                 onClick={handleSaveDocument} 
                                 disabled={isReadOnly}
