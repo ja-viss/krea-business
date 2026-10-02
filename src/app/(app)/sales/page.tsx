@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Printer, Eye } from 'lucide-react';
+import { FileDown, PlusCircle, MoreHorizontal, AlertTriangle, Printer, Eye, Truck } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -80,9 +80,9 @@ export default function SalesPage() {
       const response = await fetch(`/api/sales/${saleToDelete._id}`, { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || 'No se pudo eliminar la venta.');
+        throw new Error(data.message || 'No se pudo anular el despacho.');
       }
-      toast({ title: 'Venta Eliminada', description: 'Stock restaurado correctamente.' });
+      toast({ title: 'Nota de Entrega Anulada', description: 'Mercancía reincorporada al stock.' });
       fetchSales();
     } catch (err: any) {
        toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -109,18 +109,18 @@ export default function SalesPage() {
     <div className="flex flex-1 flex-col">
       <main className="flex-1 space-y-6 p-4 pt-6 md:p-8">
         <PageHeader
-          title="Ventas"
-          description="Historial de facturación y movimientos POS."
+          title="Registro de Salidas"
+          description="Control de notas de entrega y despacho de mercancía."
           actions={
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <Button variant="outline" className="flex-1 sm:flex-none shadow-sm h-11" onClick={() => window.print()}>
                 <FileDown className="mr-2 h-4 w-4" />
-                <span className="sm:inline">Exportar</span>
+                <span className="sm:inline">Libro Control</span>
               </Button>
               <Button asChild className="flex-1 sm:flex-none font-black uppercase shadow-lg shadow-primary/20 h-11">
                 <Link href="/sales/new">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  <span className="whitespace-nowrap">Nueva Venta</span>
+                  <span className="whitespace-nowrap">Nuevo Despacho</span>
                 </Link>
               </Button>
             </div>
@@ -130,26 +130,21 @@ export default function SalesPage() {
         {error && (
           <Alert variant="destructive" className="border-4 shadow-xl">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle className="font-black">Error de Conectividad</AlertTitle>
-            <AlertDescription className="font-bold">
-              {error}
-              <Button variant="link" className="p-0 h-auto ml-2 text-destructive underline font-black" onClick={fetchSales}>
-                Reintentar
-              </Button>
-            </AlertDescription>
+            <AlertTitle className="font-black">Error de Conexión</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         <div className="rounded-2xl border-2 bg-card shadow-xl overflow-hidden">
-          <div className="overflow-x-auto scrollbar-hide">
+          <div className="overflow-x-auto">
             <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="pl-6 font-black text-[10px] uppercase">Nº Doc.</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase">Titular / Cliente</TableHead>
+                    <TableHead className="pl-6 font-black text-[10px] uppercase">Cod. Despacho</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Receptor / Cliente</TableHead>
                     <TableHead className="hidden md:table-cell font-black text-[10px] uppercase">Fecha</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase">Estado</TableHead>
-                    <TableHead className="text-right font-black text-[10px] uppercase">Total</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase">Estado Despacho</TableHead>
+                    <TableHead className="text-right font-black text-[10px] uppercase">Monto Ref.</TableHead>
                     <TableHead className="w-[50px] pr-6"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -168,22 +163,21 @@ export default function SalesPage() {
                 ) : sales.length > 0 ? (
                     sales.map((sale) => (
                     <TableRow key={sale._id} className="hover:bg-primary/[0.02] transition-colors group">
-                        <TableCell className="font-mono text-[11px] font-bold pl-6 text-primary"># {String(sale.invoiceNumber).padStart(6, '0')}</TableCell>
+                        <TableCell className="font-mono text-[11px] font-bold pl-6 text-primary">NE-{String(sale.invoiceNumber).padStart(6, '0')}</TableCell>
                         <TableCell className="py-4">
                           <div className="flex flex-col">
                             <span className="text-[11px] md:text-sm font-black uppercase truncate max-w-[120px] md:max-w-[250px]">
                               {sale.customerName}
                             </span>
-                            <span className="md:hidden text-[9px] font-medium text-muted-foreground">{formatDate(String(sale.createdAt))}</span>
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-xs font-medium">{formatDate(String(sale.createdAt))}</TableCell>
                         <TableCell>
                           <Badge 
-                            variant={sale.status === 'Pagado' ? 'secondary' : 'outline'} 
-                            className={cn("text-[8px] md:text-[9px] font-black uppercase", sale.status === 'Pagado' ? 'bg-green-100 text-green-800' : '')}
+                            variant="secondary" 
+                            className="text-[8px] md:text-[9px] font-black uppercase bg-green-50 text-green-700 border-green-200"
                           >
-                            {sale.status}
+                            <Truck className="h-3 w-3 mr-1"/> ENTREGADO
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-black text-xs md:text-sm whitespace-nowrap">
@@ -197,15 +191,15 @@ export default function SalesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52 border-2 shadow-2xl">
-                              <DropdownMenuItem className="font-bold text-xs uppercase cursor-pointer" onClick={() => router.push(`/sales/${sale._id}/invoice`)}>
-                                <Eye className="mr-2 h-4 w-4" /> Visualizar Ticket
+                              <DropdownMenuItem className="font-bold text-xs uppercase cursor-pointer p-3" onClick={() => router.push(`/sales/${sale._id}/invoice`)}>
+                                <Eye className="mr-2 h-4 w-4" /> Ver Comprobante
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="font-bold text-xs uppercase cursor-pointer" onClick={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
-                                <Printer className="mr-2 h-4 w-4" /> Imprimir POS
+                              <DropdownMenuItem className="font-bold text-xs uppercase cursor-pointer p-3" onClick={() => window.open(`/sales/${sale._id}/invoice`, '_blank')}>
+                                <Printer className="mr-2 h-4 w-4" /> Imprimir NE
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600 font-black text-xs uppercase cursor-pointer" onSelect={() => setSaleToDelete(sale)}>
-                                Anular Operación
+                              <DropdownMenuItem className="text-red-600 font-black text-xs uppercase cursor-pointer p-3" onSelect={() => setSaleToDelete(sale)}>
+                                Anular Despacho
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -215,7 +209,7 @@ export default function SalesPage() {
                 ) : (
                     <TableRow>
                       <TableCell colSpan={6} className="h-40 text-center text-muted-foreground italic font-medium">
-                        No se detectaron movimientos en el historial.
+                        No hay registros de despacho.
                       </TableCell>
                     </TableRow>
                 )}
@@ -227,14 +221,14 @@ export default function SalesPage() {
         <AlertDialog open={!!saleToDelete} onOpenChange={() => setSaleToDelete(null)}>
             <AlertDialogContent className="border-4 mx-4">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-xl font-black uppercase italic">¿Anular transacción?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xl font-black uppercase italic">¿Anular despacho de mercancía?</AlertDialogTitle>
                 <AlertDialogDescription className="font-bold">
-                  La factura Nº {String(saleToDelete?.invoiceNumber).padStart(8, '0')} será eliminada de forma permanente y el inventario se restaurará.
+                  La Nota de Entrega NE-{String(saleToDelete?.invoiceNumber).padStart(6, '0')} será eliminada y los productos reingresarán automáticamente al inventario.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="mt-4">
                 <AlertDialogCancel className="font-bold rounded-xl">Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 font-black uppercase shadow-lg shadow-red-200 rounded-xl h-11">
+                <AlertDialogAction onClick={handleDeleteSale} className="bg-red-600 font-black uppercase shadow-lg h-11">
                   Confirmar Anulación
                 </AlertDialogAction>
               </AlertDialogFooter>
