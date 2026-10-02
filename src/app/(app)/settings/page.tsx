@@ -7,14 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, MapPin, Calculator, Printer, DollarSign, Lock, QrCode, ShieldAlert, AlertCircle } from 'lucide-react';
+import { Loader2, Save, MapPin, Calculator, Printer, DollarSign, Lock, QrCode, ShieldAlert, AlertCircle, Store, Zap, Package, ShoppingBag, Laptop, Scissors, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const VENEZUELA_CITIES = [
     { name: 'Caracas (Centro)', lat: 10.4806, lng: -66.9036 },
@@ -33,24 +33,16 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [isGlobal, setIsGlobal] = useState(false);
   
-  const [storeData, setStoreData] = useState({
+  const [storeData, setStoreData] = useState<any>({
     name: '',
     rif: '',
-    address: '',
-    phone: '',
-    email: '',
-    seniatCondition: '',
-    footerMessage: '',
-    enforceCashControl: true,
-    ticketFontSize: 'sm' as 'sm' | 'md' | 'lg',
-    showOtherCurrenciesOnInvoice: false,
-    locationName: 'Caracas (Centro)',
-    locationCoords: { lat: 10.4806, lng: -66.9036 },
-    pagoMovil: {
-        bankCode: '0102',
-        phone: '',
-        idNumber: ''
-    }
+    businessType: 'general',
+    settings: {
+      inventory: { hasVariants: false, trackSerials: false, trackBatches: false, enableBundles: true },
+      sales: { allowLayaway: false, requireCustomerId: false, allowMixedPayments: true },
+      pos: { defaultView: 'list', ticketWidth: 58 }
+    },
+    pagoMovil: { bankCode: '0102', phone: '', idNumber: '' }
   });
 
   useEffect(() => {
@@ -68,28 +60,10 @@ export default function SettingsPage() {
         const storeRes = await fetch(`/api/settings/store?storeId=${storeId}`);
         if (storeRes.ok) {
           const data = await storeRes.json();
-          setStoreData({
-            name: data.name || '',
-            rif: data.rif || '',
-            address: data.address || '',
-            phone: data.phone || '',
-            email: data.email || '',
-            seniatCondition: data.seniatCondition || 'Contribuyente Ordinario del IVA',
-            footerMessage: data.footerMessage || 'Gracias por su compra',
-            enforceCashControl: data.enforceCashControl !== false,
-            ticketFontSize: data.ticketFontSize || 'sm',
-            showOtherCurrenciesOnInvoice: !!data.showOtherCurrenciesOnInvoice,
-            locationName: data.locationName || 'Caracas (Centro)',
-            locationCoords: data.locationCoords || { lat: 10.4806, lng: -66.9036 },
-            pagoMovil: {
-                bankCode: data.pagoMovil?.bankCode || '0102',
-                phone: data.pagoMovil?.phone || '',
-                idNumber: data.pagoMovil?.idNumber || ''
-            }
-          });
+          setStoreData(data);
         }
       } catch (error) {
-        console.error("Error fetching settings data", error);
+        console.error(error);
       } finally {
         setLoading(false);
       }
@@ -97,276 +71,242 @@ export default function SettingsPage() {
     fetchData();
   }, []);
 
+  const applyPreset = (type: 'moda' | 'jewelry' | 'tech' | 'general') => {
+      const presets = {
+          moda: {
+              businessType: 'moda',
+              settings: {
+                  inventory: { hasVariants: true, trackSerials: false, trackBatches: false, enableBundles: false },
+                  sales: { allowLayaway: true, requireCustomerId: true, allowMixedPayments: true },
+                  pos: { defaultView: 'grid', ticketWidth: 80 }
+              }
+          },
+          jewelry: {
+              businessType: 'jewelry',
+              settings: {
+                  inventory: { hasVariants: false, trackSerials: false, trackBatches: false, enableBundles: true },
+                  sales: { allowLayaway: true, requireCustomerId: false, allowMixedPayments: true },
+                  pos: { defaultView: 'grid', ticketWidth: 58 }
+              }
+          },
+          tech: {
+              businessType: 'tech',
+              settings: {
+                  inventory: { hasVariants: false, trackSerials: true, trackBatches: true, enableBundles: true },
+                  sales: { allowLayaway: false, requireCustomerId: true, allowMixedPayments: true },
+                  pos: { defaultView: 'list', ticketWidth: 80 }
+              }
+          },
+          general: {
+              businessType: 'general',
+              settings: {
+                  inventory: { hasVariants: false, trackSerials: false, trackBatches: false, enableBundles: true },
+                  sales: { allowLayaway: false, requireCustomerId: false, allowMixedPayments: true },
+                  pos: { defaultView: 'list', ticketWidth: 58 }
+              }
+          }
+      };
+
+      setStoreData({ ...storeData, ...presets[type] });
+      toast({ title: `Perfil ${type.toUpperCase()} aplicado`, description: "Revisa los interruptores habilitados." });
+  };
+
   const handleSaveStore = async () => {
     setSaving(true);
     try {
       const storeId = localStorage.getItem('storeId');
-      const userId = localStorage.getItem('userId');
-      const userName = localStorage.getItem('userName');
-
-      if (!storeId) throw new Error("Sesión no válida.");
-
       const response = await fetch('/api/settings/store', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            storeId, 
-            userId, 
-            userName, 
-            ...storeData 
-        }),
+        body: JSON.stringify({ storeId, ...storeData }),
       });
-
-      if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.message || 'No se pudo guardar la configuración.');
-      }
-
-      toast({ title: "Configuración Guardada", description: "Datos actualizados correctamente." });
+      if (!response.ok) throw new Error('Error al guardar');
+      toast({ title: "Configuración Actualizada", description: "El motor de la tienda ha sido recalibrado." });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error al Guardar", description: error.message });
+      toast({ variant: "destructive", title: "Error", description: error.message });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCityChange = (cityName: string) => {
-      const city = VENEZUELA_CITIES.find(c => c.name === cityName);
-      if (city) {
-          setStoreData({
-              ...storeData,
-              locationName: cityName,
-              locationCoords: { lat: city.lat, lng: city.lng }
-          });
-      }
-  };
-
-  if (loading) return <div className="p-4 md:p-8 space-y-6"><Skeleton className="h-10 w-1/3" /><Skeleton className="h-[400px] w-full rounded-2xl" /></div>;
+  if (loading) return <div className="p-8 space-y-4"><Skeleton className="h-10 w-1/4" /><Skeleton className="h-96 w-full" /></div>;
 
   return (
     <div className="flex flex-1 flex-col">
-      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-5xl mx-auto w-full">
+      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-6xl mx-auto w-full">
         <PageHeader 
-          title="Configuración" 
-          description={isGlobal ? "Gestión global del núcleo Krea." : "Parámetros fiscales y de recaudación de tu negocio."} 
+          title="Configuración Maestra" 
+          description="Ajusta el ADN de tu negocio y sus módulos operativos." 
         />
 
-        <Tabs defaultValue="fiscal" className="space-y-6">
-          <TabsList className="grid grid-cols-4 bg-muted/50 p-1 border-2 w-full lg:w-[600px] h-12">
-            <TabsTrigger value="fiscal" className="font-black text-[9px] uppercase">Fiscal / Operación</TabsTrigger>
-            <TabsTrigger value="payments" className="font-black text-[9px] uppercase">Cobros QR</TabsTrigger>
-            <TabsTrigger value="printing" className="font-black text-[9px] uppercase">Impresión</TabsTrigger>
-            <TabsTrigger value="security" className="font-black text-[9px] uppercase">Acceso</TabsTrigger>
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="bg-muted/50 p-1 border-2 h-auto grid grid-cols-2 md:grid-cols-5 w-full">
+            <TabsTrigger value="profile" className="font-black text-[9px] uppercase"><Store className="mr-1.5 h-3 w-3" /> Perfil Negocio</TabsTrigger>
+            <TabsTrigger value="fiscal" className="font-black text-[9px] uppercase"><Zap className="mr-1.5 h-3 w-3" /> Fiscal</TabsTrigger>
+            <TabsTrigger value="inventory" className="font-black text-[9px] uppercase"><Package className="mr-1.5 h-3 w-3" /> Inventario</TabsTrigger>
+            <TabsTrigger value="sales" className="font-black text-[9px] uppercase"><ShoppingBag className="mr-1.5 h-3 w-3" /> Ventas & POS</TabsTrigger>
+            <TabsTrigger value="payments" className="font-black text-[9px] uppercase"><QrCode className="mr-1.5 h-3 w-3" /> Pagos</TabsTrigger>
           </TabsList>
 
+          {/* TAB 1: PERFIL DE NEGOCIO (PRESETS) */}
+          <TabsContent value="profile" className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[
+                    { id: 'moda', label: 'Moda & Calzado', icon: Scissors, color: 'text-pink-600', bg: 'bg-pink-50' },
+                    { id: 'tech', label: 'Tecnología', icon: Laptop, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { id: 'jewelry', label: 'Joyería & Accesorios', icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { id: 'general', label: 'Detal Genérico', icon: Store, color: 'text-slate-600', bg: 'bg-slate-50' },
+                ].map((p) => (
+                    <button 
+                        key={p.id}
+                        onClick={() => applyPreset(p.id as any)}
+                        className={cn(
+                            "p-6 rounded-2xl border-4 transition-all flex flex-col items-center gap-3 text-center",
+                            storeData.businessType === p.id 
+                                ? `border-primary shadow-xl ${p.bg}` 
+                                : "border-transparent bg-white hover:border-muted-foreground/20"
+                        )}
+                    >
+                        <p.icon className={cn("h-10 w-10", p.color)} />
+                        <span className="font-black uppercase text-xs tracking-tighter">{p.label}</span>
+                        {storeData.businessType === p.id && <Badge className="bg-primary uppercase text-[8px]">Activo</Badge>}
+                    </button>
+                ))}
+            </div>
+
+            <Card className="border-2 border-dashed bg-muted/20">
+                <CardHeader>
+                    <CardTitle className="text-sm font-black uppercase flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-primary" /> ¿Qué hace un perfil?
+                    </CardTitle>
+                    <CardDescription className="text-xs font-medium">
+                        Al seleccionar un perfil, Krea adapta los formularios, el punto de venta y los reportes para que solo veas lo que tu industria necesita.
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 3: INVENTARIO PERSONALIZADO */}
+          <TabsContent value="inventory" className="space-y-4">
+            <Card className="border-2">
+                <CardHeader className="bg-muted/10 border-b">
+                    <CardTitle className="text-sm font-black uppercase">Control de Existencias</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-4">
+                    <div className="flex items-center justify-between p-4 rounded-xl border bg-white">
+                        <div className="space-y-0.5">
+                            <Label className="text-xs font-black uppercase">Gestión de Variantes</Label>
+                            <p className="text-[10px] text-muted-foreground italic">Permite tallas, colores y dimensiones por producto.</p>
+                        </div>
+                        <Switch 
+                            checked={storeData.settings.inventory.hasVariants}
+                            onCheckedChange={(v) => setStoreData({...storeData, settings: {...storeData.settings, inventory: {...storeData.settings.inventory, hasVariants: v}}})}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between p-4 rounded-xl border bg-white">
+                        <div className="space-y-0.5">
+                            <Label className="text-xs font-black uppercase">Rastreo de Seriales / IMEI</Label>
+                            <p className="text-[10px] text-muted-foreground italic">Ideal para electrónica y garantías.</p>
+                        </div>
+                        <Switch 
+                            checked={storeData.settings.inventory.trackSerials}
+                            onCheckedChange={(v) => setStoreData({...storeData, settings: {...storeData.settings, inventory: {...storeData.settings.inventory, trackSerials: v}}})}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between p-4 rounded-xl border bg-white">
+                        <div className="space-y-0.5">
+                            <Label className="text-xs font-black uppercase">Control de Lotes & Vencimiento</Label>
+                            <p className="text-[10px] text-muted-foreground italic">Obligatorio para alimentos y farmacia.</p>
+                        </div>
+                        <Switch 
+                            checked={storeData.settings.inventory.trackBatches}
+                            onCheckedChange={(v) => setStoreData({...storeData, settings: {...storeData.settings, inventory: {...storeData.settings.inventory, trackBatches: v}}})}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 4: VENTAS Y POS */}
+          <TabsContent value="sales" className="space-y-4">
+            <Card className="border-2">
+                <CardHeader className="bg-muted/10 border-b">
+                    <CardTitle className="text-sm font-black uppercase">Experiencia en Punto de Venta</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase opacity-60">Vista Predeterminada POS</Label>
+                            <Select 
+                                value={storeData.settings.pos.defaultView} 
+                                onValueChange={(v) => setStoreData({...storeData, settings: {...storeData.settings, pos: {...storeData.settings.pos, defaultView: v}}})}
+                            >
+                                <SelectTrigger className="font-bold"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="list" className="font-bold uppercase text-[10px]">Lista Rápida (Escáner)</SelectItem>
+                                    <SelectItem value="grid" className="font-bold uppercase text-[10px]">Cuadrícula Visual (Fotos)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase opacity-60">Ancho de Ticket</Label>
+                            <Select 
+                                value={String(storeData.settings.pos.ticketWidth)} 
+                                onValueChange={(v) => setStoreData({...storeData, settings: {...storeData.settings, pos: {...storeData.settings.pos, ticketWidth: parseInt(v)}}})}
+                            >
+                                <SelectTrigger className="font-bold"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="58" className="font-bold">58mm (Estándar)</SelectItem>
+                                    <SelectItem value="80" className="font-bold">80mm (Empresarial)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex items-center justify-between p-4 rounded-xl border bg-white">
+                        <div className="space-y-0.5">
+                            <Label className="text-xs font-black uppercase">Habilitar Apartados (Layaway)</Label>
+                            <p className="text-[10px] text-muted-foreground italic">Permite reservar productos con un abono inicial.</p>
+                        </div>
+                        <Switch 
+                            checked={storeData.settings.sales.allowLayaway}
+                            onCheckedChange={(v) => setStoreData({...storeData, settings: {...storeData.settings, sales: {...storeData.settings.sales, allowLayaway: v}}})}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* TAB FISCAL REUTILIZADA */}
           <TabsContent value="fiscal">
             <Card className="border-2 shadow-lg">
                 <CardHeader className="bg-muted/10 border-b">
-                    <CardTitle className="text-lg font-black uppercase italic">Identidad y Operación</CardTitle>
-                    <CardDescription className="font-bold">Datos legales y modo de trabajo del punto de venta.</CardDescription>
+                    <CardTitle className="text-lg font-black uppercase italic tracking-tighter">Identidad Legal</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-6">
+                <CardContent className="pt-6 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Razón Social</Label>
+                            <Label className="text-[10px] font-black uppercase opacity-60">Razón Social</Label>
                             <Input value={storeData.name} onChange={(e) => setStoreData({...storeData, name: e.target.value})} className="font-bold h-11" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground">RIF Principal</Label>
+                            <Label className="text-[10px] font-black uppercase opacity-60">RIF Principal</Label>
                             <Input placeholder="J-00000000-0" value={storeData.rif} onChange={(e) => setStoreData({...storeData, rif: e.target.value})} className="font-mono font-bold h-11" />
                         </div>
                     </div>
-
-                    <Separator />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1">
-                                <MapPin className="h-3 w-3" /> Ciudad Base (Ubicación Empresa)
-                            </Label>
-                            <Select value={storeData.locationName} onValueChange={handleCityChange}>
-                                <SelectTrigger className="font-bold h-11 border-2">
-                                    <SelectValue placeholder="Seleccionar ciudad" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {VENEZUELA_CITIES.map(city => (
-                                        <SelectItem key={city.name} value={city.name} className='font-bold uppercase text-[10px]'>{city.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Teléfono de Contacto</Label>
-                            <Input value={storeData.phone} onChange={(e) => setStoreData({...storeData, phone: e.target.value})} className="h-11 font-bold" />
-                        </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="p-4 rounded-xl border-2 border-primary/20 bg-primary/[0.02] flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-primary text-white p-2 rounded-lg">
-                                <Calculator className="h-5 w-5" />
-                            </div>
-                            <div className="space-y-0.5">
-                                <Label className="text-xs font-black uppercase">Control de Turnos (Caja Registradora)</Label>
-                                <p className="text-[10px] text-muted-foreground font-medium italic">Activa o desactiva la obligación de abrir/cerrar caja para operar.</p>
-                            </div>
-                        </div>
-                        <Switch 
-                            checked={storeData.enforceCashControl}
-                            onCheckedChange={(checked) => setStoreData({...storeData, enforceCashControl: checked})}
-                        />
-                    </div>
                 </CardContent>
-                <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
-                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-xl h-12">
-                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Actualizar Entidad
-                    </Button>
-                </CardFooter>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="payments">
-            <Card className="border-2 shadow-xl border-primary/10">
-                <CardHeader className="bg-primary/5 border-b">
-                    <CardTitle className="text-lg font-black uppercase flex items-center gap-2 text-primary italic">
-                        <QrCode className="h-5 w-5" /> Cobros QR (Estándar Suiche 7B)
-                    </CardTitle>
-                    <CardDescription className="font-bold">Configuración técnica para la red interbancaria nacional.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    <div className="p-4 bg-amber-50 border-2 border-amber-100 rounded-xl flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                        <div className="text-[11px] font-bold text-amber-800 leading-tight space-y-2">
-                            <p className="uppercase font-black">Guía del QR Perfecto:</p>
-                            <ul className="list-disc pl-4 space-y-1">
-                                <li><strong>Teléfono:</strong> 11 dígitos exactos sin guiones (ej: 04141234567).</li>
-                                <li><strong>ID/RIF:</strong> Letra + Número. Sin puntos ni guiones (ej: V12345678).</li>
-                                <li><strong>Banco:</strong> Use el código de 4 dígitos proporcionado en la lista.</li>
-                            </ul>
-                            <p className="italic opacity-70">El sistema sanitizará estos datos automáticamente antes de generar el QR.</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-primary">Banco Destino</Label>
-                            <Select 
-                                value={storeData.pagoMovil.bankCode} 
-                                onValueChange={(val) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, bankCode: val }})}
-                            >
-                                <SelectTrigger className="font-bold h-12">
-                                    <SelectValue placeholder="Elegir banco" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {VENEZUELAN_BANKS.map(bank => (
-                                        <SelectItem key={bank.code} value={bank.code} className="font-bold text-xs uppercase">
-                                            {bank.name} ({bank.code})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-primary">Teléfono Pago Móvil</Label>
-                            <Input 
-                                placeholder="04140000000" 
-                                value={storeData.pagoMovil.phone}
-                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, phone: e.target.value.replace(/[^0-9]/g, '') }})}
-                                className="font-mono font-bold h-12 border-2"
-                                maxLength={11}
-                            />
-                        </div>
-                        <div className="space-y-2 sm:col-span-2">
-                            <Label className="text-[10px] font-black uppercase text-primary">RIF o Cédula (Sin puntos ni guiones)</Label>
-                            <Input 
-                                placeholder="V12345678" 
-                                value={storeData.pagoMovil.idNumber}
-                                onChange={(e) => setStoreData({...storeData, pagoMovil: { ...storeData.pagoMovil, idNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }})}
-                                className="font-mono font-bold uppercase h-12 border-2"
-                            />
-                        </div>
-                    </div>
-                </CardContent>
-                <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
-                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase shadow-lg shadow-primary/20 h-12">
-                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Sincronizar Cobros
-                    </Button>
-                </CardFooter>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="printing">
-            <Card className="border-2 shadow-lg">
-                <CardHeader className="bg-primary/5 border-b">
-                    <CardTitle className="text-lg font-black uppercase flex items-center gap-2 text-primary italic">
-                        <Printer className="h-5 w-5" /> Formato de Ticket
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    <div className="space-y-3">
-                        <Label className="text-[10px] font-black uppercase text-primary">Tamaño de Letra POS</Label>
-                        <Select 
-                            value={storeData.ticketFontSize} 
-                            onValueChange={(val: any) => setStoreData({...storeData, ticketFontSize: val})}
-                        >
-                            <SelectTrigger className="font-bold h-12 border-2">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="sm" className="font-bold text-xs uppercase">Económico (8px)</SelectItem>
-                                <SelectItem value="md" className="font-bold text-xs uppercase">Estándar (10px)</SelectItem>
-                                <SelectItem value="lg" className="font-bold text-xs uppercase">Largo (12px)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="p-4 rounded-xl border-2 border-dashed bg-muted/20 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <DollarSign className="h-5 w-5 text-primary" />
-                            <div className="space-y-0.5">
-                                <Label className="text-xs font-black uppercase">Ref. Multimoneda en Ticket</Label>
-                            </div>
-                        </div>
-                        <Switch 
-                            checked={storeData.showOtherCurrenciesOnInvoice}
-                            onCheckedChange={(checked) => setStoreData({...storeData, showOtherCurrenciesOnInvoice: checked})}
-                        />
-                    </div>
-                </CardContent>
-                <CardFooter className="border-t px-6 py-4 flex justify-end bg-muted/5">
-                    <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase h-12">
-                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Guardar Formato
-                    </Button>
-                </CardFooter>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="security">
-            <Card className="border-2 shadow-md">
-                <CardHeader className="bg-muted/10 border-b">
-                    <CardTitle className="text-lg font-black uppercase flex items-center gap-2 italic">
-                        <Lock className="h-5 w-5" /> Seguridad
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase">Cambio de Contraseña</Label>
-                        <Input type="password" placeholder="Nueva contraseña" className="h-12" />
-                    </div>
-                </CardContent>
-                <CardFooter className="border-t py-4 justify-end">
-                    <Button variant="outline" className="w-full sm:w-auto font-black uppercase h-12">
-                        Actualizar Perfil
-                    </Button>
-                </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
+
+        <div className="pt-6 border-t flex justify-end">
+            <Button onClick={handleSaveStore} disabled={saving} className="w-full sm:w-auto font-black uppercase h-14 px-12 shadow-2xl shadow-primary/20">
+                {saving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+                Guardar Configuración Global
+            </Button>
+        </div>
       </main>
     </div>
   );

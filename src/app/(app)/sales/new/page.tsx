@@ -25,7 +25,10 @@ import {
     Lock,
     Scale,
     Coins,
-    QrCode
+    QrCode,
+    LayoutGrid,
+    List,
+    AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -52,7 +55,8 @@ const saleSchema = z.object({
     stock: z.number(),
     taxRate: z.number(),
     imageUrl: z.string().optional(),
-    isWeightable: z.boolean().optional()
+    isWeightable: z.boolean().optional(),
+    variantInfo: z.string().optional()
   })).min(1),
   paymentMethod: z.string().default('Efectivo'),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).default('USD'),
@@ -68,9 +72,12 @@ export default function NewSalePage() {
   const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
   const { rates } = useExchangeRates();
   const [storeConfig, setStoreConfig] = useState<any>(null);
-  const [cashSession, setCashSession] = useState<any>(null);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [loadingSession, setLoadingSession] = useState(true);
   
+  // Vista Dinámica
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+
   // Lógica de Peso
   const [weightProduct, setWeightProduct] = useState<IProduct | null>(null);
   const [inputWeight, setInputWeight] = useState('0');
@@ -105,34 +112,22 @@ export default function NewSalePage() {
         const storeId = localStorage.getItem('storeId');
         if (!storeId) return;
         try {
-            const [configRes, sessionRes] = await Promise.all([
+            const [configRes, productsRes] = await Promise.all([
                 fetch(`/api/settings/store?storeId=${storeId}`),
-                fetch(`/api/cash-control?storeId=${storeId}`)
+                fetch(`/api/products?storeId=${storeId}`)
             ]);
-            if (configRes.ok) setStoreConfig(await configRes.json());
-            if (sessionRes.ok) {
-                const sessionData = await sessionRes.json();
-                setCashSession(sessionData.activeSession);
+            if (configRes.ok) {
+                const config = await configRes.json();
+                setStoreConfig(config);
+                setViewMode(config.settings?.pos?.defaultView || 'list');
             }
+            if (productsRes.ok) setProducts(await productsRes.json());
         } catch (e) {} finally {
             setLoadingSession(false);
         }
     };
     fetchData();
-
-    const handleGlobalKeys = (e: KeyboardEvent) => {
-        if (e.key === 'F4') {
-            e.preventDefault();
-            handleFinalizeSale();
-        }
-    };
-    window.addEventListener('keydown', handleGlobalKeys);
-    return () => window.removeEventListener('keydown', handleGlobalKeys);
   }, []);
-
-  useEffect(() => {
-    form.setValue('changeCurrency', watchCurrency);
-  }, [watchCurrency, form]);
 
   const totals = useMemo(() => {
     let totalVES = 0;
@@ -146,12 +141,6 @@ export default function NewSalePage() {
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
     return { ves, usd, cop };
   }, [watchItems, rates]);
-
-  const targetAmount = useMemo(() => {
-      if (watchCurrency === 'VES') return totals.ves;
-      if (watchCurrency === 'COP') return totals.cop;
-      return totals.usd;
-  }, [watchCurrency, totals]);
 
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
     if (product.isWeightable) {
@@ -179,67 +168,8 @@ export default function NewSalePage() {
     }
   };
 
-  const handleAddWeightedItem = () => {
-      if (!weightProduct) return;
-      const weightVal = parseFloat(inputWeight) || 0;
-      const finalKg = weightUnit === 'GR' ? weightVal / 1000 : weightVal;
-      
-      if (finalKg <= 0) {
-          toast({ variant: 'destructive', title: "Peso inválido" });
-          return;
-      }
-
-      append({
-          productId: String(weightProduct._id),
-          name: weightProduct.name,
-          price: weightProduct.price,
-          quantity: finalKg,
-          stock: weightProduct.stock,
-          taxRate: weightProduct.taxRate,
-          imageUrl: weightProduct.imageUrl,
-          isWeightable: true
-      });
-      setWeightProduct(null);
-  };
-
-  const incrementQty = (index: number) => {
-    const current = watchItems[index].quantity;
-    const step = watchItems[index].isWeightable ? 0.1 : 1;
-    update(index, { ...fields[index], quantity: Math.round((current + step) * 1000) / 1000 });
-  };
-
-  const decrementQty = (index: number) => {
-    const current = watchItems[index].quantity;
-    const step = watchItems[index].isWeightable ? 0.1 : 1;
-    if (current > step) {
-        update(index, { ...fields[index], quantity: Math.round((current - step) * 1000) / 1000 });
-    }
-  };
-
-  const changeInfo = useMemo(() => {
-    const received = parseFloat(watchAmountReceived) || 0;
-    if (received <= targetAmount) return { amount: 0, currency: watchChangeCurrency };
-    
-    const receivedInVES = watchCurrency === 'USD' ? received * (rates.usd?.usd || 0) : 
-                         watchCurrency === 'COP' ? (received / (rates.cop?.rate || 1)) * (rates.usd?.usd || 0) : 
-                         received;
-    
-    const changeInVES = receivedInVES - totals.ves;
-    
-    let finalChange = 0;
-    if (watchChangeCurrency === 'VES') {
-        finalChange = changeInVES;
-    } else if (watchChangeCurrency === 'USD') {
-        finalChange = changeInVES / (rates.usd?.usd || 1);
-    } else if (watchChangeCurrency === 'COP') {
-        finalChange = (changeInVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 0);
-    }
-
-    return { amount: Math.max(0, finalChange), currency: watchChangeCurrency };
-  }, [watchAmountReceived, watchCurrency, watchChangeCurrency, targetAmount, totals.ves, rates]);
-
   const handleFinalizeSale = async () => {
-    if (watchItems.length === 0 || (storeConfig?.enforceCashControl && !cashSession) || isSubmitting) return;
+    if (watchItems.length === 0 || isSubmitting) return;
     setIsSubmitting(true);
     try {
         const response = await fetch('/api/sales/new', {
@@ -248,14 +178,10 @@ export default function NewSalePage() {
             body: JSON.stringify({ 
                 ...form.getValues(), 
                 amountReceived: parseFloat(watchAmountReceived) || 0,
-                change: changeInfo.amount,
                 storeId: localStorage.getItem('storeId')
             }),
         });
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || "Error en facturación");
-        }
+        if (!response.ok) throw new Error("Error en facturación");
         const result = await response.json();
         toast({ title: "Factura Generada", description: "Venta guardada en sistema." });
         router.push(`/sales/${result._id}/invoice`);
@@ -265,129 +191,89 @@ export default function NewSalePage() {
     }
   };
 
-  const isLocked = storeConfig?.enforceCashControl && !cashSession;
-
-  /**
-   * ESTRUCTURA QR BAJO ESTÁNDAR SUICHE 7B (BCV/PAGO MÓVIL)
-   * Formato: BANCO;TELEFONO;RIF;MONTO;CONCEPTO
-   */
-  const pagoMovilQR = useMemo(() => {
-    if (!storeConfig?.pagoMovil?.phone || !storeConfig?.pagoMovil?.idNumber || totals.ves <= 0) return null;
-    
-    const { bankCode, phone, idNumber } = storeConfig.pagoMovil;
-    
-    // 1. Sanitizar Identificación: Solo Letra (V,J,E,G) y Números. Sin espacios, puntos o guiones.
-    const cleanId = idNumber.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    
-    // 2. Sanitizar Teléfono: 11 dígitos puros (ej: 04121234567)
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    
-    // 3. Monto: 2 decimales con PUNTO (.) como separador financiero
-    const amount = totals.ves.toFixed(2);
-    
-    // 4. Concepto: Sin caracteres especiales para evitar rechazos en el validador bancario
-    const concept = "KreaPOS";
-    
-    // Cadena Estándar Suiche 7B
-    const qrData = `${bankCode};${cleanPhone};${cleanId};${amount};${concept}`;
-    
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
-  }, [storeConfig, totals.ves]);
+  if (loadingSession) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-primary h-12 w-12" /></div>;
 
   return (
     <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
        <main className="flex-1 p-2 md:p-4 overflow-y-auto lg:overflow-hidden flex flex-col gap-4">
             
-            {isLocked && !loadingSession && (
-                <Alert variant="destructive" className="border-4 shadow-xl animate-bounce">
-                    <Lock className="h-5 w-5" />
-                    <AlertTitle className="font-black uppercase">Ventas Bloqueadas</AlertTitle>
-                    <AlertDescription className="font-bold flex items-center justify-between">
-                        Debes abrir un turno de caja para poder facturar.
-                        <Button variant="outline" size="sm" asChild className="bg-white text-destructive font-black uppercase">
-                            <Link href="/cash-control">Abrir Caja Ahora</Link>
-                        </Button>
-                    </AlertDescription>
-                </Alert>
-            )}
-
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" asChild className="rounded-full border bg-white"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
                     <div>
-                        <h2 className="text-xl font-black uppercase tracking-tighter text-primary">Terminal de Ventas</h2>
-                        <div className="flex gap-2">
-                            <Badge variant="outline" className="text-[10px] font-black uppercase bg-green-50 text-green-600 border-green-200">
-                                <Zap className="h-2.5 w-2.5 mr-1 fill-green-600" /> POS Online
-                            </Badge>
-                        </div>
+                        <h2 className="text-xl font-black uppercase tracking-tighter text-primary">Punto de Venta</h2>
+                        <Badge variant="outline" className="text-[10px] font-black uppercase bg-muted/30">
+                            {storeConfig?.businessType?.toUpperCase()} MODE
+                        </Badge>
                     </div>
+                </div>
+                <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-full border-2 border-dashed">
+                    <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} className="h-8 rounded-full text-[9px] font-black uppercase">
+                        <List className="h-3.5 w-3.5 mr-1" /> Escáner
+                    </Button>
+                    <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('grid')} className="h-8 rounded-full text-[9px] font-black uppercase">
+                        <LayoutGrid className="h-3.5 w-3.5 mr-1" /> Catálogo
+                    </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 flex-1 lg:overflow-hidden pb-20 lg:pb-0">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 flex-1 lg:overflow-hidden">
+                {/* LADO IZQUIERDO: BÚSQUEDA Y CARRITO */}
                 <div className="lg:col-span-7 flex flex-col gap-4 lg:overflow-hidden">
-                    <Card className='rounded-2xl border-2 shadow-sm'><CardContent className="p-2 md:p-3"><ProductSearch onProductSelect={handleProductSelect} /></CardContent></Card>
-                    <Card className="rounded-2xl flex-1 lg:overflow-hidden flex flex-col border-2 shadow-sm overflow-hidden">
+                    {viewMode === 'list' ? (
+                        <Card className='rounded-2xl border-2 shadow-sm'><CardContent className="p-3"><ProductSearch onProductSelect={handleProductSelect} /></CardContent></Card>
+                    ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 overflow-y-auto max-h-[300px] lg:max-h-none p-1">
+                            {products.map(p => (
+                                <button 
+                                    key={p._id} 
+                                    onClick={() => handleProductSelect(p)}
+                                    className="bg-white border-2 rounded-xl p-2 flex flex-col items-center text-center gap-1 hover:border-primary transition-all group"
+                                >
+                                    <div className="h-16 w-16 relative overflow-hidden rounded-lg bg-muted">
+                                        {p.imageUrl ? <Image src={p.imageUrl} alt={p.name} fill className="object-cover group-hover:scale-110 transition-transform" unoptimized /> : <Package className="h-4 w-4 m-auto opacity-20" />}
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase leading-tight line-clamp-2">{p.name}</span>
+                                    <span className="text-[10px] font-black text-primary">Bs. {p.price.toLocaleString()}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <Card className="rounded-2xl flex-1 lg:overflow-hidden flex flex-col border-2 shadow-sm">
                         <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-                            <div className="overflow-x-auto overflow-y-auto flex-1">
+                            <div className="overflow-y-auto flex-1">
                                 <Table>
                                     <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                                         <TableRow>
-                                            <TableHead className="pl-4 font-black uppercase text-[10px]">Item</TableHead>
-                                            <TableHead className="text-center font-black uppercase text-[10px]">Cantidad</TableHead>
+                                            <TableHead className="pl-4 font-black uppercase text-[10px]">Producto</TableHead>
+                                            <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
                                             <TableHead className="text-right pr-4 font-black uppercase text-[10px]">Total</TableHead>
                                             <TableHead className="w-[40px]"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {fields.length > 0 ? fields.map((item, index) => (
-                                            <TableRow key={item.id} className="hover:bg-primary/[0.02]">
+                                        {fields.map((item, index) => (
+                                            <TableRow key={item.id}>
                                                 <TableCell className="pl-4 py-3">
-                                                    <div className='flex items-center gap-3'>
-                                                        <div className='h-8 w-8 rounded bg-muted relative overflow-hidden shrink-0 border hidden sm:block'>
-                                                            {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="32px" unoptimized /> : <Package className='h-4 w-4 m-auto opacity-20' />}
-                                                        </div>
-                                                        <div className='flex flex-col'>
-                                                            <span className='font-black uppercase text-[10px] md:text-[11px] leading-tight line-clamp-1'>{item.name}</span>
-                                                            <span className='text-[8px] opacity-60 font-mono'>Bs. {item.price.toLocaleString()}</span>
-                                                        </div>
+                                                    <div className='flex flex-col'>
+                                                        <span className='font-black uppercase text-[10px] leading-tight'>{item.name}</span>
+                                                        <span className='text-[8px] opacity-60'>Bs. {item.price.toLocaleString()}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className='text-center'>
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="icon" 
-                                                                className="h-6 w-6 rounded-full border-2" 
-                                                                onClick={() => decrementQty(index)}
-                                                            >
-                                                                <Minus className="h-3 w-3" />
-                                                            </Button>
-                                                            <span className="font-black text-xs md:text-sm w-12 text-center">
-                                                                {watchItems[index]?.quantity}
-                                                            </span>
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="icon" 
-                                                                className="h-6 w-6 rounded-full border-2" 
-                                                                onClick={() => incrementQty(index)}
-                                                            >
-                                                                <Plus className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                        <span className="text-[7px] font-black uppercase text-muted-foreground">
-                                                            {item.isWeightable ? 'Kilogramos' : 'Unidades'}
-                                                        </span>
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => decrementQty(index)}><Minus className="h-3 w-3"/></Button>
+                                                        <span className="font-black text-xs w-8">{item.quantity}</span>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => incrementQty(index)}><Plus className="h-3 w-3"/></Button>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right pr-4 font-black text-primary text-[11px]">
+                                                <TableCell className="text-right pr-4 font-black text-[11px]">
                                                     {(item.price * item.quantity * (1 + item.taxRate)).toLocaleString('es-VE')}
                                                 </TableCell>
                                                 <TableCell className="pr-2"><Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => remove(index)}><X className="h-4 w-4" /></Button></TableCell>
                                             </TableRow>
-                                        )) : <TableRow><TableCell colSpan={4} className='h-48 text-center opacity-20 italic text-xs uppercase font-black'>Esperando Mercancía...</TableCell></TableRow>}
+                                        ))}
                                     </TableBody>
                                 </Table>
                             </div>
@@ -395,155 +281,85 @@ export default function NewSalePage() {
                     </Card>
                 </div>
 
+                {/* LADO DERECHO: TOTALES Y COBRO */}
                 <div className="lg:col-span-5 flex flex-col gap-4">
-                    <Card className="rounded-2xl bg-primary text-primary-foreground border-none overflow-hidden shadow-xl">
-                        <CardContent className="p-3 grid grid-cols-3 divide-x divide-white/10">
-                            <div className="text-center"><span className="text-[8px] font-black uppercase opacity-60 block">USD</span><span className="text-base font-black">${totals.usd.toFixed(2)}</span></div>
-                            <div className="text-center"><span className="text-[8px] font-black uppercase opacity-60 block">VES</span><span className="text-base font-black">Bs. {totals.ves.toLocaleString()}</span></div>
-                            <div className="text-center"><span className="text-[8px] font-black uppercase opacity-60 block">COP</span><span className="text-base font-black">{totals.cop.toLocaleString()}</span></div>
-                        </CardContent>
+                    <Card className="rounded-3xl bg-primary text-primary-foreground p-6 shadow-2xl border-none">
+                        <div className="flex justify-between items-baseline mb-4">
+                            <span className="text-[10px] font-black uppercase opacity-60 tracking-widest">Total a Pagar</span>
+                            <Badge className="bg-white/20 text-white font-black text-[10px]">BS. {totals.ves.toLocaleString()}</Badge>
+                        </div>
+                        <div className="text-5xl font-black tracking-tighter">
+                            ${totals.usd.toFixed(2)}
+                        </div>
                     </Card>
 
-                    <Card className="rounded-2xl flex-1 flex flex-col border-2 shadow-sm p-4 space-y-4">
-                        {selectedCustomer ? (
-                            <div className="p-3 rounded-xl border-2 border-primary bg-primary/5 flex items-center justify-between animate-in fade-in zoom-in-95 duration-300">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                                        <UserCheck className="h-5 w-5" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[8px] font-black uppercase opacity-50 tracking-widest">Titular Seleccionado</span>
-                                        <span className="font-black text-[11px] uppercase text-primary leading-tight line-clamp-1">{selectedCustomer.name}</span>
-                                        <span className="text-[9px] font-mono font-bold opacity-60">{selectedCustomer.idNumber}</span>
-                                    </div>
-                                </div>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors" 
-                                    onClick={() => {
-                                        setSelectedCustomer(null);
-                                        form.setValue('customerId', undefined);
-                                        form.setValue('customerName', 'Cliente Contado');
-                                    }}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
+                    <Card className="rounded-3xl flex-1 flex flex-col border-2 shadow-lg p-6 space-y-4 overflow-y-auto">
+                        <CustomerSearch onCustomerSelect={(c) => { 
+                            form.setValue('customerId', c._id); 
+                            form.setValue('customerName', c.name); 
+                            setSelectedCustomer(c); 
+                        }} />
+
+                        <div className="space-y-4">
+                            <Label className="text-[10px] font-black uppercase opacity-50 tracking-widest">Método de Cobro</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {['Pago Móvil', 'Tarjeta', 'Efectivo', 'Zelle'].map(m => (
+                                    <button 
+                                        key={m} 
+                                        className={cn(
+                                            "h-14 rounded-2xl text-xs font-black uppercase border-2 transition-all",
+                                            watchMethod === m ? "bg-primary text-white border-primary shadow-lg" : "bg-muted/30 border-transparent hover:bg-muted/50"
+                                        )}
+                                        onClick={() => form.setValue('paymentMethod', m)}
+                                    >
+                                        {m}
+                                    </button>
+                                ))}
                             </div>
-                        ) : (
-                            <CustomerSearch onCustomerSelect={(c) => { 
-                                form.setValue('customerId', c._id); 
-                                form.setValue('customerName', c.name); 
-                                setSelectedCustomer(c); 
-                            }} />
-                        )}
-                        
-                        <div className="grid grid-cols-3 gap-2">
-                            {['Pago Móvil', 'Tarjeta', 'Efectivo', 'Zelle', 'Binance', 'Biopago'].map(m => (
-                                <button key={m} type="button" className={cn("h-12 rounded-xl text-[9px] font-black uppercase border-2 transition-all", watchMethod === m ? "bg-primary text-white border-primary shadow-lg" : "bg-muted/40 border-transparent hover:bg-muted/60")} onClick={() => form.setValue('paymentMethod', m)}>{m}</button>
-                            ))}
                         </div>
 
-                        {watchMethod === 'Pago Móvil' && pagoMovilQR && (
-                            <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/20 flex flex-col items-center animate-in zoom-in-95 duration-300">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <QrCode className="h-4 w-4 text-primary" />
-                                    <span className="text-[10px] font-black uppercase text-primary">QR INTERBANCARIO (BCV)</span>
-                                </div>
-                                <div className="bg-white p-2 rounded-lg shadow-inner">
-                                    <img src={pagoMovilQR} alt="QR Pago Móvil Suiche 7B" className="w-32 h-32" />
-                                </div>
-                                <p className="mt-2 text-[9px] font-bold text-muted-foreground uppercase text-center">
-                                    {storeConfig?.pagoMovil?.bankCode} • {storeConfig?.pagoMovil?.phone} • {storeConfig?.pagoMovil?.idNumber}
-                                </p>
-                            </div>
-                        )}
+                        <Separator className="my-4" />
 
-                        <div className="space-y-4 bg-muted/20 p-4 rounded-xl border-2 border-dashed">
-                             <div className="space-y-1">
-                                <Label className="text-[9px] font-black uppercase opacity-40">Moneda de Pago</Label>
-                                <div className="flex gap-2">
-                                    {['USD', 'VES', 'COP'].map(curr => (
-                                        <Button key={curr} type="button" variant={watchCurrency === curr ? 'default' : 'outline'} size="sm" className="flex-1 font-black" onClick={() => form.setValue('paymentCurrency', curr as any)}>{curr}</Button>
+                        <div className="space-y-4 bg-muted/10 p-4 rounded-3xl border-2 border-dashed">
+                             <div className="flex justify-between items-center">
+                                <Label className="text-[10px] font-black uppercase">Recibido ({watchCurrency})</Label>
+                                <div className="flex gap-1">
+                                    {['USD', 'VES', 'COP'].map(c => (
+                                        <button key={c} onClick={() => form.setValue('paymentCurrency', c as any)} className={cn("text-[9px] font-black px-2 py-0.5 rounded", watchCurrency === c ? "bg-primary text-white" : "bg-muted")}>{c}</button>
                                     ))}
                                 </div>
                              </div>
-
-                             <div className="space-y-1">
-                                <Label className="text-[9px] font-black uppercase opacity-40">Monto Recibido ({watchCurrency})</Label>
-                                <input type="number" step="0.01" className="h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-2xl font-black text-center" {...form.register('amountReceived')} onFocus={(e) => e.target.select()} />
-                             </div>
-
-                             <div className="space-y-2 pt-2 border-t border-dashed border-muted-foreground/20">
-                                <div className="flex justify-between items-center">
-                                    <Label className="text-[9px] font-black uppercase opacity-40">Devolver Vuelto en:</Label>
-                                    <div className="flex gap-1">
-                                        {['USD', 'VES', 'COP'].map(curr => (
-                                            <Button 
-                                                key={curr} 
-                                                type="button" 
-                                                variant={watchChangeCurrency === curr ? 'secondary' : 'ghost'} 
-                                                size="sm" 
-                                                className="h-6 px-2 text-[8px] font-black uppercase" 
-                                                onClick={() => form.setValue('changeCurrency', curr as any)}
-                                            >
-                                                {curr}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className={cn("p-3 rounded-xl text-center border-2 transition-all", changeInfo.amount > 0 ? "bg-green-600 text-white border-green-700 shadow-lg scale-[1.02]" : "bg-muted opacity-40")}>
-                                    <div className="flex items-center justify-center gap-2">
-                                        <Coins className={cn("h-4 w-4", changeInfo.amount > 0 ? "animate-bounce" : "")} />
-                                        <span className="text-[9px] font-black uppercase">Vuelto en {changeInfo.currency}</span>
-                                    </div>
-                                    <span className="text-xl font-black">
-                                        {changeInfo.currency === 'USD' ? '$' : changeInfo.currency === 'VES' ? 'Bs.' : ''} {changeInfo.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {changeInfo.currency === 'COP' ? 'COP' : ''}
-                                    </span>
-                                </div>
-                             </div>
+                             <Input 
+                                type="number" 
+                                className="h-16 text-3xl font-black text-center border-none bg-transparent" 
+                                placeholder="0.00"
+                                {...form.register('amountReceived')}
+                             />
                         </div>
 
-                        <Button onClick={handleFinalizeSale} disabled={isSubmitting || watchItems.length === 0 || isLocked} className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl">
-                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-5 w-5" />}
-                            FACTURAR (F4)
+                        <Button 
+                            onClick={handleFinalizeSale} 
+                            disabled={isSubmitting || watchItems.length === 0} 
+                            className="w-full h-20 text-xl font-black uppercase shadow-2xl rounded-3xl mt-auto"
+                        >
+                            {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Procesar Venta (F4)"}
                         </Button>
                     </Card>
                 </div>
             </div>
        </main>
-
-       <Dialog open={!!weightProduct} onOpenChange={() => setWeightProduct(null)}>
-           <DialogContent className='sm:max-w-[400px] border-4 border-primary'>
-                <DialogHeader className='text-center'>
-                    <div className='mx-auto w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mb-2'><Scale className='h-8 w-8 text-primary'/></div>
-                    <DialogTitle className='text-xl font-black uppercase italic'>{weightProduct?.name}</DialogTitle>
-                </DialogHeader>
-                <div className='py-6 space-y-6'>
-                    <div className='flex gap-2 p-1 bg-muted rounded-xl border'>
-                        <Button variant={weightUnit === 'GR' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('GR')}>Gramos (Gr)</Button>
-                        <Button variant={weightUnit === 'KG' ? 'default' : 'ghost'} className='flex-1 font-black uppercase text-xs' onClick={() => setWeightUnit('KG')}>Kilos (Kg)</Button>
-                    </div>
-                    <div className='space-y-2'>
-                        <Label className='text-[10px] font-black uppercase text-center block'>Cantidad a Vender</Label>
-                        <input type="number" step="0.001" value={inputWeight} onChange={e => setInputWeight(e.target.value)} className='h-20 w-full rounded-md border border-input bg-primary/5 border-2 border-primary/20 text-5xl font-black text-center' autoFocus onFocus={(e) => e.target.select()} onKeyDown={e => e.key === 'Enter' && handleAddWeightedItem()} />
-                    </div>
-                    {weightProduct && (
-                        <div className='bg-primary/5 p-4 rounded-xl border-2 border-primary/10 space-y-2'>
-                             <div className='flex justify-between text-[10px] font-black uppercase opacity-60'><span>Subtotal Estimado:</span></div>
-                             <div className='flex justify-between items-baseline'>
-                                <span className='text-2xl font-black text-primary'>Bs. {((weightProduct.price * (weightUnit === 'GR' ? parseFloat(inputWeight)/1000 : parseFloat(inputWeight))) || 0).toLocaleString()}</span>
-                                <span className='text-sm font-bold opacity-60'>REF: ${( ((weightProduct.price * (weightUnit === 'GR' ? parseFloat(inputWeight)/1000 : parseFloat(inputWeight))) || 0) / (rates.usd?.usd || 1)).toFixed(2)}</span>
-                             </div>
-                        </div>
-                    )}
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" className='font-bold' onClick={() => setWeightProduct(null)}>CANCELAR</Button>
-                    <Button className='font-black uppercase h-12 px-8' onClick={handleAddWeightedItem}>Añadir al Carrito</Button>
-                </DialogFooter>
-           </DialogContent>
-       </Dialog>
     </div>
   );
+
+  function incrementQty(index: number) {
+    const current = watchItems[index].quantity;
+    update(index, { ...fields[index], quantity: Math.round((current + (watchItems[index].isWeightable ? 0.1 : 1)) * 100) / 100 });
+  }
+
+  function decrementQty(index: number) {
+    const current = watchItems[index].quantity;
+    if (current > 0.1) {
+        update(index, { ...fields[index], quantity: Math.round((current - (watchItems[index].isWeightable ? 0.1 : 1)) * 100) / 100 });
+    }
+  }
 }

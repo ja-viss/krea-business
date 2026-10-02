@@ -16,6 +16,29 @@ export interface IStore extends Document {
   maxUsers: number;
   maxInvoicesPerMonth: number;
   storageLimitMB: number;
+  
+  // Perfil de Negocio
+  businessType: 'general' | 'moda' | 'jewelry' | 'tech';
+  
+  // Configuración Dinámica (Tenant Settings)
+  settings: {
+    inventory: {
+      hasVariants: boolean;
+      trackSerials: boolean;
+      trackBatches: boolean;
+      enableBundles: boolean;
+    };
+    sales: {
+      allowLayaway: boolean; // Apartados
+      requireCustomerId: boolean;
+      allowMixedPayments: boolean;
+    };
+    pos: {
+      defaultView: 'grid' | 'list';
+      ticketWidth: 58 | 80;
+    };
+  };
+
   // Operación
   enforceCashControl: boolean; 
   // Pago Móvil Config (Suiche 7B)
@@ -65,7 +88,27 @@ const StoreSchema: Schema = new Schema({
   maxInvoicesPerMonth: { type: Number, default: 500 },
   storageLimitMB: { type: Number, default: 500 },
   enforceCashControl: { type: Boolean, default: true },
-  // Coordenadas por defecto (Caracas, Venezuela como base)
+  
+  businessType: { type: String, enum: ['general', 'moda', 'jewelry', 'tech'], default: 'general' },
+  
+  settings: {
+    inventory: {
+      hasVariants: { type: Boolean, default: false },
+      trackSerials: { type: Boolean, default: false },
+      trackBatches: { type: Boolean, default: false },
+      enableBundles: { type: Boolean, default: true }
+    },
+    sales: {
+      allowLayaway: { type: Boolean, default: false },
+      requireCustomerId: { type: Boolean, default: false },
+      allowMixedPayments: { type: Boolean, default: true }
+    },
+    pos: {
+      defaultView: { type: String, enum: ['grid', 'list'], default: 'list' },
+      ticketWidth: { type: Number, default: 58 }
+    }
+  },
+
   locationCoords: {
     lat: { type: Number, default: 10.4806 },
     lng: { type: Number, default: -66.9036 }
