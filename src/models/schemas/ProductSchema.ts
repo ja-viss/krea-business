@@ -24,8 +24,9 @@ export const ProductSchema = new Schema({
   // Control de Vencimiento
   expiryDate: { type: Date },
 
-  stock: { type: Number, required: true, default: 0 },
-  inTransit: { type: Number, default: 0 }, // NUEVO: Stock comprometido que viene de proveedores
+  stock: { type: Number, required: true, default: 0 }, // Físico real
+  reservedStock: { type: Number, default: 0 }, // Reservas activas
+  inTransit: { type: Number, default: 0 },
   minStock: { type: Number, required: true, default: 0 },
   cost: { type: Number, required: true, default: 0 },
   price: { type: Number, required: true, min: 0 }, 

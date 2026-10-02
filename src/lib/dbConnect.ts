@@ -2,7 +2,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
-// Registro forzado de todos los modelos para evitar errores de compilación en producción/demo
+// Registro forzado de todos los modelos
 import '@/models/Store';
 import '@/models/User';
 import '@/models/Role';
@@ -19,6 +19,7 @@ import '@/models/Quotation';
 import '@/models/AccountPayable';
 import '@/models/AccountReceivable';
 import '@/models/CreditNote';
+import '@/models/Layaway';
 
 dotenv.config();
 

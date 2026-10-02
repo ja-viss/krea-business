@@ -28,7 +28,8 @@ import {
   Settings2,
   Activity,
   ScrollText,
-  Code2
+  Code2,
+  CalendarClock
 } from 'lucide-react';
 
 export type NavLink = {
@@ -131,6 +132,14 @@ export const navLinks: NavLink[] = [
     href: '/sales/new',
     label: 'Terminal POS',
     icon: ShoppingCart,
+    roles: ['Administrador Principal', 'Vendedor'],
+    category: 'Operaciones',
+    moduleKey: 'sales',
+  },
+  {
+    href: '/layaways',
+    label: 'Apartados & Créditos',
+    icon: CalendarClock,
     roles: ['Administrador Principal', 'Vendedor'],
     category: 'Operaciones',
     moduleKey: 'sales',
