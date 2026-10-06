@@ -1,8 +1,6 @@
-
 'use client';
 
 import { Logo } from '@/components/logo';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
@@ -18,6 +16,7 @@ import { LogOut, PanelLeft, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { SideNav } from '@/components/side-nav';
+import { BottomNav } from '@/components/bottom-nav';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface User {
@@ -28,32 +27,29 @@ interface User {
 }
 
 const DesktopSidebar = () => (
-  <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r bg-card shadow-sm shrink-0">
+  <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r bg-card shadow-sm shrink-0 h-screen sticky top-0 overflow-hidden">
     <div className="flex items-center h-24 px-4 border-b justify-center">
         <Logo />
     </div>
-    <div className="flex-1 overflow-y-auto pt-4">
+    <div className="flex-1 overflow-y-auto pt-4 pb-8 scrollbar-hide">
         <SideNav />
     </div>
   </aside>
 );
 
-const MobileSidebar = () => (
+const MobileDrawer = () => (
     <Sheet>
         <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden h-10 w-10 rounded-full border bg-white/50 backdrop-blur">
+            <Button variant="ghost" size="icon" className="lg:hidden h-10 w-10 rounded-full border bg-white/50 backdrop-blur active:scale-95 transition-all">
                 <PanelLeft className="h-5 w-5" />
-                <span className="sr-only">Menú</span>
             </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[280px] p-0 border-r-4 border-primary/20">
-             <VisuallyHidden>
-                <SheetTitle>Menú Principal</SheetTitle>
-            </VisuallyHidden>
+             <VisuallyHidden><SheetTitle>Menú Principal</SheetTitle></VisuallyHidden>
             <div className="flex items-center h-24 px-4 border-b justify-center bg-muted/10">
                 <Logo />
             </div>
-            <div className="h-[calc(100vh-6rem)] overflow-y-auto pb-8">
+            <div className="h-[calc(100vh-6rem)] overflow-y-auto pb-20 scrollbar-hide">
                 <SideNav />
             </div>
         </SheetContent>
@@ -64,11 +60,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
-
+    setIsMounted(true);
     const storedUserId = localStorage.getItem('userId');
     const storedName = localStorage.getItem('userName');
     const storedIsGlobal = localStorage.getItem('isGlobalAdmin') === 'true';
@@ -87,19 +82,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [router]);
 
-  if (!isClient) return null;
+  if (!isMounted) return null;
 
   return (
-    <div className="flex min-h-[100svh] w-full overflow-hidden bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
         <DesktopSidebar />
-        <div className="flex-1 flex flex-col min-w-0 bg-slate-50/50 relative">
-            <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-card px-4 lg:px-8 shadow-sm z-30">
+        
+        <div className="flex-1 flex flex-col min-w-0 bg-slate-50/50 relative overflow-hidden">
+            <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-white/80 backdrop-blur-md px-4 lg:px-8 shadow-sm z-30 sticky top-0">
                 <div className="flex items-center gap-4 lg:hidden">
-                    <MobileSidebar />
+                    <MobileDrawer />
                 </div>
                 
-                <div className="flex-1 lg:hidden">
-                    <Logo className="scale-75 origin-left" />
+                <div className="flex-1 lg:hidden flex justify-center">
+                    <Logo className="scale-75 origin-center" />
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -112,7 +108,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-primary/20 hover:border-primary transition-all">
+                            <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-primary/20 hover:border-primary transition-all active:scale-90">
                                 <Avatar className="h-8 w-8">
                                     <AvatarFallback className="bg-primary text-primary-foreground font-black text-xs">
                                         {user?.name?.charAt(0).toUpperCase() ?? 'U'}
@@ -120,7 +116,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 border-2 shadow-2xl mt-1">
+                        <DropdownMenuContent align="end" className="w-56 border-2 shadow-2xl mt-1 rounded-2xl">
                             <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50 px-3 pt-3 pb-1">Mi Cuenta</DropdownMenuLabel>
                             <div className="px-3 pb-3">
                                 <p className="text-xs font-bold truncate">{user?.name}</p>
@@ -145,9 +141,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </DropdownMenu>
                 </div>
             </header>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col scroll-smooth">
+
+            <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col pb-20 lg:pb-0 scrollbar-hide pt-safe">
                 {children}
             </main>
+
+            <BottomNav />
         </div>
     </div>
   );

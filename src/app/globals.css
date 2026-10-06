@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,17 +11,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
     
-    /* Colores extraídos del Logotipo Krea */
-    --primary: 262 83% 58%; /* Púrpura del símbolo */
+    --primary: 262 83% 58%;
     --primary-foreground: 210 40% 98%;
     
-    --secondary: 336 100% 65%; /* Rosa del símbolo */
+    --secondary: 336 100% 65%;
     --secondary-foreground: 210 40% 98%;
     
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
     
-    --accent: 214 95% 75%; /* Lila/Azul del texto KREA */
+    --accent: 214 95% 75%;
     --accent-foreground: 222 47% 11.2%;
     
     --destructive: 0 84.2% 60.2%;
@@ -41,31 +39,34 @@
   }
   body {
     @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans text-[16px] leading-relaxed;
-    min-height: 100svh;
+    /* Prevención de rebote en iOS y fijación de altura */
+    min-height: 100dvh;
+    height: 100dvh;
     overflow-x: hidden;
+  }
+  
+  /* Inputs optimizados para móvil para evitar zoom de Safari */
+  input, textarea, select {
+    font-size: 16px !important;
   }
 }
 
-/* Efectos visuales de profundidad Krea */
-.immersive-card {
-  @apply bg-white border border-border/40 shadow-[0_4px_20px_rgb(0,0,0,0.03)] transition-all duration-300;
-}
-
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* Fix para errores de scroll en móviles */
 .flex-1 {
   min-width: 0;
 }
 
-/* Estilos de Impresión Térmica POS */
+/* Soporte para Safe Areas en móviles modernos */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
 @media print {
     @page { margin: 0; size: 58mm auto; }
     body { background: white !important; font-family: 'Courier New', Courier, monospace !important; margin: 0; padding: 0; width: 58mm; }
-    header, nav, aside, button, .print\:hidden { display: none !important; }
+    header, nav, aside, button, .print\:hidden, .bottom-nav { display: none !important; }
     main { padding: 0 !important; margin: 0 !important; width: 58mm !important; }
 }
