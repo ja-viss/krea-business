@@ -1,4 +1,5 @@
 
+
 import {
   BarChart3,
   Boxes,
@@ -29,7 +30,8 @@ import {
   Activity,
   ScrollText,
   Code2,
-  CalendarClock
+  CalendarClock,
+  Bot
 } from 'lucide-react';
 
 export type NavLink = {
@@ -231,6 +233,13 @@ export const navLinks: NavLink[] = [
 
   // --- SECCION SEGURIDAD ---
   {
+    href: '/integrations/bot',
+    label: 'Integraciones & Bots',
+    icon: Bot,
+    roles: ['Administrador Principal'],
+    category: 'Configuración',
+  },
+  {
     href: '/users',
     label: 'Personal',
     icon: Users,
@@ -252,3 +261,4 @@ export const navLinks: NavLink[] = [
     category: 'Configuración',
   },
 ];
+
