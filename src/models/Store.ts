@@ -62,6 +62,13 @@ export interface IStore extends Document {
     expenses: boolean;
     reports: boolean;
   };
+  // Bot API Config
+  botApi?: {
+    enabled: boolean;
+    apiKey: string;
+    permissions: string[];
+    createdAt: Date;
+  };
   // Hybrid Security Fields
   deploymentMode: 'Online' | 'Offline';
   offlineHardwareId?: string;
@@ -125,6 +132,12 @@ const StoreSchema: Schema = new Schema({
     sales: { type: Boolean, default: true },
     expenses: { type: Boolean, default: true },
     reports: { type: Boolean, default: true },
+  },
+  botApi: {
+    enabled: { type: Boolean, default: false },
+    apiKey: { type: String },
+    permissions: [{ type: String }],
+    createdAt: { type: Date, default: Date.now }
   },
   deploymentMode: { type: String, enum: ['Online', 'Offline'], default: 'Online' },
   offlineHardwareId: { type: String },
