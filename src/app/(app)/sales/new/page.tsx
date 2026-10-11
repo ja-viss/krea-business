@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,17 +16,16 @@ import {
     Plus,
     Minus,
     Printer,
-    Search,
     Trash2,
     User,
-    AlertTriangle,
     Receipt,
     Calculator,
-    ChevronDown,
     Coins,
     Banknote,
-    TrendingUp,
-    ArrowRightLeft
+    ArrowRightLeft,
+    Camera,
+    Maximize2,
+    Zap
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -54,6 +54,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card } from '@/components/ui/card';
+import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library';
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
@@ -76,6 +77,11 @@ export default function NewSalePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
+  
+  // Estados de Cámara
+  const [isScannerActive, setIsScannerActive] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const codeReader = useRef<BrowserMultiFormatReader | null>(null);
   
   // Estados de pago integrados
   const [paymentMethod, setPaymentMethod] = useState('Efectivo');
@@ -101,6 +107,67 @@ export default function NewSalePage() {
 
   const tasaBCV = rates.usd?.usd || 52.40;
   const tasaCOPValue = rates.cop?.rate || 4200;
+
+  // --- LÓGICA DE ESCÁNER ---
+  useEffect(() => {
+    if (isScannerActive) {
+      const hints = new Map();
+      const formats = [
+        BarcodeFormat.EAN_13,
+        BarcodeFormat.EAN_8,
+        BarcodeFormat.CODE_128,
+        BarcodeFormat.UPC_A,
+        BarcodeFormat.QR_CODE
+      ];
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
+      codeReader.current = new BrowserMultiFormatReader(hints);
+
+      const startCamera = async () => {
+        try {
+          const devices = await codeReader.current?.listVideoInputDevices();
+          const deviceId = devices?.[0]?.deviceId;
+          
+          codeReader.current?.decodeFromVideoDevice(deviceId, videoRef.current!, (result, err) => {
+            if (result) {
+              handleBarcodeScanned(result.getText());
+            }
+          });
+        } catch (e) {
+          console.error(e);
+          toast({ variant: 'destructive', title: 'Error de Cámara', description: 'No se pudo activar la cámara.' });
+          setIsScannerActive(false);
+        }
+      };
+
+      startCamera();
+    } else {
+      codeReader.current?.reset();
+    }
+
+    const handleEsc = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') setIsScannerActive(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+        window.removeEventListener('keydown', handleEsc);
+        codeReader.current?.reset();
+    };
+  }, [isScannerActive]);
+
+  const handleBarcodeScanned = async (code: string) => {
+    try {
+      const storeId = localStorage.getItem('storeId');
+      const res = await fetch(`/api/products/lookup?storeId=${storeId}&code=${code}`);
+      const product = await res.json();
+      
+      if (res.ok) {
+        handleProductSelect(product);
+        toast({ title: 'Producto Detectado', description: `${product.name} añadido.` });
+      }
+    } catch (e) {
+      console.warn("Código no reconocido en BD:", code);
+    }
+  };
 
   // Cálculos de Totales
   const totals = useMemo(() => {
@@ -132,7 +199,6 @@ export default function NewSalePage() {
     };
   }, [watchItems, tasaBCV, tasaCOPValue]);
 
-  // Cálculo de Vuelto
   const changeToGive = useMemo(() => {
     const received = parseFloat(receivedAmount) || 0;
     if (received === 0) return 0;
@@ -179,12 +245,10 @@ export default function NewSalePage() {
     setIsSubmitting(true);
     try {
         const storeId = localStorage.getItem('storeId');
-        
-        // Estructura de pagos detallada
         const paymentData = [{
             method: paymentMethod,
             amount: totals.ves,
-            currency: 'VES', // Siempre guardamos el monto base en VES para reporte fiscal
+            currency: 'VES',
             reference: '',
             bank: ''
         }];
@@ -217,10 +281,8 @@ export default function NewSalePage() {
   return (
     <div className="flex h-full w-full bg-[#fcfcfc] overflow-hidden">
        
-       {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS */}
        <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden space-y-6">
             
-            {/* MONITOR DE TOTALES MULTIMONEDA SUPERIOR */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
                 <Card className="p-4 border-2 shadow-sm bg-white border-primary/40 relative overflow-hidden">
                     <p className="text-[9px] font-black uppercase tracking-widest text-primary/60 mb-2">Total Dólares (USD)</p>
@@ -259,13 +321,37 @@ export default function NewSalePage() {
                 </Card>
             </div>
 
-            {/* BUSCADOR MAESTRO */}
-            <div className="bg-white rounded-2xl shadow-md border-2 p-1.5 shrink-0 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
-                <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
+            <div className="flex gap-3 shrink-0">
+                <div className="flex-1 bg-white rounded-2xl shadow-md border-2 p-1.5 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
+                    <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
+                </div>
+                <Button 
+                    variant={isScannerActive ? "destructive" : "outline"} 
+                    className="h-14 w-14 rounded-2xl border-2 shadow-md transition-all active:scale-90"
+                    onClick={() => setIsScannerActive(!isScannerActive)}
+                >
+                    {isScannerActive ? <X className="h-6 w-6" /> : <Camera className="h-6 w-6" />}
+                </Button>
             </div>
 
-            {/* TABLA DE ARTÍCULOS */}
-            <div className="flex-1 bg-white rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col">
+            {/* SCANNER INLINE AREA */}
+            {isScannerActive && (
+                <div className="relative w-full aspect-video md:aspect-[21/9] bg-black rounded-3xl border-4 border-primary overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                    <div className="absolute inset-0 border-[60px] border-black/40 pointer-events-none flex items-center justify-center">
+                        <div className="w-full h-1 bg-primary/40 animate-pulse shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
+                    </div>
+                    <div className="absolute top-4 right-4 flex gap-2">
+                        <Badge className="bg-primary text-white font-black uppercase text-[10px] tracking-widest px-4 py-1.5 shadow-lg">Modo Escaneo Activo</Badge>
+                        <Button variant="secondary" size="icon" className="rounded-full h-8 w-8 bg-white/20 hover:bg-white/40 text-white backdrop-blur-md" onClick={() => setIsScannerActive(false)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-black text-white/50 uppercase tracking-[0.3em]">Presiona ESC para cerrar</p>
+                </div>
+            )}
+
+            <div className="flex-1 bg-white rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col min-h-0">
                 <div className="flex-1 overflow-y-auto scrollbar-hide">
                     <Table>
                         <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b">
@@ -341,11 +427,9 @@ export default function NewSalePage() {
             </div>
        </div>
 
-       {/* SECCIÓN DERECHA: PANEL DE PAGO INTEGRADO */}
        <aside className="w-full max-w-[340px] bg-white border-l-2 shadow-2xl flex flex-col shrink-0 overflow-hidden">
             <div className="p-6 space-y-6 flex-1 overflow-y-auto scrollbar-hide bg-slate-50/30">
                 
-                {/* GESTIÓN DE CLIENTE */}
                 <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                         <User className="h-3 w-3" /> Receptor del Despacho
@@ -357,7 +441,6 @@ export default function NewSalePage() {
 
                 <Separator />
 
-                {/* FORMA DE PAGO */}
                 <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                         <Calculator className="h-3 w-3" /> Forma de Pago
@@ -385,7 +468,6 @@ export default function NewSalePage() {
                     </Select>
                 </div>
 
-                {/* CALCULADORA DE CAMBIO / VUELTO */}
                 <div className="p-5 bg-white rounded-2xl border-2 border-dashed border-slate-200 space-y-4 shadow-inner">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
@@ -424,7 +506,6 @@ export default function NewSalePage() {
                     </div>
                 </div>
 
-                {/* RESUMEN FISCAL FINAL */}
                 <div className="pt-4 border-t border-slate-200">
                     <div className="space-y-1 mb-5">
                          <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
@@ -446,7 +527,6 @@ export default function NewSalePage() {
                 </div>
             </div>
 
-            {/* BOTÓN DE EMISIÓN FINAL */}
             <div className="p-6 bg-white border-t shrink-0">
                 <Button 
                     className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-lg shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95"
@@ -460,7 +540,6 @@ export default function NewSalePage() {
             </div>
        </aside>
 
-       {/* DIÁLOGO DE CONFIRMACIÓN PARA LIMPIAR */}
        <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
             <AlertDialogContent className="border-4 rounded-3xl">
                 <AlertDialogHeader>
