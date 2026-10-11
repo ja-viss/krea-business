@@ -211,24 +211,7 @@ export default function NewSalePage() {
     <div className="flex h-screen w-full bg-white overflow-hidden">
        {/* AREA IZQUIERDA: PRODUCTOS */}
        <div className="flex-1 flex flex-col p-4 md:p-6 space-y-4 overflow-hidden border-r">
-            <div className="grid grid-cols-3 gap-4 shrink-0">
-                <div className="p-3 bg-slate-50 border-2 rounded-2xl flex flex-col justify-center h-20">
-                    <span className="text-[10px] font-black uppercase text-slate-400">Total USD</span>
-                    <span className="text-2xl font-black text-slate-900">$ {totals.usd.toFixed(2)}</span>
-                </div>
-                <div className="p-3 bg-primary/5 border-2 border-primary/20 rounded-2xl flex flex-col justify-center h-20">
-                    <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase text-primary">Total VES</span>
-                        <Badge className="text-[8px] bg-primary/20 text-primary border-none">BCV: {tasaBCV}</Badge>
-                    </div>
-                    <span className="text-2xl font-black text-primary">Bs. {totals.ves.toLocaleString('es-VE')}</span>
-                </div>
-                <div className="p-3 bg-slate-50 border-2 rounded-2xl flex flex-col justify-center h-20">
-                    <span className="text-[10px] font-black uppercase text-slate-400">Total COP</span>
-                    <span className="text-2xl font-black text-slate-900">{Math.ceil(totals.cop).toLocaleString()} P.</span>
-                </div>
-            </div>
-
+            
             <div className="flex gap-2 shrink-0">
                 <div className="flex-1 bg-white rounded-2xl shadow-sm border-2 p-1 focus-within:border-primary transition-all">
                     <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
@@ -288,12 +271,12 @@ export default function NewSalePage() {
                             <CustomerSearch onCustomerSelect={(c) => { setSelectedCustomer(c); form.setValue('customerId', c._id); form.setValue('customerName', c.name); }} />
                         </div>
                     ) : (
-                        <div className="p-3 bg-primary/10 rounded-2xl flex justify-between items-center border-2 border-primary/20 animate-in zoom-in-95">
+                        <div className="p-3 bg-white rounded-2xl flex justify-between items-center border-2 animate-in zoom-in-95 shadow-sm">
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase text-primary truncate max-w-[200px]">{selectedCustomer.name}</span>
-                                <span className="text-[9px] font-bold text-primary/60">{selectedCustomer.idNumber}</span>
+                                <span className="text-[10px] font-black uppercase text-slate-800 truncate max-w-[200px]">{selectedCustomer.name}</span>
+                                <span className="text-[9px] font-bold text-slate-400">{selectedCustomer.idNumber}</span>
                             </div>
-                            <button onClick={() => { setSelectedCustomer(null); form.setValue('customerId', undefined); form.setValue('customerName', 'Consumidor Final'); }} className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-primary shadow-sm hover:bg-red-50 hover:text-red-500 transition-all"><X className="h-4 w-4" /></button>
+                            <button onClick={() => { setSelectedCustomer(null); form.setValue('customerId', undefined); form.setValue('customerName', 'Consumidor Final'); }} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"><X className="h-4 w-4" /></button>
                         </div>
                     )}
                 </div>
@@ -301,18 +284,36 @@ export default function NewSalePage() {
                 <Separator />
 
                 <div className="space-y-5">
+                    {/* TARJETA MAESTRA DE VENTA */}
                     <div className={cn("p-5 rounded-3xl border-2 transition-all shadow-xl overflow-hidden relative", remainingVES > 0.1 ? "bg-primary border-primary text-white" : "bg-emerald-600 border-emerald-700 text-white")}>
                         <div className="absolute top-0 right-0 p-2 opacity-10"><Calculator className="h-20 w-20" /></div>
-                        <p className="text-[10px] font-black uppercase opacity-60 relative z-10">Saldo Pendiente</p>
-                        <p className="text-4xl font-black tracking-tighter relative z-10">Bs. {remainingVES.toLocaleString('es-VE')}</p>
-                        {remainingVES > 0.1 && (
-                            <div className="flex gap-2 text-[10px] font-bold opacity-80 uppercase relative z-10 mt-1">
-                                <span>$ {remainingUSD.toFixed(2)}</span>
-                                <span className="opacity-30">|</span>
-                                <span>{Math.ceil(remainingCOP).toLocaleString()} COP</span>
+                        
+                        <div className="relative z-10 space-y-4">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-black uppercase opacity-60">Total de la Venta</span>
+                                    <Badge className="text-[7px] bg-white/20 text-white border-none font-black uppercase">Tasa: {tasaBCV}</Badge>
+                                </div>
+                                <p className="text-3xl font-black tracking-tighter">Bs. {totals.ves.toLocaleString('es-VE')}</p>
+                                <div className="flex gap-3 text-[10px] font-bold opacity-80 uppercase mt-1">
+                                    <span>$ {totals.usd.toFixed(2)} USD</span>
+                                    <span className="opacity-30">|</span>
+                                    <span>{Math.ceil(totals.cop).toLocaleString()} COP</span>
+                                </div>
                             </div>
-                        )}
-                        {remainingVES <= 0.1 && <div className="flex items-center gap-2 mt-1 relative z-10 text-[10px] font-black uppercase"><CheckCircle2 className="h-4 w-4" /> Pago Completado</div>}
+
+                            <Separator className="bg-white/20" />
+
+                            <div>
+                                <p className="text-[10px] font-black uppercase opacity-60">Saldo Pendiente</p>
+                                <p className="text-2xl font-black tracking-tighter">Bs. {remainingVES.toLocaleString('es-VE')}</p>
+                                {remainingVES <= 0.1 && (
+                                    <div className="flex items-center gap-2 mt-1 text-[10px] font-black uppercase">
+                                        <CheckCircle2 className="h-4 w-4" /> Pago Completado
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-4 bg-white p-5 rounded-[2rem] border-2 shadow-sm">
