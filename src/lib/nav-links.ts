@@ -1,5 +1,4 @@
 
-
 import {
   BarChart3,
   Boxes,
@@ -69,6 +68,14 @@ export const navLinks: NavLink[] = [
     href: '/admin/monitoring',
     label: 'Telemetría y Logs',
     icon: Activity,
+    roles: ['SUPER_ADMIN_MASTER'],
+    isGlobal: true,
+    category: 'Infraestructura',
+  },
+  {
+    href: '/integrations/bot',
+    label: 'Bots de Integración',
+    icon: Bot,
     roles: ['SUPER_ADMIN_MASTER'],
     isGlobal: true,
     category: 'Infraestructura',
@@ -261,4 +268,3 @@ export const navLinks: NavLink[] = [
     category: 'Configuración',
   },
 ];
-
