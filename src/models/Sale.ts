@@ -15,6 +15,11 @@ export interface IPayment {
     currency: string;
     reference?: string;
     bank?: string;
+    holderName?: string;
+    phone?: string;
+    batchNumber?: string;
+    amountReceived?: number;
+    changeGiven?: number;
 }
 
 export interface ISale extends Document {
@@ -35,16 +40,9 @@ export interface ISale extends Document {
   totalAmount: number;
   items: ISaleItem[];
   payments: IPayment[];
-  paymentMethod: string;
-  paymentReference?: string;
-  paymentCurrency?: string;
   status: 'Pagado' | 'Pendiente' | 'Atrasado' | 'Anulado';
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface ISalePopulated extends Omit<ISale, 'customer'> {
-    customer?: { idNumber: string; name: string };
 }
 
 const SaleItemSchema = new Schema({
@@ -61,6 +59,11 @@ const PaymentSchema = new Schema({
     currency: { type: String, required: true },
     reference: { type: String },
     bank: { type: String },
+    holderName: { type: String },
+    phone: { type: String },
+    batchNumber: { type: String },
+    amountReceived: { type: Number },
+    changeGiven: { type: Number },
 });
 
 const SaleSchema = new Schema({
@@ -81,14 +84,10 @@ const SaleSchema = new Schema({
   totalAmount: { type: Number, required: true },
   items: [SaleItemSchema],
   payments: [PaymentSchema],
-  paymentMethod: { type: String, required: true },
-  paymentReference: { type: String },
-  paymentCurrency: { type: String },
   status: { type: String, enum: ['Pagado', 'Pendiente', 'Atrasado', 'Anulado'], default: 'Pagado' },
 }, { timestamps: true });
 
 SaleSchema.index({ store: 1, invoiceNumber: 1 }, { unique: true });
-SaleSchema.index({ cashSession: 1 });
 
 export const SaleCounterV2Model = models.SaleCounterV2 || model('SaleCounterV2', new Schema({
     storeId: { type: String, required: true, unique: true },
