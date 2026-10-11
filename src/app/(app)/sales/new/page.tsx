@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -29,7 +28,8 @@ import {
     DollarSign,
     Calculator,
     Eraser,
-    Search
+    Search,
+    Coins
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -210,14 +210,14 @@ export default function NewSalePage() {
             </div>
             <div className="bg-white/5 border-2 border-white/10 rounded-2xl p-4 flex justify-between items-center">
                 <div>
-                    <p className="text-[10px] font-black uppercase opacity-40 tracking-[0.2em]">Bolívares (BCV)</p>
+                    <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">Bolívares (BCV)</p>
                     <p className="text-2xl font-black tracking-tighter">Bs. {totals.ves.toLocaleString('es-VE')}</p>
                 </div>
                 <Calculator className="h-8 w-8 text-white opacity-20" />
             </div>
             <div className="bg-amber-500/10 border-2 border-amber-500/20 rounded-2xl p-4 flex justify-between items-center">
                 <div>
-                    <p className="text-[10px] font-black uppercase opacity-40 tracking-[0.2em]">Pesos COP</p>
+                    <p className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em]">Pesos COP</p>
                     <p className="text-2xl font-black tracking-tighter">$ {totals.cop.toLocaleString('es-CO')}</p>
                 </div>
                 <Coins className="h-8 w-8 text-amber-500 opacity-20" />
