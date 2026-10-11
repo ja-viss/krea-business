@@ -30,7 +30,10 @@ import {
     Coins,
     Hash,
     Package,
-    TrendingUp
+    TrendingUp,
+    Navigation,
+    Calculator,
+    ShieldCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -97,7 +100,7 @@ export default function NewSalePage() {
 
   const watchItems = form.watch('items');
 
-  // HOTKEYS
+  // HOTKEYS OPERATIVOS
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F2') { e.preventDefault(); searchRef.current?.focus(); }
@@ -119,8 +122,8 @@ export default function NewSalePage() {
         totalVES += (sub * (1 + (i.taxRate || 0)));
     });
     const ves = Math.round(totalVES * 100) / 100;
-    const usd = tasaBCV ? Math.round((ves / tasaBCV) * 100) / 100 : 0;
-    const cop = tasaBCV ? Math.round((usd * tasaCOP)) : 0;
+    const usd = tasaBCV > 0 ? Math.round((ves / tasaBCV) * 100) / 100 : 0;
+    const cop = tasaBCV > 0 ? Math.round((usd * tasaCOP)) : 0;
     return { ves, usd, cop };
   }, [watchItems, tasaBCV, tasaCOP]);
 
@@ -170,114 +173,140 @@ export default function NewSalePage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
        
-       {/* HEADER TRICOMPONENTE (TEMA CLARO) */}
+       {/* HEADER TRICOMPONENTE DE ALTO CONTRASTE */}
        <header className="grid grid-cols-3 gap-0 border-b bg-white shrink-0 shadow-sm z-20">
-            <div className="flex items-center justify-between px-8 py-3 border-r bg-emerald-50/20">
+            {/* USD: MONEDA BASE */}
+            <div className="flex items-center justify-between px-8 py-4 border-r bg-emerald-50/20 group hover:bg-emerald-50 transition-colors">
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] leading-none mb-1">Total USD ($)</span>
-                    <span className="text-2xl font-black text-slate-900 tracking-tighter"><span className="text-emerald-600 mr-1">$</span>{totals.usd.toFixed(2)}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] leading-none">Total Dólares ($)</span>
+                        <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                    </div>
+                    <span className="text-3xl font-black text-slate-900 tracking-tighter"><span className="text-emerald-500 mr-1">$</span>{totals.usd.toFixed(2)}</span>
                 </div>
-                <Badge variant="outline" className="bg-white border-emerald-100 text-emerald-700 font-black text-[10px]">MONEDA BASE</Badge>
-            </div>
-            <div className="flex items-center justify-between px-8 py-3 border-r bg-amber-50/20">
-                <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase text-amber-600 tracking-[0.2em] leading-none mb-1">Bolívares (VES)</span>
-                    <span className="text-2xl font-black text-slate-900 tracking-tighter"><span className="text-amber-500 mr-1.5">Bs.</span>{totals.ves.toLocaleString('es-VE')}</span>
-                </div>
-                <div className="text-right flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-amber-600/40 uppercase tracking-widest">Tasa BCV</span>
-                    <span className="text-[11px] font-mono font-bold text-amber-600">{tasaBCV.toFixed(2)}</span>
+                <div className="text-right flex flex-col justify-center items-end">
+                    <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase px-2 py-0.5 mb-1">Dólar Base</Badge>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Cálculo Operativo</span>
                 </div>
             </div>
-            <div className="flex items-center justify-between px-8 py-3 bg-orange-50/20">
+
+            {/* VES: MONEDA FISCAL */}
+            <div className="flex items-center justify-between px-8 py-4 border-r bg-amber-50/20 group hover:bg-amber-50 transition-colors">
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase text-orange-600 tracking-[0.2em] leading-none mb-1">Pesos COP ($)</span>
-                    <span className="text-2xl font-black text-slate-900 tracking-tighter"><span className="text-orange-500 mr-1.5">$</span>{totals.cop.toLocaleString('es-CO')}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-black uppercase text-amber-600 tracking-[0.2em] leading-none">Total Bolívares (VES)</span>
+                        <Receipt className="h-2.5 w-2.5 text-amber-500/50" />
+                    </div>
+                    <span className="text-3xl font-black text-slate-900 tracking-tighter"><span className="text-amber-500 mr-1.5">Bs.</span>{totals.ves.toLocaleString('es-VE')}</span>
                 </div>
-                <div className="text-right flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-orange-600/40 uppercase tracking-widest">Tasa COP</span>
-                    <span className="text-[11px] font-mono font-bold text-orange-600">{tasaCOP.toLocaleString()}</span>
+                <div className="text-right flex flex-col justify-center items-end">
+                    <div className="flex items-center gap-1.5 bg-white border border-amber-200 px-2 py-1 rounded-lg shadow-sm">
+                        <span className="text-[8px] font-black text-amber-600/60 uppercase">Tasa BCV:</span>
+                        <span className="text-[11px] font-mono font-black text-amber-600">{tasaBCV.toFixed(2)}</span>
+                    </div>
+                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Valoración Oficial</span>
+                </div>
+            </div>
+
+            {/* COP: MONEDA FRONTERIZA */}
+            <div className="flex items-center justify-between px-8 py-4 bg-orange-50/20 group hover:bg-orange-50 transition-colors">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-black uppercase text-orange-600 tracking-[0.2em] leading-none">Total Pesos (COP)</span>
+                        <Navigation className="h-2.5 w-2.5 text-orange-500/50" />
+                    </div>
+                    <span className="text-3xl font-black text-slate-900 tracking-tighter"><span className="text-orange-500 mr-1.5">$</span>{totals.cop.toLocaleString('es-CO')}</span>
+                </div>
+                <div className="text-right flex flex-col justify-center items-end">
+                    <div className="flex items-center gap-1.5 bg-white border border-orange-200 px-2 py-1 rounded-lg shadow-sm">
+                        <span className="text-[8px] font-black text-orange-600/60 uppercase">Tasa COP:</span>
+                        <span className="text-[11px] font-mono font-black text-orange-600">{tasaCOP.toLocaleString()}</span>
+                    </div>
+                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ref. Comercial</span>
                 </div>
             </div>
        </header>
 
        <div className="flex-1 flex overflow-hidden">
             
-            {/* ÁREA PRINCIPAL: CONSOLA DE DESPACHO */}
-            <main className="flex-1 flex flex-col min-w-0 bg-white">
+            {/* ÁREA DE DESPACHO (LISTADO DE ARTÍCULOS) */}
+            <main className="flex-1 flex flex-col min-w-0 bg-white border-r relative">
                 
-                {/* BUSCADOR SUPERIOR */}
-                <div className="p-4 bg-white border-b flex gap-3 items-center sticky top-0 z-10 shadow-sm">
+                {/* BARRA DE COMANDO SUPERIOR */}
+                <div className="p-4 bg-white border-b flex gap-3 items-center sticky top-0 z-30 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                     <div className="relative flex-1 group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                            <Search className="h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+                            <Badge variant="outline" className="hidden sm:flex text-[8px] font-black border-slate-200 bg-slate-50 text-slate-400 px-1">F2</Badge>
+                        </div>
                         <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
                     </div>
-                    <Button variant="outline" size="icon" className="h-12 w-12 border-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition-all">
+                    <Button variant="outline" size="icon" className="h-12 w-12 border-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition-all active:scale-90">
                         <Camera className="h-5 w-5 text-slate-600" />
                     </Button>
                 </div>
 
-                {/* TABLA DE FACTURACIÓN TRICURRENCY */}
+                {/* TABLA DE FACTURACIÓN DE ALTA DENSIDAD */}
                 <div className="flex-1 overflow-y-auto bg-white scrollbar-hide">
                     {watchItems.length > 0 ? (
-                        <Table className="bg-white border-collapse">
-                            <TableHeader className="bg-slate-50 sticky top-0 z-10">
-                                <TableRow className="border-b">
-                                    <TableHead className="font-black uppercase text-[10px] h-12 pl-6 tracking-widest text-slate-500">Item / Imagen</TableHead>
-                                    <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-500">PVP Unit ($)</TableHead>
-                                    <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-500">Cantidad</TableHead>
-                                    <TableHead className="text-right font-black uppercase text-[10px] h-12 pr-6 tracking-widest text-slate-500">Subtotal Tricomponente</TableHead>
+                        <Table className="bg-white border-collapse table-fixed w-full">
+                            <TableHeader className="bg-slate-50/80 backdrop-blur sticky top-0 z-20">
+                                <TableRow className="border-b-2">
+                                    <TableHead className="font-black uppercase text-[10px] h-12 pl-6 tracking-widest text-slate-500 w-[45%]">Item / Descripción</TableHead>
+                                    <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-500 w-[15%]">Unitario</TableHead>
+                                    <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-500 w-[15%]">Cantidad</TableHead>
+                                    <TableHead className="text-right font-black uppercase text-[10px] h-12 pr-6 tracking-widest text-slate-500 w-[25%]">Subtotal Global</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {fields.map((item, index) => {
                                     const subVES = item.price * item.quantity * (1 + (item.taxRate || 0));
-                                    const subUSD = subVES / tasaBCV;
+                                    const subUSD = tasaBCV > 0 ? subVES / tasaBCV : 0;
                                     const subCOP = subUSD * tasaCOP;
                                     return (
-                                        <TableRow key={item.id} className="group border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                            <TableCell className="py-4 pl-6">
+                                        <TableRow key={item.id} className="group border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                            <TableCell className="py-5 pl-6">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="h-12 w-12 rounded-lg bg-slate-100 relative overflow-hidden border shrink-0">
+                                                    <div className="h-14 w-14 rounded-2xl bg-slate-100 relative overflow-hidden border-2 border-white shadow-sm shrink-0 group-hover:scale-105 transition-transform">
                                                         {item.imageUrl ? (
                                                             <Image src={item.imageUrl} alt={item.name} fill className="object-cover" unoptimized />
                                                         ) : (
-                                                            <Package className="h-6 w-6 m-auto opacity-20 absolute inset-0 m-auto" />
+                                                            <Package className="h-6 w-6 m-auto opacity-10 absolute inset-0 m-auto" />
                                                         )}
                                                     </div>
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span className="font-black uppercase text-xs text-slate-900 tracking-tight leading-tight">{item.name}</span>
+                                                    <div className="flex flex-col gap-1 min-w-0">
+                                                        <span className="font-black uppercase text-xs text-slate-900 tracking-tight leading-tight truncate">{item.name}</span>
                                                         <div className="flex items-center gap-2">
-                                                            <Badge variant="outline" className={cn("text-[8px] font-black h-4 px-1.5 border-slate-200", item.stock < 5 ? "text-red-600 bg-red-50 border-red-100" : "text-slate-400")}>STOCK: {item.stock}</Badge>
-                                                            <span className="text-[9px] font-mono text-slate-400 uppercase">Ref: {item.productId.slice(-6)}</span>
+                                                            <Badge variant="outline" className={cn("text-[8px] font-black h-4 px-1.5 border-slate-200 uppercase", item.stock < 5 ? "text-red-600 bg-red-50 border-red-200" : "text-slate-400")}>Stock: {item.stock}</Badge>
+                                                            <span className="text-[9px] font-mono text-slate-300 uppercase tracking-tighter">SKU: {item.productId.slice(-6)}</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 <div className="flex flex-col items-center">
-                                                    <span className="font-black text-sm text-emerald-600">$ {(item.price / tasaBCV).toFixed(2)}</span>
-                                                    <span className="text-[10px] font-bold text-slate-400">Bs. {item.price.toLocaleString()}</span>
+                                                    <span className="font-black text-sm text-slate-700">$ {(item.price / (tasaBCV || 1)).toFixed(2)}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Bs. {item.price.toLocaleString('es-VE')}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="p-0">
                                                 <div className="flex items-center justify-center gap-3">
-                                                    <button onClick={() => update(index, { ...fields[index], quantity: Math.max(0.1, item.quantity - (item.isWeightable ? 0.1 : 1)) })} className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"><Minus className="h-3.5 w-3.5"/></button>
-                                                    <span className="font-black text-sm w-12 text-center text-slate-900">{item.quantity}</span>
-                                                    <button onClick={() => handleProductSelect(fields[index] as any, (item.isWeightable ? 0.1 : 1))} className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3.5 w-3.5"/></button>
+                                                    <button onClick={() => update(index, { ...fields[index], quantity: Math.max(0.1, item.quantity - (item.isWeightable ? 0.1 : 1)) })} className="h-10 w-10 rounded-2xl bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-90"><Minus className="h-4 w-4"/></button>
+                                                    <span className="font-black text-base w-12 text-center text-slate-900">{item.quantity}</span>
+                                                    <button onClick={() => handleProductSelect(fields[index] as any, (item.isWeightable ? 0.1 : 1))} className="h-10 w-10 rounded-2xl bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90"><Plus className="h-4 w-4"/></button>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right pr-6 py-4">
-                                                <div className="flex items-center justify-end gap-5">
+                                            <TableCell className="text-right pr-6 py-5">
+                                                <div className="flex items-center justify-end gap-6">
                                                     <div className="flex flex-col items-end gap-0.5">
-                                                        <span className="font-black text-base text-slate-900 tracking-tighter">$ {subUSD.toFixed(2)}</span>
-                                                        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase">
-                                                            <span>Bs. {subVES.toLocaleString('es-VE')}</span>
-                                                            <span className="opacity-30">|</span>
-                                                            <span className="text-orange-600/70">{subCOP.toLocaleString('es-CO')} COP</span>
+                                                        <span className="font-black text-lg text-slate-900 tracking-tighter">$ {subUSD.toFixed(2)}</span>
+                                                        <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                            <span className="text-amber-600/80">Bs. {subVES.toLocaleString('es-VE')}</span>
+                                                            <span className="opacity-20">/</span>
+                                                            <span className="text-orange-600/70">{Math.round(subCOP).toLocaleString('es-CO')} COP</span>
                                                         </div>
                                                     </div>
-                                                    <button onClick={() => remove(index)} className="h-10 w-10 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center border-2 border-transparent"><Trash2 className="h-4 w-4" /></button>
+                                                    <button onClick={() => remove(index)} className="h-10 w-10 rounded-2xl text-slate-200 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center border-2 border-transparent active:scale-90"><Trash2 className="h-5 w-5" /></button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -286,141 +315,156 @@ export default function NewSalePage() {
                             </TableBody>
                         </Table>
                     ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4 opacity-30">
-                            <div className="p-10 bg-slate-50 rounded-[3rem] border-4 border-dashed border-slate-100">
-                                <Receipt className="h-32 w-32" />
+                        <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-6 opacity-30 animate-in fade-in zoom-in-95 duration-500">
+                            <div className="p-16 bg-slate-50 rounded-[4rem] border-4 border-dashed border-slate-100">
+                                <Receipt className="h-40 w-40" />
                             </div>
                             <div className="text-center">
-                                <p className="text-2xl font-black uppercase tracking-[0.4em]">Esperando Selección</p>
-                                <p className="text-xs font-bold uppercase mt-2 tracking-widest">Escanea un producto para facturar</p>
+                                <p className="text-3xl font-black uppercase tracking-[0.4em]">Sin Despacho</p>
+                                <p className="text-sm font-bold uppercase mt-2 tracking-widest">F2 para buscar o escanea un código</p>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* STATUS BAR */}
-                <div className="h-10 bg-slate-50 text-slate-400 flex items-center px-6 justify-between shrink-0 border-t">
-                    <div className="flex items-center gap-6 text-[9px] font-black uppercase tracking-widest">
-                        <div className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Nodo Cloud Activo</div>
-                        <div className="flex items-center gap-2 opacity-50"><TrendingUp className="h-3 w-3" /> Transacción Multimoneda...</div>
+                {/* BARRA DE ESTADO TÉCNICO */}
+                <div className="h-10 bg-slate-50 text-slate-400 flex items-center px-8 justify-between shrink-0 border-t z-30">
+                    <div className="flex items-center gap-8 text-[9px] font-black uppercase tracking-widest">
+                        <div className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Nodo Cloud Sincronizado</div>
+                        <div className="flex items-center gap-2 opacity-50"><TrendingUp className="h-3.5 w-3.5" /> Motor Multidivisa Activo</div>
+                        <div className="flex items-center gap-2 opacity-50"><Calculator className="h-3.5 w-3.5" /> Precision: 2 Dec.</div>
                     </div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-primary italic">Krea Terminal v95.0 PRO</div>
+                    <div className="text-[9px] font-black uppercase tracking-widest text-primary italic">Krea Terminal v96.0 High-Density</div>
                 </div>
             </main>
 
-            {/* SIDEBAR DERECHO (LIQUIDACIÓN) */}
-            <aside className="w-[400px] flex flex-col bg-white border-l shadow-2xl z-10">
+            {/* PANEL LATERAL DE LIQUIDACIÓN Y CLIENTE (SIDEBAR) */}
+            <aside className="w-[420px] flex flex-col bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-10 shrink-0">
                 
-                {/* SECCIÓN CLIENTE */}
-                <div className="p-6 border-b bg-slate-50/30">
-                    <div className="flex items-center justify-between mb-4">
+                {/* SECCIÓN CLIENTE: DISEÑO DE ALTA CERTEZA */}
+                <div className="p-8 border-b bg-slate-50/20">
+                    <div className="flex items-center justify-between mb-5">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
-                            <User className="h-3 w-3" /> Receptor del Despacho
+                            <User className="h-3.5 w-3.5" /> Receptor del Despacho
                         </Label>
                         {!selectedCustomer && !isSearchingCustomer && (
-                            <Badge className="bg-slate-200 text-slate-600 border-none text-[8px] font-black uppercase">Genérico</Badge>
+                            <Badge className="bg-slate-200 text-slate-600 border-none text-[8px] font-black uppercase h-5 px-2">POR DEFECTO</Badge>
                         )}
                     </div>
 
                     {!isSearchingCustomer && !selectedCustomer ? (
-                        <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-sm group hover:border-primary transition-all cursor-pointer" onClick={() => { setIsSearchingCustomer(true); setTimeout(() => customerRef.current?.focus(), 100); }}>
-                            <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary/5 group-hover:text-primary transition-colors">
-                                    <User className="h-6 w-6" />
+                        <div className="bg-white border-2 border-slate-100 rounded-3xl p-5 flex items-center justify-between shadow-sm group hover:border-primary transition-all cursor-pointer active:scale-95" onClick={() => { setIsSearchingCustomer(true); setTimeout(() => customerRef.current?.focus(), 100); }}>
+                            <div className="flex items-center gap-5">
+                                <div className="h-14 w-14 rounded-[1.2rem] bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-primary/5 group-hover:text-primary transition-colors">
+                                    <User className="h-7 w-7" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-black uppercase text-slate-700">Identificar Cliente</span>
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase">F4 para buscar cédula</span>
+                                    <span className="text-sm font-black uppercase text-slate-800 tracking-tight">Consumidor Final</span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">F4 para buscar cédula <ArrowUpRight className="h-2.5 w-2.5" /></span>
                                 </div>
                             </div>
-                            <ArrowUpRight className="h-5 w-5 text-slate-200 group-hover:text-primary transition-colors" />
                         </div>
                     ) : isSearchingCustomer ? (
-                        <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                             <CustomerSearch onCustomerSelect={(c) => { 
                                 form.setValue('customerId', c._id); 
                                 form.setValue('customerName', c.name); 
                                 setSelectedCustomer(c); 
                                 setIsSearchingCustomer(false);
                             }} inputRef={customerRef} />
-                            <Button variant="ghost" size="sm" onClick={() => setIsSearchingCustomer(false)} className="w-full h-8 text-[9px] font-black uppercase text-slate-400">
-                                <X className="h-3 w-3 mr-1"/> Cancelar
+                            <Button variant="ghost" size="sm" onClick={() => setIsSearchingCustomer(false)} className="w-full h-10 text-[10px] font-black uppercase text-slate-400 hover:text-rose-600 transition-colors">
+                                <X className="h-4 w-4 mr-2"/> Cancelar Búsqueda
                             </Button>
                         </div>
                     ) : (
-                        <div className="bg-primary/5 border-2 border-primary/10 rounded-2xl p-4 flex items-center justify-between animate-in zoom-in-95">
-                            <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20"><UserCheck className="h-6 w-6" /></div>
+                        <div className="bg-primary/5 border-2 border-primary/20 rounded-3xl p-5 flex items-center justify-between animate-in zoom-in-95 shadow-lg shadow-primary/5">
+                            <div className="flex items-center gap-5">
+                                <div className="h-14 w-14 rounded-[1.2rem] bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20"><UserCheck className="h-7 w-7" /></div>
                                 <div className="flex flex-col max-w-[200px]">
-                                    <span className="text-sm font-black uppercase text-primary truncate">{selectedCustomer?.name}</span>
-                                    <span className="text-[10px] font-bold text-primary/60 uppercase">{selectedCustomer?.idNumber}</span>
+                                    <span className="text-sm font-black uppercase text-primary truncate tracking-tight">{selectedCustomer?.name}</span>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <Badge className="bg-primary/10 text-primary border-none text-[8px] font-black h-4 px-1">{selectedCustomer?.idNumber}</Badge>
+                                        <span className="text-[8px] font-bold text-primary/40 uppercase">Cliente VIP</span>
+                                    </div>
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', 'Cliente Contado'); form.setValue('customerId', undefined); }} className="h-8 w-8 rounded-full text-primary hover:bg-primary/10">
-                                <X className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" onClick={() => { setSelectedCustomer(null); form.setValue('customerName', 'Cliente Contado'); form.setValue('customerId', undefined); }} className="h-10 w-10 rounded-full text-primary hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                                <X className="h-5 w-5" />
                             </Button>
                         </div>
                     )}
                 </div>
 
-                {/* TOTALES Y ACCIONES */}
-                <div className="p-8 flex-1 flex flex-col justify-between">
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center text-slate-400">
-                            <span className="text-[10px] font-black uppercase tracking-widest">Base Imponible</span>
-                            <span className="font-mono font-bold text-sm">Bs. {(totals.ves * 0.84).toLocaleString('es-VE')}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-slate-400">
-                            <span className="text-[10px] font-black uppercase tracking-widest">IVA (16%)</span>
-                            <span className="font-mono font-bold text-sm">Bs. {(totals.ves * 0.16).toLocaleString('es-VE')}</span>
-                        </div>
-
-                        <Separator />
-
+                {/* RESUMEN DE TOTALES Y ACCIONES FINALES */}
+                <div className="p-10 flex-1 flex flex-col justify-between overflow-y-auto">
+                    <div className="space-y-8">
                         <div className="space-y-4">
-                            <div className="bg-primary p-7 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform"><ShoppingCart className="h-24 w-24" /></div>
-                                <p className="text-[10px] font-black uppercase text-white/50 tracking-[0.3em] mb-4">Total Liquidación</p>
-                                <div className="flex justify-between items-baseline mb-2">
-                                    <span className="text-5xl font-black tracking-tighter">Bs. {totals.ves.toLocaleString('es-VE')}</span>
-                                </div>
-                                <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-4">
-                                    <div className="flex flex-col">
-                                        <span className="text-xl font-black text-white/80 tracking-tighter">$ {totals.usd.toFixed(2)}</span>
-                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Eq. Dólar Base</span>
+                            <div className="flex justify-between items-center text-slate-400 group">
+                                <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-slate-600 transition-colors">Base Imponible</span>
+                                <span className="font-mono font-black text-sm">Bs. {(totals.ves * 0.84).toLocaleString('es-VE')}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-slate-400 group">
+                                <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-slate-600 transition-colors">Carga IVA (16%)</span>
+                                <span className="font-mono font-black text-sm">Bs. {(totals.ves * 0.16).toLocaleString('es-VE')}</span>
+                            </div>
+                        </div>
+
+                        <Separator className="bg-slate-100 h-0.5" />
+
+                        {/* TARJETA DE TOTAL PREMIUM */}
+                        <div className="space-y-5">
+                            <div className="bg-primary p-9 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group transition-transform active:scale-[0.98]">
+                                <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:scale-125 transition-transform rotate-12"><ShoppingCart className="h-32 w-32" /></div>
+                                <div className="absolute -bottom-10 -left-10 opacity-[0.03] group-hover:scale-110 transition-transform"><Coins className="h-32 w-32" /></div>
+                                
+                                <div className="flex flex-col relative z-10">
+                                    <div className="flex items-center gap-2 mb-5">
+                                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                                        <p className="text-[11px] font-black uppercase text-white/60 tracking-[0.4em]">Total a Cobrar</p>
                                     </div>
-                                    <div className="text-right flex flex-col">
-                                        <span className="text-sm font-black text-orange-400 tracking-tight">{totals.cop.toLocaleString('es-CO')} COP</span>
-                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Eq. Pesos</span>
+                                    <div className="flex items-baseline mb-8">
+                                        <span className="text-xs font-black mr-3 text-white/40 uppercase">VES</span>
+                                        <span className="text-6xl font-black tracking-tighter">Bs.{totals.ves.toLocaleString('es-VE')}</span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-6 pt-8 border-t border-white/10">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Dólar ($)</span>
+                                            <span className="text-2xl font-black text-white/90 tracking-tighter">$ {totals.usd.toFixed(2)}</span>
+                                        </div>
+                                        <div className="text-right flex flex-col">
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Pesos COP</span>
+                                            <span className="text-lg font-black text-orange-400 tracking-tight">{totals.cop.toLocaleString('es-CO')}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-slate-50 border-2 border-dashed p-4 rounded-2xl flex items-start gap-3">
-                            <Info className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
-                            <p className="text-[9px] font-bold text-slate-500 leading-tight uppercase italic">
-                                Sistema de cobro blindado. Verifique el monto en pesos antes de confirmar para evitar diferencias de cambio.
+                        <div className="bg-slate-50 border-2 border-dashed border-slate-200 p-5 rounded-3xl flex items-start gap-4">
+                            <div className="p-2 bg-slate-200 rounded-xl"><Info className="h-5 w-5 text-slate-500 shrink-0" /></div>
+                            <p className="text-[10px] font-bold text-slate-500 leading-relaxed uppercase italic">
+                                Verifique los billetes antes de procesar el pago. Use F8 para liquidar con múltiples métodos si el cliente lo requiere.
                             </p>
                         </div>
                     </div>
 
-                    {/* BOTONERA FINAL */}
-                    <div className="space-y-4 pt-8">
-                        <div className="grid grid-cols-2 gap-4">
+                    {/* BOTONERA DE COMANDO FINAL */}
+                    <div className="space-y-5 pt-10">
+                        <div className="grid grid-cols-2 gap-5">
                             <Button 
                                 variant="outline" 
-                                className="h-14 font-black uppercase text-[10px] rounded-2xl border-2 border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100" 
+                                className="h-16 font-black uppercase text-[11px] rounded-[1.5rem] border-2 border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95" 
                                 onClick={() => { if(watchItems.length > 0) setIsClearDialogOpen(true); }}
                             >
                                 <Eraser className="mr-2 h-4 w-4"/> Limpiar [F9]
                             </Button>
                             <Button 
-                                className="h-14 font-black uppercase text-sm rounded-2xl shadow-xl bg-primary hover:bg-primary/90" 
+                                className="h-16 font-black uppercase text-base rounded-[1.5rem] shadow-2xl bg-primary hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-95 group" 
                                 onClick={() => setIsPaymentOpen(true)} 
                                 disabled={watchItems.length === 0}
                             >
-                                <CreditCard className="mr-2 h-5 w-5"/> COBRAR [F8]
+                                <CreditCard className="mr-3 h-6 w-6 group-hover:animate-bounce"/> COBRAR [F8]
                             </Button>
                         </div>
                     </div>
@@ -428,20 +472,25 @@ export default function NewSalePage() {
             </aside>
        </div>
 
+       {/* DIÁLOGOS DE SEGURIDAD Y PAGO */}
        <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-            <AlertDialogContent className="border-4 border-rose-500 rounded-[2rem]">
+            <AlertDialogContent className="border-[8px] border-rose-500/10 rounded-[3rem] p-10 max-w-lg">
                 <AlertDialogHeader>
-                    <div className="flex items-center gap-4 mb-2">
-                        <AlertTriangle className="h-10 w-10 text-rose-600" />
-                        <AlertDialogTitle className="text-3xl font-black uppercase italic tracking-tighter">¿Anular Operación?</AlertDialogTitle>
+                    <div className="flex flex-col items-center gap-6 mb-4">
+                        <div className="h-20 w-20 rounded-[2rem] bg-rose-100 flex items-center justify-center text-rose-600 shadow-xl shadow-rose-200 animate-in zoom-in-75 duration-300">
+                            <AlertTriangle className="h-10 w-10" />
+                        </div>
+                        <div className="text-center space-y-2">
+                            <AlertDialogTitle className="text-4xl font-black uppercase italic tracking-tighter">¿Vaciar Carrito?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-base font-bold text-slate-400 uppercase tracking-widest">
+                                Esta acción eliminará los {watchItems.length} artículos del despacho actual.
+                            </AlertDialogDescription>
+                        </div>
                     </div>
-                    <AlertDialogDescription className="font-bold text-slate-500">
-                        Esta acción vaciará el carrito actual. El stock reservado será liberado para otros clientes.
-                    </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="mt-6 gap-3">
-                    <AlertDialogCancel className="font-black uppercase text-xs">Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => { form.reset({ items: [], customerName: 'Cliente Contado' }); setSelectedCustomer(null); }} className="bg-rose-600 font-black uppercase text-xs rounded-xl shadow-xl">Confirmar Anulación</AlertDialogAction>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-4 mt-8">
+                    <AlertDialogCancel className="h-14 font-black uppercase text-xs rounded-2xl flex-1 border-2">Ignorar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { form.reset({ items: [], customerName: 'Cliente Contado' }); setSelectedCustomer(null); }} className="h-14 bg-rose-600 hover:bg-rose-700 font-black uppercase text-xs rounded-2xl flex-1 shadow-2xl">Confirmar Anulación</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
