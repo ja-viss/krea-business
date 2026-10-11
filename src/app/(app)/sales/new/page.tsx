@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'z';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -206,33 +206,35 @@ export default function NewSalePage() {
        {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS */}
        <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden space-y-4">
             
-            {/* MONITOR DE TOTALES MULTIMONEDA */}
+            {/* MONITOR DE TOTALES MULTIMONEDA - REFINADO */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
-                <Card className="p-4 border-2 shadow-sm bg-primary text-white border-primary relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-3 opacity-10"><Banknote className="h-16 w-16" /></div>
+                <Card className="p-5 border-2 shadow-md bg-white border-primary relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-5"><Banknote className="h-20 w-20 text-primary" /></div>
                     <div className="relative z-10">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Total Dólares (USD)</p>
-                        <p className="text-3xl font-black tracking-tighter">$ {totals.usd.toFixed(2)}</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 mb-1">Total Dólares (USD)</p>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-black tracking-tighter text-primary">$ {totals.usd.toFixed(2)}</span>
+                        </div>
                     </div>
                 </Card>
 
-                <Card className="p-4 border-2 shadow-sm bg-white border-amber-200 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-5"><Coins className="h-16 w-16" /></div>
+                <Card className="p-5 border-2 shadow-md bg-white border-amber-500 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-5"><Coins className="h-20 w-20 text-amber-500" /></div>
                     <div className="relative z-10">
-                        <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-start mb-1">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Total Bolívares (VES)</p>
-                            <Badge variant="outline" className="text-[8px] font-black border-amber-200 text-amber-600 bg-amber-50">BCV: {tasaBCV.toFixed(2)}</Badge>
+                            <Badge variant="outline" className="text-[9px] font-black border-amber-200 text-amber-700 bg-amber-50">TASA: {tasaBCV.toFixed(2)}</Badge>
                         </div>
                         <p className="text-3xl font-black tracking-tighter text-slate-900">Bs. {totals.ves.toLocaleString('es-VE')}</p>
                     </div>
                 </Card>
 
-                <Card className="p-4 border-2 shadow-sm bg-white border-emerald-200 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-5"><ArrowRightLeft className="h-16 w-16 text-emerald-600" /></div>
+                <Card className="p-5 border-2 shadow-md bg-white border-emerald-500 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-5"><ArrowRightLeft className="h-20 w-20 text-emerald-500" /></div>
                     <div className="relative z-10">
-                         <div className="flex justify-between items-start">
+                         <div className="flex justify-between items-start mb-1">
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Total Pesos (COP)</p>
-                            <Badge variant="outline" className="text-[8px] font-black border-emerald-200 text-emerald-600 bg-emerald-50">REF: {tasaCOPValue.toLocaleString()}</Badge>
+                            <Badge variant="outline" className="text-[9px] font-black border-emerald-200 text-emerald-700 bg-emerald-50">REF: {tasaCOPValue.toLocaleString()}</Badge>
                         </div>
                         <p className="text-3xl font-black tracking-tighter text-slate-900">$ {totals.cop.toLocaleString('es-CO')}</p>
                     </div>
@@ -240,7 +242,7 @@ export default function NewSalePage() {
             </div>
 
             {/* BUSCADOR MAESTRO */}
-            <div className="bg-white rounded-2xl shadow-xl border-2 p-2 shrink-0">
+            <div className="bg-white rounded-2xl shadow-xl border-2 p-2 shrink-0 focus-within:ring-4 focus-within:ring-primary/5 transition-all">
                 <div className="relative group">
                     <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300 group-focus-within:text-primary transition-colors" />
                     <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
@@ -312,8 +314,8 @@ export default function NewSalePage() {
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-80 text-center">
                                         <div className="flex flex-col items-center gap-2 opacity-20">
-                                            <Receipt className="h-16 w-16" />
-                                            <p className="text-sm font-black uppercase tracking-widest">Esperando artículos...</p>
+                                            <Receipt className="h-16 w-16 text-slate-400" />
+                                            <p className="text-sm font-black uppercase tracking-widest text-slate-400">Esperando artículos...</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
