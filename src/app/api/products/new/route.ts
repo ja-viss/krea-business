@@ -1,7 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
-import ProductModel from '@/models/Product';
+import StoreModel from '@/models/Store';
+import { getTenantDb } from '@/lib/tenant-manager';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 
@@ -13,7 +14,8 @@ const productSchema = z.object({
   isWeightable: z.boolean().default(false),
   barcode: z.string().optional().nullable(),
   sku: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
+  brand: z.string().optional().nullable(),
+  category: z.string().min(1, 'Selecciona una categoría.'),
   stock: z.coerce.number().min(0, 'La existencia no puede ser negativa'),
   minStock: z.coerce.number().min(0, 'El stock mínimo no puede ser negativo'),
   cost: z.coerce.number().min(0, 'El costo no puede ser negativo'),
@@ -25,7 +27,7 @@ const productSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    await dbConnect();
+    await dbConnect(); // Conexión a Master para obtener configuración del tenant
     const body = await req.json();
     const validation = productSchema.safeParse(body);
 
@@ -42,15 +44,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Identificador de tienda inválido.' }, { status: 400 });
     }
 
-    // Sanitización de strings vacíos para evitar colisiones de índices únicos null/empty
+    const store = await StoreModel.findById(storeId);
+    if (!store) return NextResponse.json({ message: 'Empresa no encontrada.' }, { status: 404 });
+
+    // --- CONECTAR AL NODO AISLADO DEL CLIENTE ---
+    const { models } = await getTenantDb(String(store._id), store.tenantDbUri || '');
+
+    // SANITIZACIÓN CRÍTICA PARA EVITAR E11000 (Duplicate Key Error on null/empty)
+    // Si el usuario no envía SKU o Barras, eliminamos las llaves para que el índice "sparse" funcione correctamente.
     const cleanData: any = { ...data };
     if (!cleanData.barcode || cleanData.barcode.trim() === '') delete cleanData.barcode;
     if (!cleanData.sku || cleanData.sku.trim() === '') delete cleanData.sku;
 
-    // Validación manual de duplicados por tienda
+    // Validación de duplicados manual en el nodo del inquilino (Opcional, los índices ya protegen)
     if (cleanData.barcode) {
-        const existingBarcode = await ProductModel.findOne({ store: storeId, barcode: cleanData.barcode });
-        if (existingBarcode) return NextResponse.json({ message: `El código de barras '${cleanData.barcode}' ya está registrado en tu inventario.` }, { status: 409 });
+        const existingBarcode = await models.Product.findOne({ barcode: cleanData.barcode });
+        if (existingBarcode) return NextResponse.json({ message: `El código de barras '${cleanData.barcode}' ya existe en tu inventario.` }, { status: 409 });
     }
 
     let status: 'En Stock' | 'Stock Bajo' | 'Sin Stock';
@@ -58,7 +67,7 @@ export async function POST(req: NextRequest) {
     else if (stock <= minStock) status = 'Stock Bajo';
     else status = 'En Stock';
 
-    const newProduct = new ProductModel({
+    const newProduct = new models.Product({
         store: new mongoose.Types.ObjectId(storeId),
         stock,
         minStock,
@@ -68,8 +77,16 @@ export async function POST(req: NextRequest) {
 
     await newProduct.save();
     return NextResponse.json(newProduct, { status: 201 });
+    
   } catch (error: any) {
     console.error('Error al crear el producto:', error);
-    return NextResponse.json({ message: 'Fallo crítico al guardar en base de datos: ' + error.message }, { status: 500 });
+    
+    // Captura específica de errores de duplicidad para dar feedback amigable
+    if (error.code === 11000) {
+        const field = Object.keys(error.keyPattern || {})[0] === 'sku' ? 'SKU' : 'Código de Barras';
+        return NextResponse.json({ message: `Conflicto de Identidad: El ${field} ya está registrado en otro producto.` }, { status: 409 });
+    }
+
+    return NextResponse.json({ message: 'Fallo crítico al guardar en el nodo de base de datos del cliente.' }, { status: 500 });
   }
 }
