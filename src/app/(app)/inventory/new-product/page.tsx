@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Loader2, Scale, Camera, ScanLine, Plus, Link2, Image as ImageIcon, Briefcase, Boxes, Coins, Save, TrendingUp, Calendar as CalendarIcon, Tag, Fingerprint } from 'lucide-react';
+import { ChevronLeft, Loader2, Scale, Camera, ScanLine, Plus, Link2, Image as ImageIcon, Briefcase, Boxes, Coins, Save, TrendingUp, Calendar as CalendarIcon, Tag, Fingerprint, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +27,22 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+const SUPERMARKET_CATEGORIES = [
+  "Alimentos Básicos (Harina, Arroz, Pasta)",
+  "Proteínas (Carnes, Pollo, Pescado)",
+  "Lácteos, Quesos y Huevos",
+  "Frutas y Verduras",
+  "Bebidas (Jugos, Sodas, Aguas)",
+  "Snacks y Confitería",
+  "Limpieza y Hogar",
+  "Cuidado Personal",
+  "Licores",
+  "Panadería y Pastelería",
+  "Mascotas",
+  "Ferretería y Hogar",
+  "Otros"
+];
+
 const productSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
   productType: z.enum(['Inventariable', 'No Inventariable', 'Servicio', 'Compuesto']),
@@ -34,23 +50,15 @@ const productSchema = z.object({
   isWeightable: z.boolean().default(false),
   barcode: z.string().optional(),
   sku: z.string().optional(),
-  serialNumber: z.string().optional(),
   brand: z.string().optional(),
-  vendor: z.string().optional(),
-  category: z.string().optional(),
+  category: z.string().min(1, 'Selecciona una categoría.'),
   stock: z.coerce.number().min(0, 'La existencia no puede ser negativa.'),
   minStock: z.coerce.number().min(0, 'El stock mínimo no puede ser negativo.'),
   cost: z.coerce.number().min(0, 'El costo no puede ser negativo.'),
   price: z.coerce.number().min(0, 'El precio no puede ser negativo.'),
   taxRate: z.coerce.number().min(0).default(0.16),
-  location: z.string().optional(),
   imageUrl: z.string().optional(),
   expiryDate: z.date().optional(),
-  variants: z.array(z.object({
-      size: z.string(),
-      color: z.string(),
-      stock: z.number()
-  })).optional()
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -65,8 +73,9 @@ export default function NewProductPage() {
   useEffect(() => { 
     const fetchConfig = async () => {
         const storeId = localStorage.getItem('storeId');
+        if (!storeId) return;
         const res = await fetch(`/api/settings/store?storeId=${storeId}`);
-        if (res.ok) setStoreConfig(await res.ok ? await res.json() : null);
+        if (res.ok) setStoreConfig(await res.json());
     };
     fetchConfig();
   }, []);
@@ -79,11 +88,12 @@ export default function NewProductPage() {
       baseUnit: 'Unidad',
       isWeightable: false,
       barcode: '',
+      category: '',
       stock: 0,
       minStock: 0,
       cost: 0,
       price: 0,
-      taxRate: 0.16,
+      taxRate: 0,
     },
   });
 
@@ -105,19 +115,27 @@ export default function NewProductPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...data, storeId }),
         });
-        if (!response.ok) throw new Error('Error al procesar el alta');
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Error al procesar el alta');
+        }
+
         toast({ title: 'Registro Exitoso', description: `"${data.name}" añadido al catálogo.` });
         router.push('/inventory');
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Fallo de Guardado', description: error.message });
+        toast({ 
+            variant: 'destructive', 
+            title: 'Fallo de Guardado', 
+            description: error.message 
+        });
     } finally {
         setIsSubmitting(false);
     }
   };
 
   if (!storeConfig) return <div className="p-8"><Skeleton className="h-96 w-full rounded-3xl" /></div>;
-
-  const { inventory: invConfig } = storeConfig.settings;
 
   return (
     <div className="flex flex-1 flex-col bg-[#f8fafc]">
@@ -149,52 +167,40 @@ export default function NewProductPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <FormField control={form.control} name="name" render={({ field }) => (
                           <FormItem className='md:col-span-2'>
-                            <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Nombre Comercial</FormLabel>
+                            <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Nombre Comercial / Descripción</FormLabel>
                             <FormControl><Input placeholder="Ej: Harina de Maíz Precocida" className="h-11 text-base font-bold rounded-xl border-slate-200" {...field} value={field.value ?? ''} /></FormControl>
                           </FormItem>
                         )} />
                         
-                        {invConfig.trackSerials && (
-                            <FormField control={form.control} name="serialNumber" render={({ field }) => (
-                                <FormItem className="animate-in zoom-in-95 duration-300">
-                                    <FormLabel className='text-[10px] font-black uppercase text-blue-600 flex items-center gap-1'><Fingerprint className="h-3 w-3" /> Nº de Serie / IMEI</FormLabel>
-                                    <FormControl><Input placeholder="Único por unidad" className="h-11 font-mono border-blue-100 bg-blue-50/10" {...field} value={field.value ?? ''} /></FormControl>
-                                </FormItem>
-                            )} />
-                        )}
-
                         <FormField control={form.control} name="category" render={({ field }) => (
-                            <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-500'>Categoría</FormLabel>
-                            <FormControl><Input placeholder="Ej: Alimentos" className="h-11 font-bold rounded-xl border-slate-200" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormItem>
+                                <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Categoría (Pasillo)</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 font-bold rounded-xl border-slate-200">
+                                            <SelectValue placeholder="Seleccionar rubro..." />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                        {SUPERMARKET_CATEGORIES.map(cat => (
+                                            <SelectItem key={cat} value={cat} className="font-bold py-2 uppercase text-[10px]">{cat}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="productType" render={({ field }) => (
+                            <FormItem><FormLabel className='text-[10px] font-black uppercase text-slate-500'>Tipo de Ítem</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl><SelectTrigger className='h-11 font-bold rounded-xl border-slate-200'><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent className='rounded-xl'><SelectItem value="Inventariable" className="font-bold">INVENTARIABLE</SelectItem><SelectItem value="No Inventariable" className="font-bold">NO INVENTARIABLE</SelectItem><SelectItem value="Servicio" className="font-bold">SERVICIO</SelectItem></SelectContent></Select>
                             </FormItem>
                         )} />
                       </div>
                   </CardContent>
                 </Card>
-
-                {invConfig.hasVariants && (
-                    <Card className='border-4 border-dashed border-primary/20 bg-primary/[0.02] rounded-2xl overflow-hidden animate-in slide-in-from-top-4 duration-500'>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-xs font-black uppercase flex items-center gap-2 text-primary tracking-widest">
-                                <Tag className="h-4 w-4" /> Matriz de Variantes (Moda)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pt-4">
-                            <p className="text-[10px] font-bold text-muted-foreground italic leading-tight">
-                                Este producto requiere desglose por tallas y colores. El stock total será la suma de la matriz.
-                            </p>
-                            <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-xl border-2">
-                                <div className="text-center font-black text-[9px] uppercase opacity-40">Talla</div>
-                                <div className="text-center font-black text-[9px] uppercase opacity-40">Color</div>
-                                <div className="text-center font-black text-[9px] uppercase opacity-40">Existencia</div>
-                                <Input placeholder="38" className="h-8 text-[10px] font-bold" />
-                                <Input placeholder="Azul" className="h-8 text-[10px] font-bold" />
-                                <Input type="number" placeholder="0" className="h-8 text-[10px] font-bold text-center" />
-                            </div>
-                            <Button variant="ghost" size="sm" className="text-[9px] font-black uppercase h-7"><Plus className="mr-1 h-3 w-3" /> Añadir Fila de Variante</Button>
-                        </CardContent>
-                    </Card>
-                )}
 
                 <Card className='border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl overflow-hidden bg-white'>
                   <CardHeader className='bg-slate-50/50 border-b border-slate-100 py-3'>
@@ -206,60 +212,61 @@ export default function NewProductPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField control={form.control} name="baseUnit" render={({ field }) => (
                             <FormItem>
-                                <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Unidad</FormLabel>
-                                <Select onValueChange={(v) => field.onChange(v)} defaultValue={field.value}>
+                                <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Unidad de Venta</FormLabel>
+                                <Select onValueChange={(v) => {
+                                    field.onChange(v);
+                                    if (v === 'Kilogramos' || v === 'Litros') form.setValue('isWeightable', true);
+                                    else form.setValue('isWeightable', false);
+                                }} defaultValue={field.value}>
                                     <FormControl><SelectTrigger className='h-11 font-bold rounded-xl border-slate-200'><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent className='rounded-xl'>
                                         <SelectItem value="Unidad" className="font-bold">UNIDAD (Und)</SelectItem>
                                         <SelectItem value="Kilogramos" className="font-bold">KILOGRAMOS (Kg)</SelectItem>
+                                        <SelectItem value="Litros" className="font-bold">LITROS (L)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormItem>
                         )} />
 
-                        {invConfig.trackBatches && (
-                            <FormField control={form.control} name="expiryDate" render={({ field }) => (
-                                <FormItem className="flex flex-col justify-center rounded-xl border-2 border-dashed bg-slate-50/30 p-3 animate-in zoom-in-95 duration-300">
-                                    <FormLabel className='text-[10px] font-black uppercase text-slate-500 mb-1'>Vencimiento</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button variant={"outline"} className={cn("h-9 pl-3 text-left font-bold rounded-lg text-xs", !field.value && "text-muted-foreground")}>
-                                                    {field.value ? format(field.value, "PPP", { locale: es }) : <span>Seleccionar</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date()} initialFocus />
-                                        </PopoverContent>
-                                    </Popover>
-                                </FormItem>
-                            )} />
-                        )}
+                        <FormField control={form.control} name="expiryDate" render={({ field }) => (
+                            <FormItem className="flex flex-col justify-center rounded-xl border-2 border-dashed bg-slate-50/30 p-3">
+                                <FormLabel className='text-[10px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1'><AlertCircle className="h-3 w-3 text-amber-600"/> Fecha de Vencimiento</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button variant={"outline"} className={cn("h-9 pl-3 text-left font-bold rounded-lg text-xs", !field.value && "text-muted-foreground")}>
+                                                {field.value ? format(field.value, "PPP", { locale: es }) : <span>Sin fecha</span>}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date < new Date()} initialFocus />
+                                    </PopoverContent>
+                                </Popover>
+                            </FormItem>
+                        )} />
 
-                        <div className="grid grid-cols-2 gap-4 md:col-span-1">
-                            <FormField control={form.control} name="stock" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Existencia</FormLabel>
-                                    <FormControl><Input type="number" step="0.001" className="h-11 font-black rounded-xl border-slate-200 text-center" {...field} value={field.value ?? 0} /></FormControl>
-                                </FormItem>
-                            )} />
-                        </div>
+                        <FormField control={form.control} name="stock" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Existencia Actual</FormLabel>
+                                <FormControl><Input type="number" step="0.001" className="h-11 font-black rounded-xl border-slate-200 text-center" {...field} value={field.value ?? 0} /></FormControl>
+                            </FormItem>
+                        )} />
                     </div>
 
                     <FormField control={form.control} name="barcode" render={({ field }) => (
                         <FormItem>
-                            <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Código de Barras</FormLabel>
+                            <FormLabel className='text-[10px] font-black uppercase text-slate-500'>Código EAN / SKU</FormLabel>
                             <div className="flex gap-2">
                                 <FormControl>
-                                    <div className="relative flex-1">
+                                    <div className="relative flex-1 group">
                                         <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-30" />
-                                        <Input placeholder="EAN / SKU" className="h-12 pl-11 font-mono font-bold rounded-xl border-slate-200" {...field} value={field.value ?? ''} />
+                                        <Input placeholder="EAN-13" className="h-12 pl-11 font-mono font-bold rounded-xl border-slate-200" {...field} value={field.value ?? ''} />
                                     </div>
                                 </FormControl>
                                 <Button type="button" variant="outline" size="icon" className='h-12 w-12 rounded-xl border-2' onClick={() => setShowScanner(true)}>
-                                    <Camera className="h-6 w-6" />
+                                    <Camera className="h-5 w-5" />
                                 </Button>
                             </div>
                         </FormItem>
