@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -23,14 +24,12 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
   const [showScanner, setShowScanner] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   
-  // Lógica de multiplicador (ej. 12*)
   const [multiplier, setMultiplier] = useState<number>(1);
 
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchProducts = async () => {
-      // Limpiar multiplicador de la query visual
       let searchQuery = query;
       if (query.includes('*')) {
           const parts = query.split('*');
@@ -51,7 +50,6 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
       setLoading(true);
       try {
         const storeId = localStorage.getItem('storeId');
-        // El backend ahora filtra por la query de búsqueda
         const response = await fetch(`/api/products?storeId=${storeId}&search=${encodeURIComponent(searchQuery)}`);
         if (response.ok) {
           const data = await response.json();
@@ -132,7 +130,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
                 ref={inputRef}
                 placeholder="Escanea barras o escribe (ej: 12*Leche)..."
                 className={cn(
-                    "h-12 text-lg font-bold transition-all",
+                    "h-12 text-lg font-bold transition-all border-2 rounded-xl focus:ring-4 focus:ring-primary/5",
                     multiplier > 1 ? "pl-16" : "pl-10"
                 )}
                 value={query}
@@ -146,46 +144,45 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
                 </div>
             )}
         </div>
-        <Button type="button" variant="outline" size="icon" className='h-12 w-12 border-2' onClick={() => setShowScanner(true)}>
-            <Camera className="h-6 w-6" />
-        </Button>
       </div>
 
       {showScanner && <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
 
       {(results.length > 0) && (
-        <div className="absolute top-full mt-1 w-full rounded-xl border-2 bg-card shadow-2xl z-[100] overflow-hidden animate-in slide-in-from-top-2">
+        <div className="absolute top-full mt-2 w-full rounded-2xl border bg-white shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
           <ul className="max-h-80 overflow-y-auto">
             {results.map((product, idx) => (
               <li
                 key={product._id}
                 className={cn(
-                    "p-2 border-b cursor-pointer flex justify-between items-center transition-all",
-                    idx === 0 ? "bg-primary/5 border-l-4 border-l-primary" : "hover:bg-muted"
+                    "p-3 border-b last:border-0 cursor-pointer flex justify-between items-center transition-all",
+                    idx === 0 ? "bg-slate-50 border-l-4 border-l-primary" : "hover:bg-slate-50"
                 )}
                 onClick={() => handleSelect(product)}
               >
-                <div className='flex items-center gap-3'>
-                    {/* MINIATURA VISUAL */}
-                    <div className='h-10 w-10 rounded bg-muted relative overflow-hidden shrink-0 border'>
+                <div className='flex items-center gap-4'>
+                    <div className='h-12 w-12 rounded-xl bg-slate-100 relative overflow-hidden shrink-0 border'>
                         {product.imageUrl ? (
-                            <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="40px" />
+                            <Image src={product.imageUrl} alt={product.name} fill className="object-cover" sizes="48px" unoptimized />
                         ) : (
                             <div className='flex h-full w-full items-center justify-center opacity-20'>
-                                <Package className='h-5 w-5' />
+                                <Package className='h-6 w-6' />
                             </div>
                         )}
                     </div>
                     <div className='flex flex-col'>
-                        <span className="font-black uppercase text-[11px] leading-tight line-clamp-1">{product.name}</span>
-                        <span className="text-[9px] text-muted-foreground font-mono">
-                            STOCK: <span className={cn("font-bold", product.stock < product.minStock ? "text-red-500" : "text-green-600")}>{product.stock}</span>
-                        </span>
+                        <span className="font-black uppercase text-xs leading-tight line-clamp-1 text-slate-800">{product.name}</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[9px] text-muted-foreground font-mono uppercase">
+                                Stock: <span className={cn("font-bold", product.stock < product.minStock ? "text-red-500" : "text-green-600")}>{product.stock}</span>
+                            </span>
+                            <Badge variant="outline" className="text-[8px] h-3 px-1 opacity-50 uppercase">{product.category}</Badge>
+                        </div>
                     </div>
                 </div>
                 <div className='text-right shrink-0'>
-                    <span className='font-black text-primary text-sm'>Bs. {product.price.toLocaleString('es-VE')}</span>
-                    {idx === 0 && <span className='block text-[7px] font-black uppercase text-primary/40'>[Enter]</span>}
+                    <span className='font-black text-slate-900 text-sm'>Bs. {product.price.toLocaleString('es-VE')}</span>
+                    <span className='block text-[8px] font-black text-emerald-600 uppercase tracking-tighter'>$ {(product.price / 52.45).toFixed(2)}</span>
                 </div>
               </li>
             ))}
