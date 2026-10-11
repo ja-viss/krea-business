@@ -173,56 +173,40 @@ export default function NewSalePage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
        
-       {/* HEADER TRICOMPONENTE DE ALTO CONTRASTE */}
+       {/* HEADER TRICOMPONENTE DE ALTO CONTRASTE - REESTRUCTURADO */}
        <header className="grid grid-cols-3 gap-0 border-b bg-white shrink-0 shadow-sm z-20">
             {/* USD: MONEDA BASE */}
-            <div className="flex items-center justify-between px-8 py-4 border-r bg-emerald-50/20 group hover:bg-emerald-50 transition-colors">
+            <div className="flex items-center justify-between px-8 py-5 border-r group hover:bg-slate-50 transition-colors">
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] leading-none">Total Dólares ($)</span>
-                        <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-                    </div>
-                    <span className="text-3xl font-black text-slate-900 tracking-tighter"><span className="text-emerald-500 mr-1">$</span>{totals.usd.toFixed(2)}</span>
+                    <span className="text-[10px] font-black uppercase text-emerald-600 tracking-[0.2em] mb-1">Total USD ($)</span>
+                    <span className="text-3xl font-black text-slate-900 tracking-tighter">$ {totals.usd.toFixed(2)}</span>
                 </div>
-                <div className="text-right flex flex-col justify-center items-end">
-                    <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase px-2 py-0.5 mb-1">Dólar Base</Badge>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Cálculo Operativo</span>
+                <div className="text-right">
+                    <Badge variant="outline" className="text-[8px] font-black uppercase border-emerald-200 bg-emerald-50 text-emerald-700 h-5">Moneda Base</Badge>
                 </div>
             </div>
 
             {/* VES: MONEDA FISCAL */}
-            <div className="flex items-center justify-between px-8 py-4 border-r bg-amber-50/20 group hover:bg-amber-50 transition-colors">
+            <div className="flex items-center justify-between px-8 py-5 border-r group hover:bg-slate-50 transition-colors">
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] font-black uppercase text-amber-600 tracking-[0.2em] leading-none">Total Bolívares (VES)</span>
-                        <Receipt className="h-2.5 w-2.5 text-amber-500/50" />
-                    </div>
-                    <span className="text-3xl font-black text-slate-900 tracking-tighter"><span className="text-amber-500 mr-1.5">Bs.</span>{totals.ves.toLocaleString('es-VE')}</span>
+                    <span className="text-[10px] font-black uppercase text-amber-600 tracking-[0.2em] mb-1">Bolívares (VES)</span>
+                    <span className="text-3xl font-black text-slate-900 tracking-tighter">Bs. {totals.ves.toLocaleString('es-VE')}</span>
                 </div>
-                <div className="text-right flex flex-col justify-center items-end">
-                    <div className="flex items-center gap-1.5 bg-white border border-amber-200 px-2 py-1 rounded-lg shadow-sm">
-                        <span className="text-[8px] font-black text-amber-600/60 uppercase">Tasa BCV:</span>
-                        <span className="text-[11px] font-mono font-black text-amber-600">{tasaBCV.toFixed(2)}</span>
-                    </div>
-                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Valoración Oficial</span>
+                <div className="flex flex-col items-end gap-1">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tasa BCV</span>
+                    <span className="text-sm font-mono font-black text-amber-600">{tasaBCV.toFixed(2)}</span>
                 </div>
             </div>
 
             {/* COP: MONEDA FRONTERIZA */}
-            <div className="flex items-center justify-between px-8 py-4 bg-orange-50/20 group hover:bg-orange-50 transition-colors">
+            <div className="flex items-center justify-between px-8 py-5 group hover:bg-slate-50 transition-colors">
                 <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] font-black uppercase text-orange-600 tracking-[0.2em] leading-none">Total Pesos (COP)</span>
-                        <Navigation className="h-2.5 w-2.5 text-orange-500/50" />
-                    </div>
-                    <span className="text-3xl font-black text-slate-900 tracking-tighter"><span className="text-orange-500 mr-1.5">$</span>{totals.cop.toLocaleString('es-CO')}</span>
+                    <span className="text-[10px] font-black uppercase text-orange-600 tracking-[0.2em] mb-1">Pesos COP ($)</span>
+                    <span className="text-3xl font-black text-slate-900 tracking-tighter">$ {totals.cop.toLocaleString('es-CO')}</span>
                 </div>
-                <div className="text-right flex flex-col justify-center items-end">
-                    <div className="flex items-center gap-1.5 bg-white border border-orange-200 px-2 py-1 rounded-lg shadow-sm">
-                        <span className="text-[8px] font-black text-orange-600/60 uppercase">Tasa COP:</span>
-                        <span className="text-[11px] font-mono font-black text-orange-600">{tasaCOP.toLocaleString()}</span>
-                    </div>
-                    <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Ref. Comercial</span>
+                <div className="flex flex-col items-end gap-1">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tasa COP</span>
+                    <span className="text-sm font-mono font-black text-orange-600">{tasaCOP.toLocaleString()}</span>
                 </div>
             </div>
        </header>
@@ -334,14 +318,14 @@ export default function NewSalePage() {
                         <div className="flex items-center gap-2 opacity-50"><TrendingUp className="h-3.5 w-3.5" /> Motor Multidivisa Activo</div>
                         <div className="flex items-center gap-2 opacity-50"><Calculator className="h-3.5 w-3.5" /> Precision: 2 Dec.</div>
                     </div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-primary italic">Krea Terminal v96.0 High-Density</div>
+                    <div className="text-[9px] font-black uppercase tracking-widest text-primary italic">Krea Terminal v97.0 Industrial</div>
                 </div>
             </main>
 
             {/* PANEL LATERAL DE LIQUIDACIÓN Y CLIENTE (SIDEBAR) */}
             <aside className="w-[420px] flex flex-col bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.02)] z-10 shrink-0">
                 
-                {/* SECCIÓN CLIENTE: DISEÑO DE ALTA CERTEZA */}
+                {/* SECCIÓN CLIENTE */}
                 <div className="p-8 border-b bg-slate-50/20">
                     <div className="flex items-center justify-between mb-5">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
@@ -360,7 +344,7 @@ export default function NewSalePage() {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-sm font-black uppercase text-slate-800 tracking-tight">Consumidor Final</span>
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">F4 para buscar cédula <ArrowUpRight className="h-2.5 w-2.5" /></span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">F4 para buscar <ArrowUpRight className="h-2.5 w-2.5" /></span>
                                 </div>
                             </div>
                         </div>
@@ -411,30 +395,29 @@ export default function NewSalePage() {
 
                         <Separator className="bg-slate-100 h-0.5" />
 
-                        {/* TARJETA DE TOTAL PREMIUM */}
+                        {/* TARJETA DE TOTAL PREMIUM - COLOR ACTUALIZADO (DARK SLATE) */}
                         <div className="space-y-5">
-                            <div className="bg-primary p-9 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group transition-transform active:scale-[0.98]">
-                                <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:scale-125 transition-transform rotate-12"><ShoppingCart className="h-32 w-32" /></div>
-                                <div className="absolute -bottom-10 -left-10 opacity-[0.03] group-hover:scale-110 transition-transform"><Coins className="h-32 w-32" /></div>
+                            <div className="bg-slate-950 p-9 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group transition-transform active:scale-[0.98] border-l-[8px] border-primary">
+                                <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover:scale-125 transition-transform rotate-12"><ShoppingCart className="h-32 w-32 text-primary" /></div>
                                 
                                 <div className="flex flex-col relative z-10">
                                     <div className="flex items-center gap-2 mb-5">
-                                        <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                                        <p className="text-[11px] font-black uppercase text-white/60 tracking-[0.4em]">Total a Cobrar</p>
+                                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <p className="text-[11px] font-black uppercase text-white/50 tracking-[0.4em]">Total Liquidación</p>
                                     </div>
                                     <div className="flex items-baseline mb-8">
-                                        <span className="text-xs font-black mr-3 text-white/40 uppercase">VES</span>
+                                        <span className="text-xs font-black mr-3 text-primary uppercase italic">VES</span>
                                         <span className="text-6xl font-black tracking-tighter">Bs.{totals.ves.toLocaleString('es-VE')}</span>
                                     </div>
                                     
                                     <div className="grid grid-cols-2 gap-6 pt-8 border-t border-white/10">
                                         <div className="flex flex-col">
-                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Dólar ($)</span>
-                                            <span className="text-2xl font-black text-white/90 tracking-tighter">$ {totals.usd.toFixed(2)}</span>
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Eq. Dólar Base</span>
+                                            <span className="text-2xl font-black text-emerald-400 tracking-tighter">$ {totals.usd.toFixed(2)}</span>
                                         </div>
                                         <div className="text-right flex flex-col">
-                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Pesos COP</span>
-                                            <span className="text-lg font-black text-orange-400 tracking-tight">{totals.cop.toLocaleString('es-CO')}</span>
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Eq. Pesos COP</span>
+                                            <span className="text-lg font-black text-orange-500 tracking-tight">{totals.cop.toLocaleString('es-CO')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -444,7 +427,7 @@ export default function NewSalePage() {
                         <div className="bg-slate-50 border-2 border-dashed border-slate-200 p-5 rounded-3xl flex items-start gap-4">
                             <div className="p-2 bg-slate-200 rounded-xl"><Info className="h-5 w-5 text-slate-500 shrink-0" /></div>
                             <p className="text-[10px] font-bold text-slate-500 leading-relaxed uppercase italic">
-                                Verifique los billetes antes de procesar el pago. Use F8 para liquidar con múltiples métodos si el cliente lo requiere.
+                                Verifique los abonos antes de confirmar. Use F8 para liquidar con múltiples métodos.
                             </p>
                         </div>
                     </div>
