@@ -206,7 +206,7 @@ export default function NewSalePage() {
        {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS */}
        <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden space-y-4">
             
-            {/* MONITOR DE TOTALES MULTIMONEDA - REFINADO */}
+            {/* MONITOR DE TOTALES MULTIMONEDA */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
                 <Card className="p-5 border-2 shadow-md bg-white border-primary relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-3 opacity-5"><Banknote className="h-20 w-20 text-primary" /></div>
@@ -343,15 +343,27 @@ export default function NewSalePage() {
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
                         <Calculator className="h-3 w-3" /> Forma de Pago
                     </Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <Select 
+                        value={paymentMethod} 
+                        onValueChange={(val) => {
+                            setPaymentMethod(val);
+                            if (['Zelle', 'Binance'].includes(val)) setPaymentCurrency('USD');
+                            if (['Pago Móvil', 'Tarjeta', 'Efectivo VES'].includes(val)) setPaymentCurrency('VES');
+                            if (['Pesos Cash'].includes(val)) setPaymentCurrency('COP');
+                        }}
+                    >
                         <SelectTrigger className="h-12 font-bold text-sm border-2 rounded-xl bg-white shadow-sm">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-2">
-                            <SelectItem value="Efectivo" className="font-bold">Efectivo Cash</SelectItem>
+                            <SelectItem value="Efectivo" className="font-bold">Efectivo Cash (Divisa)</SelectItem>
+                            <SelectItem value="Efectivo VES" className="font-bold">Efectivo Bolívares</SelectItem>
                             <SelectItem value="Pago Móvil" className="font-bold">Pago Móvil (S7B)</SelectItem>
+                            <SelectItem value="Zelle" className="font-bold">Zelle (USD)</SelectItem>
+                            <SelectItem value="Binance" className="font-bold">Binance Pay (USDT)</SelectItem>
                             <SelectItem value="Tarjeta" className="font-bold">Tarjeta (Punto)</SelectItem>
-                            <SelectItem value="Transferencia" className="font-bold">Transferencia</SelectItem>
+                            <SelectItem value="Transferencia" className="font-bold">Transferencia Bancaria</SelectItem>
+                            <SelectItem value="Pesos Cash" className="font-bold">Pesos Colombianos (COP)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
