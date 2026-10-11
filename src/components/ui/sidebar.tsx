@@ -76,10 +76,6 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
     const [isMounted, setIsMounted] = React.useState(false);
-    const pathname = usePathname();
-
-    // HIDE SIDEBAR ON POS AND INVOICE PAGES
-    const isPOSOrInvoice = pathname?.includes('/sales/new') || pathname?.includes('/invoice/');
 
     const getInitialOpen = () => {
       if (typeof window === "undefined") {
@@ -166,16 +162,6 @@ const SidebarProvider = React.forwardRef<
       return null;
     }
 
-    if (isPOSOrInvoice) {
-      return (
-        <SidebarContext.Provider value={contextValue}>
-          <div className={cn("flex min-h-svh w-full", className)} ref={ref} {...props}>
-            {children}
-          </div>
-        </SidebarContext.Provider>
-      );
-    }
-
     return (
       <SidebarContext.Provider value={contextValue}>
         <TooltipProvider delayDuration={0}>
@@ -224,9 +210,6 @@ const Sidebar = React.forwardRef<
   ) => {
     const { isMobile, state, open, setOpen, openMobile, setOpenMobile } = useSidebar()
     const desktopSidebarRef = React.useRef<HTMLDivElement>(null)
-    const pathname = usePathname();
-
-    if (pathname?.includes('/sales/new') || pathname?.includes('/invoice/')) return null;
 
     React.useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {

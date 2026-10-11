@@ -21,7 +21,8 @@ import {
     AlertTriangle,
     Receipt,
     Calculator,
-    ChevronDown
+    ChevronDown,
+    Coins
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -188,11 +189,11 @@ export default function NewSalePage() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
+    <div className="flex h-full w-full bg-slate-50 overflow-hidden">
        
        {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS */}
-       <div className="flex-1 flex flex-col p-6 overflow-hidden">
-            <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
+       <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border p-4 mb-4">
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
                     <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
@@ -250,8 +251,8 @@ export default function NewSalePage() {
        </div>
 
        {/* SECCIÓN DERECHA: PANEL DE PAGO */}
-       <aside className="w-[380px] bg-white border-l shadow-2xl flex flex-col shrink-0">
-            <div className="p-6 space-y-8 flex-1 overflow-y-auto">
+       <aside className="w-[380px] bg-white border-l shadow-2xl flex flex-col shrink-0 overflow-hidden">
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto scrollbar-hide">
                 
                 <div className="space-y-4">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Forma de Pago</Label>
@@ -302,7 +303,7 @@ export default function NewSalePage() {
                     </div>
                 </div>
 
-                <div className="space-y-4 px-2">
+                <div className="space-y-3 px-2">
                     <div className="flex justify-between items-center">
                         <span className="text-[10px] font-black uppercase text-slate-400">Gravable (IVA 16%):</span>
                         <span className="text-xs font-bold text-slate-500 font-mono">Bs.S {totals.gravable.toLocaleString()}</span>
@@ -327,7 +328,7 @@ export default function NewSalePage() {
                 </div>
             </div>
 
-            <div className="p-6 bg-slate-50 border-t">
+            <div className="p-6 bg-slate-50 border-t shrink-0">
                 <Button 
                     className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 transition-all active:scale-95"
                     onClick={handleEmitTicket}
