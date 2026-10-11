@@ -30,6 +30,16 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 262 83% 58%;
     --radius: 1rem;
+
+    /* Sidebar Variables */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 240 5.9% 90%;
+    --sidebar-ring: 262 83% 58%;
   }
 }
 
@@ -39,13 +49,11 @@
   }
   body {
     @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans text-[16px] leading-relaxed;
-    /* Prevención de rebote en iOS y fijación de altura */
     min-height: 100dvh;
     height: 100dvh;
-    overflow-x: hidden;
+    overflow: hidden;
   }
   
-  /* Inputs optimizados para móvil para evitar zoom de Safari */
   input, textarea, select {
     font-size: 16px !important;
   }
@@ -55,7 +63,6 @@
   min-width: 0;
 }
 
-/* Soporte para Safe Areas en móviles modernos */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -63,6 +70,9 @@
 .pt-safe {
   padding-top: env(safe-area-inset-top);
 }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 @media print {
     @page { margin: 0; size: 58mm auto; }
