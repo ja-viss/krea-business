@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { z } from 'z';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,10 @@ import {
     Receipt,
     Calculator,
     ChevronDown,
-    Coins
+    Coins,
+    Banknote,
+    TrendingUp,
+    ArrowRightLeft
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -50,6 +53,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Card } from '@/components/ui/card';
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
@@ -73,9 +77,9 @@ export default function NewSalePage() {
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
   
-  // Estados de pago integrados en la barra lateral
+  // Estados de pago integrados
   const [paymentMethod, setPaymentMethod] = useState('Efectivo');
-  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'VES'>('USD');
+  const [paymentCurrency, setPaymentCurrency] = useState<'USD' | 'VES' | 'COP'>('USD');
   const [receivedAmount, setReceivedAmount] = useState<string>('0');
 
   const searchRef = useRef<HTMLInputElement>(null);
@@ -96,6 +100,7 @@ export default function NewSalePage() {
   const watchItems = form.watch('items');
 
   const tasaBCV = rates.usd?.usd || 52.40;
+  const tasaCOPValue = rates.cop?.rate || 4200;
 
   // Cálculos de Totales
   const totals = useMemo(() => {
@@ -115,15 +120,17 @@ export default function NewSalePage() {
 
     const totalVES = subtotalExento + subtotalGravable + totalIVA;
     const totalUSD = tasaBCV > 0 ? totalVES / tasaBCV : 0;
+    const totalCOP = totalUSD * tasaCOPValue;
 
     return { 
         ves: totalVES, 
         usd: totalUSD, 
+        cop: totalCOP,
         exento: subtotalExento, 
         gravable: subtotalGravable, 
         iva: totalIVA 
     };
-  }, [watchItems, tasaBCV]);
+  }, [watchItems, tasaBCV, tasaCOPValue]);
 
   // Cálculo de Vuelto
   const changeToGive = useMemo(() => {
@@ -131,24 +138,22 @@ export default function NewSalePage() {
     if (received === 0) return 0;
 
     if (paymentCurrency === 'USD') {
-        const totalNeededUSD = totals.usd;
-        return Math.max(0, received - totalNeededUSD);
+        return Math.max(0, received - totals.usd);
+    } else if (paymentCurrency === 'COP') {
+        return Math.max(0, received - totals.cop);
     } else {
-        const totalNeededVES = totals.ves;
-        return Math.max(0, received - totalNeededVES);
+        return Math.max(0, received - totals.ves);
     }
   }, [receivedAmount, paymentCurrency, totals]);
 
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
-    // CORRECCIÓN: Buscamos en watchItems para tener el estado real y evitar duplicados
     const existingIndex = watchItems.findIndex(item => item.productId === String(product._id));
     
     if (existingIndex > -1) {
       const currentItem = watchItems[existingIndex];
-      const newQty = Number(currentItem.quantity) + quantity;
       update(existingIndex, {
         ...currentItem,
-        quantity: newQty
+        quantity: Number(currentItem.quantity) + quantity
       });
     } else {
         append({
@@ -162,7 +167,6 @@ export default function NewSalePage() {
         });
     }
     
-    // Enfocamos el buscador para la siguiente carga
     setTimeout(() => searchRef.current?.focus(), 50);
   };
 
@@ -197,75 +201,120 @@ export default function NewSalePage() {
   };
 
   return (
-    <div className="flex h-full w-full bg-slate-50 overflow-hidden">
+    <div className="flex h-full w-full bg-[#f8fafc] overflow-hidden">
        
-       {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS (Maximizada) */}
-       <div className="flex-1 flex flex-col p-4 overflow-hidden">
-            <div className="bg-white rounded-xl shadow-sm border p-4 mb-4">
+       {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS */}
+       <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden space-y-4">
+            
+            {/* MONITOR DE TOTALES MULTIMONEDA */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
+                <Card className="p-4 border-2 shadow-sm bg-primary text-white border-primary relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10"><Banknote className="h-16 w-16" /></div>
+                    <div className="relative z-10">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Total Dólares (USD)</p>
+                        <p className="text-3xl font-black tracking-tighter">$ {totals.usd.toFixed(2)}</p>
+                    </div>
+                </Card>
+
+                <Card className="p-4 border-2 shadow-sm bg-white border-amber-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-5"><Coins className="h-16 w-16" /></div>
+                    <div className="relative z-10">
+                        <div className="flex justify-between items-start">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Total Bolívares (VES)</p>
+                            <Badge variant="outline" className="text-[8px] font-black border-amber-200 text-amber-600 bg-amber-50">BCV: {tasaBCV.toFixed(2)}</Badge>
+                        </div>
+                        <p className="text-3xl font-black tracking-tighter text-slate-900">Bs. {totals.ves.toLocaleString('es-VE')}</p>
+                    </div>
+                </Card>
+
+                <Card className="p-4 border-2 shadow-sm bg-white border-emerald-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-5"><ArrowRightLeft className="h-16 w-16 text-emerald-600" /></div>
+                    <div className="relative z-10">
+                         <div className="flex justify-between items-start">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Total Pesos (COP)</p>
+                            <Badge variant="outline" className="text-[8px] font-black border-emerald-200 text-emerald-600 bg-emerald-50">REF: {tasaCOPValue.toLocaleString()}</Badge>
+                        </div>
+                        <p className="text-3xl font-black tracking-tighter text-slate-900">$ {totals.cop.toLocaleString('es-CO')}</p>
+                    </div>
+                </Card>
+            </div>
+
+            {/* BUSCADOR MAESTRO */}
+            <div className="bg-white rounded-2xl shadow-xl border-2 p-2 shrink-0">
                 <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-300 group-focus-within:text-primary transition-colors" />
                     <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
                 </div>
             </div>
 
-            <div className="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col">
+            {/* TABLA DE DESPACHO */}
+            <div className="flex-1 bg-white rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col">
                 <div className="flex-1 overflow-y-auto scrollbar-hide">
                     <Table>
-                        <TableHeader className="bg-white sticky top-0 z-10 border-b">
-                            <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] h-12 tracking-widest text-slate-400 pl-6">Producto</TableHead>
-                                <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-400">Precio</TableHead>
-                                <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-400">Cant.</TableHead>
-                                <TableHead className="text-right font-black uppercase text-[10px] h-12 tracking-widest text-slate-400 pr-6">Subtotal</TableHead>
+                        <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b-2">
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead className="font-black uppercase text-[10px] h-14 tracking-widest text-slate-500 pl-8">Producto / Descripción</TableHead>
+                                <TableHead className="text-center font-black uppercase text-[10px] h-14 tracking-widest text-slate-500">Precio Unitario</TableHead>
+                                <TableHead className="text-center font-black uppercase text-[10px] h-14 tracking-widest text-slate-500">Cantidad</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px] h-14 tracking-widest text-slate-500 pr-8">Subtotal Línea</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {watchItems.length > 0 ? fields.map((item, index) => (
-                                <TableRow key={item.id} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                                    <TableCell className="py-4 pl-6">
+                                <TableRow key={item.id} className="group border-b border-slate-100 hover:bg-primary/[0.02] transition-colors">
+                                    <TableCell className="py-5 pl-8">
                                         <div className="flex flex-col">
-                                            <span className="font-black uppercase text-xs text-slate-700">{item.name}</span>
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">REF: {item.productId.slice(-6).toUpperCase()}</span>
+                                            <span className="font-black uppercase text-xs text-slate-800 tracking-tight">{item.name}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SKU: {item.productId.slice(-8).toUpperCase()}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-center py-4">
-                                        <span className="font-bold text-xs text-slate-600">Bs. {item.price.toLocaleString('es-VE')}</span>
+                                    <TableCell className="text-center py-5">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-xs text-slate-600">Bs. {item.price.toLocaleString('es-VE')}</span>
+                                            <span className="text-[9px] font-black text-emerald-600">$ {(item.price / tasaBCV).toFixed(2)}</span>
+                                        </div>
                                     </TableCell>
-                                    <TableCell className="text-center py-4">
-                                        <div className="flex items-center justify-center gap-2">
+                                    <TableCell className="text-center py-5">
+                                        <div className="flex items-center justify-center gap-3">
                                             <button 
                                                 onClick={() => {
                                                     const val = Number(watchItems[index].quantity);
                                                     if (val > 1) update(index, { ...fields[index], quantity: val - 1 });
                                                     else remove(index);
                                                 }} 
-                                                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                                                className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-90"
                                             >
                                                 <Minus className="h-4 w-4"/>
                                             </button>
-                                            <span className="font-black text-sm w-10 text-center">{watchItems[index].quantity}</span>
+                                            <span className="font-black text-base w-12 text-center text-primary">{watchItems[index].quantity}</span>
                                             <button 
                                                 onClick={() => {
                                                     const val = Number(watchItems[index].quantity);
                                                     update(index, { ...fields[index], quantity: val + 1 });
                                                 }} 
-                                                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"
+                                                className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90"
                                             >
                                                 <Plus className="h-4 w-4"/>
                                             </button>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right pr-6 py-4">
-                                        <div className="flex items-center justify-end gap-4">
-                                            <span className="font-black text-sm text-slate-900">{(item.price * watchItems[index].quantity).toLocaleString('es-VE')}</span>
-                                            <button onClick={() => remove(index)} className="text-slate-300 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                                    <TableCell className="text-right pr-8 py-5">
+                                        <div className="flex items-center justify-end gap-6">
+                                            <div className="text-right">
+                                                <p className="font-black text-base text-slate-900">{(item.price * watchItems[index].quantity).toLocaleString('es-VE')}</p>
+                                                <p className="text-[10px] font-bold text-primary opacity-60">Bs.</p>
+                                            </div>
+                                            <button onClick={() => remove(index)} className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 className="h-5 w-5" /></button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-64 text-center">
-                                        <p className="text-sm font-bold text-slate-300 italic">Esperando productos para procesar.</p>
+                                    <TableCell colSpan={4} className="h-80 text-center">
+                                        <div className="flex flex-col items-center gap-2 opacity-20">
+                                            <Receipt className="h-16 w-16" />
+                                            <p className="text-sm font-black uppercase tracking-widest">Esperando artículos...</p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -275,44 +324,56 @@ export default function NewSalePage() {
             </div>
        </div>
 
-       {/* SECCIÓN DERECHA: PANEL DE PAGO (Ajustado y responsivo) */}
-       <aside className="w-full max-w-[320px] lg:max-w-[380px] bg-white border-l shadow-2xl flex flex-col shrink-0 overflow-hidden transition-all">
-            <div className="p-4 lg:p-6 space-y-4 lg:space-y-6 flex-1 overflow-y-auto scrollbar-hide">
+       {/* SECCIÓN DERECHA: PANEL DE PAGO RESPONSIVO */}
+       <aside className="w-full max-w-[320px] lg:max-w-[360px] bg-white border-l-2 shadow-2xl flex flex-col shrink-0 overflow-hidden">
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto scrollbar-hide bg-[#fcfcfc]">
                 
-                <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Forma de Pago</Label>
+                <div className="space-y-4">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
+                        <User className="h-3 w-3" /> Identidad del Cliente
+                    </Label>
+                    <CustomerSearch onCustomerSelect={(c) => { setSelectedCustomer(c); form.setValue('customerId', c._id); form.setValue('customerName', c.name); }} />
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
+                        <Calculator className="h-3 w-3" /> Forma de Pago
+                    </Label>
                     <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                        <SelectTrigger className="h-10 lg:h-12 font-bold text-sm border-2 rounded-xl bg-slate-50">
+                        <SelectTrigger className="h-12 font-bold text-sm border-2 rounded-xl bg-white shadow-sm">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-2">
-                            <SelectItem value="Efectivo" className="font-bold">Efectivo</SelectItem>
-                            <SelectItem value="Pago Móvil" className="font-bold">Pago Móvil</SelectItem>
+                            <SelectItem value="Efectivo" className="font-bold">Efectivo Cash</SelectItem>
+                            <SelectItem value="Pago Móvil" className="font-bold">Pago Móvil (S7B)</SelectItem>
                             <SelectItem value="Tarjeta" className="font-bold">Tarjeta (Punto)</SelectItem>
                             <SelectItem value="Transferencia" className="font-bold">Transferencia</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
-                <div className="p-4 lg:p-5 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 space-y-4 lg:space-y-6">
-                    <div className="grid grid-cols-2 gap-3 lg:gap-4">
+                <div className="p-5 bg-white rounded-2xl border-2 border-dashed border-slate-200 space-y-5 shadow-inner">
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Recibido en</Label>
+                            <Label className="text-[9px] font-black uppercase text-slate-400">Recibido en</Label>
                             <Select value={paymentCurrency} onValueChange={(v: any) => setPaymentCurrency(v)}>
-                                <SelectTrigger className="h-10 lg:h-11 font-bold text-xs bg-white border-2 rounded-xl">
+                                <SelectTrigger className="h-11 font-black text-xs bg-slate-50 border-2 rounded-xl">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-2">
-                                    <SelectItem value="USD" className="font-bold">Dólares ($)</SelectItem>
-                                    <SelectItem value="VES" className="font-bold">Bolívares (Bs.)</SelectItem>
+                                    <SelectItem value="USD" className="font-black">Dólares ($)</SelectItem>
+                                    <SelectItem value="VES" className="font-black">Bolívares (Bs)</SelectItem>
+                                    <SelectItem value="COP" className="font-black">Pesos (COP)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Monto</Label>
+                            <Label className="text-[9px] font-black uppercase text-slate-400">Monto</Label>
                             <Input 
                                 type="number" 
-                                className="h-10 lg:h-11 font-black text-center text-lg border-2 rounded-xl"
+                                className="h-11 font-black text-center text-lg border-2 rounded-xl focus:ring-4 focus:ring-primary/5"
                                 value={receivedAmount}
                                 onChange={e => setReceivedAmount(e.target.value)}
                                 onFocus={e => e.target.select()}
@@ -321,64 +382,63 @@ export default function NewSalePage() {
                     </div>
 
                     <div className="flex justify-between items-center pt-2">
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Vuelto:</span>
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cambio / Vuelto:</span>
                         <div className="flex items-center gap-2">
                             <span className="text-2xl font-black text-emerald-500 tracking-tighter">
-                                {paymentCurrency === 'USD' ? '$' : 'Bs.'} {changeToGive.toLocaleString('es-VE')}
+                                {paymentCurrency === 'USD' ? '$' : paymentCurrency === 'COP' ? '' : 'Bs.'} {changeToGive.toLocaleString('es-VE')} {paymentCurrency === 'COP' ? 'COP' : ''}
                             </span>
-                            <Coins className="h-5 w-5 text-emerald-500 opacity-40" />
+                            <Coins className="h-5 w-5 text-emerald-500 opacity-30" />
                         </div>
                     </div>
                 </div>
 
-                <div className="space-y-2 px-2">
-                    <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black uppercase text-slate-400">Base Gravable (16%):</span>
-                        <span className="text-xs font-bold text-slate-500">Bs. {totals.gravable.toLocaleString('es-VE')}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black uppercase text-slate-400">Total Exento:</span>
-                        <span className="text-xs font-bold text-slate-500">Bs. {totals.exento.toLocaleString('es-VE')}</span>
-                    </div>
-                </div>
-
                 <div className="pt-4 border-t-2 border-slate-100">
-                    <div className="flex justify-between items-baseline">
-                        <span className="text-xs font-black uppercase text-primary tracking-widest">Total Bs:</span>
-                        <span className="text-3xl lg:text-4xl font-black text-primary tracking-tighter">
-                            Bs. {totals.ves.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                        </span>
+                    <div className="space-y-2 mb-6">
+                         <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                            <span>Base Imponible:</span>
+                            <span>Bs. {totals.gravable.toLocaleString('es-VE')}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                            <span>Exento:</span>
+                            <span>Bs. {totals.exento.toLocaleString('es-VE')}</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center mt-2 lg:mt-3 opacity-60 italic">
-                        <span className="text-[10px] font-black uppercase text-slate-400">Ref. Divisa:</span>
-                        <span className="text-sm font-black text-slate-900">$ {totals.usd.toFixed(2)}</span>
+                    
+                    <div className="flex justify-between items-baseline mb-2">
+                        <span className="text-xs font-black uppercase text-primary tracking-widest">Total Bs:</span>
+                        <span className="text-4xl font-black text-primary tracking-tighter">
+                            {totals.ves.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <div className="p-4 lg:p-6 bg-slate-50 border-t shrink-0">
+            <div className="p-6 bg-white border-t-2 shrink-0">
                 <Button 
-                    className="w-full h-14 lg:h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-base lg:text-lg shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95"
+                    className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-lg shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 hover:scale-[1.02]"
                     onClick={handleEmitTicket}
                     disabled={isSubmitting || watchItems.length === 0}
                 >
                     {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <Printer className="h-6 w-6" />}
                     Emitir Despacho
                 </Button>
+                <button onClick={() => setIsClearDialogOpen(true)} className="w-full mt-4 text-[10px] font-black uppercase text-rose-500 hover:underline tracking-widest opacity-60">Anular Orden Actual</button>
             </div>
        </aside>
 
        <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-            <AlertDialogContent className="border-4 rounded-3xl">
+            <AlertDialogContent className="border-4 rounded-[2.5rem] shadow-3xl">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl font-black uppercase italic">¿Anular Operación?</AlertDialogTitle>
-                    <AlertDialogDescription className="font-bold text-slate-400 uppercase text-xs">
-                        Se perderán los artículos cargados actualmente.
+                    <AlertDialogTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3 text-rose-600">
+                        <Trash2 className="h-8 w-8" /> ¿Vaciado de Carrito?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="font-bold text-slate-500 text-sm leading-relaxed">
+                        Se eliminarán todos los artículos cargados y se reseteará el proceso de cobro. Esta acción no se puede deshacer.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel className="font-bold uppercase text-[10px] rounded-xl">Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => { form.reset({ items: [], customerName: 'Consumidor Final' }); setReceivedAmount('0'); }} className="bg-rose-600 hover:bg-rose-700 font-black uppercase text-[10px] rounded-xl">Confirmar</AlertDialogAction>
+                <AlertDialogFooter className="mt-6 flex gap-3">
+                    <AlertDialogCancel className="font-bold uppercase text-[11px] rounded-2xl h-12 flex-1 border-2">Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { form.reset({ items: [], customerName: 'Consumidor Final' }); setReceivedAmount('0'); }} className="bg-rose-600 hover:bg-rose-700 font-black uppercase text-[11px] rounded-2xl h-12 flex-1 shadow-lg shadow-rose-200">Confirmar Vaciado</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
