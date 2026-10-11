@@ -5,13 +5,14 @@ import StoreModel from '@/models/Store';
 import { getTenantDb } from '@/lib/tenant-manager';
 import mongoose from 'mongoose';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { createLog } from '@/app/api/audit-logs/route';
 
 export async function POST(req: NextRequest) {
   await dbConnect(); // Master DB
   
   try {
     const body = await req.json();
-    const { storeId, customerId, customerName, items, paymentMethod, paymentReference, paymentCurrency } = body;
+    const { storeId, customerId, customerName, items, payments, totalAmount } = body;
 
     if (!storeId || !mongoose.Types.ObjectId.isValid(storeId)) throw new Error("ID tienda inválido");
 
@@ -37,17 +38,6 @@ export async function POST(req: NextRequest) {
             activeCashSessionId = activeSession._id;
         }
 
-        // LÍMITES SAAS
-        const monthStart = startOfMonth(new Date());
-        const monthEnd = endOfMonth(new Date());
-        const invoicesThisMonth = await models.Sale.countDocuments({
-            createdAt: { $gte: monthStart, $lte: monthEnd }
-        }).session(session);
-
-        if (invoicesThisMonth >= store.maxInvoicesPerMonth) {
-            throw new Error(`Límite de plan alcanzado (${store.maxInvoicesPerMonth} facturas/mes).`);
-        }
-
         // DESCUENTO DE STOCK
         for (const item of items) {
           const product = await models.Product.findById(item.productId).session(session);
@@ -68,7 +58,7 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // CÁLCULOS FISCALES
+        // CÁLCULOS FISCALES (Simplified internal tracking)
         const subtotals = { exempt: 0, general: 0, reduced: 0 };
         for (const item of items) {
             const itemTotal = item.price * item.quantity;
@@ -80,10 +70,8 @@ export async function POST(req: NextRequest) {
             general: subtotals.general * 0.16,
             reduced: subtotals.reduced * 0.08
         };
-        const totalAmount = subtotals.exempt + subtotals.general + subtotals.reduced + taxDetails.general + taxDetails.reduced;
 
         // REGISTRO DE VENTA (NÚMERO CORRELATIVO)
-        // Usamos el número de ventas actuales + 1 como correlativo simplificado para el aislamiento
         const lastSale = await models.Sale.findOne().sort({ invoiceNumber: -1 }).session(session);
         const nextInvoice = (lastSale?.invoiceNumber || 0) + 1;
 
@@ -103,13 +91,24 @@ export async function POST(req: NextRequest) {
               price: i.price, 
               taxRate: i.taxRate,
             })),
-          paymentMethod,
-          paymentReference: paymentReference || '',
-          paymentCurrency: paymentCurrency || 'VES',
-          status: (paymentMethod === 'Efectivo' || paymentMethod === 'Tarjeta' || paymentMethod === 'Pago Móvil') ? 'Pagado' : 'Pendiente',
+          payments: payments, // Nuevo campo para pagos mixtos
+          paymentMethod: payments[0]?.method || 'Efectivo', // Fallback para compatibilidad
+          status: 'Pagado',
         });
         
         await newSale.save({ session });
+
+        // AUDITORÍA
+        await createLog({
+            store: storeId,
+            user: 'SISTEMA',
+            userName: 'Cajero POS',
+            action: 'DESPACHO_GENERADO',
+            module: 'Ventas',
+            details: `Nota de Entrega #${nextInvoice} generada para ${customerName}. Total: Bs. ${totalAmount}`,
+            targetId: String(newSale._id)
+        });
+
         await session.commitTransaction();
         return NextResponse.json(newSale, { status: 201 });
 

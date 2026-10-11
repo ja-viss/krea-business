@@ -9,9 +9,17 @@ export interface ISaleItem {
   taxRate: number;
 }
 
+export interface IPayment {
+    method: string;
+    amount: number;
+    currency: string;
+    reference?: string;
+    bank?: string;
+}
+
 export interface ISale extends Document {
   store: Types.ObjectId;
-  cashSession?: Types.ObjectId; // Referencia a la sesión de caja bajo la cual se emitió
+  cashSession?: Types.ObjectId;
   invoiceNumber: number;
   customer?: Types.ObjectId;
   customerName: string;
@@ -26,6 +34,7 @@ export interface ISale extends Document {
   };
   totalAmount: number;
   items: ISaleItem[];
+  payments: IPayment[];
   paymentMethod: string;
   paymentReference?: string;
   paymentCurrency?: string;
@@ -46,6 +55,14 @@ const SaleItemSchema = new Schema({
     taxRate: { type: Number, required: true },
 });
 
+const PaymentSchema = new Schema({
+    method: { type: String, required: true },
+    amount: { type: Number, required: true },
+    currency: { type: String, required: true },
+    reference: { type: String },
+    bank: { type: String },
+});
+
 const SaleSchema = new Schema({
   store: { type: Schema.Types.ObjectId, ref: 'Store', required: true },
   cashSession: { type: Schema.Types.ObjectId, ref: 'CashSession' },
@@ -63,6 +80,7 @@ const SaleSchema = new Schema({
   },
   totalAmount: { type: Number, required: true },
   items: [SaleItemSchema],
+  payments: [PaymentSchema],
   paymentMethod: { type: String, required: true },
   paymentReference: { type: String },
   paymentCurrency: { type: String },
