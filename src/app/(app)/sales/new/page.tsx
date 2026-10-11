@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -7,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,12 +25,12 @@ import {
     Camera,
     UserCheck,
     Receipt,
-    Wallet,
     Info,
     ArrowUpRight,
     Coins,
     Hash,
-    Package
+    Package,
+    TrendingUp
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -171,14 +170,14 @@ export default function NewSalePage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
        
-       {/* HEADER MULTIMONEDA (TEMA CLARO) */}
+       {/* HEADER TRICOMPONENTE (TEMA CLARO) */}
        <header className="grid grid-cols-3 gap-0 border-b bg-white shrink-0 shadow-sm z-20">
             <div className="flex items-center justify-between px-8 py-3 border-r bg-emerald-50/20">
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] leading-none mb-1">Total USD</span>
+                    <span className="text-[9px] font-black uppercase text-emerald-600 tracking-[0.2em] leading-none mb-1">Total USD ($)</span>
                     <span className="text-2xl font-black text-slate-900 tracking-tighter"><span className="text-emerald-600 mr-1">$</span>{totals.usd.toFixed(2)}</span>
                 </div>
-                <Coins className="h-6 w-6 text-emerald-600/20" />
+                <Badge variant="outline" className="bg-white border-emerald-100 text-emerald-700 font-black text-[10px]">MONEDA BASE</Badge>
             </div>
             <div className="flex items-center justify-between px-8 py-3 border-r bg-amber-50/20">
                 <div className="flex flex-col">
@@ -192,7 +191,7 @@ export default function NewSalePage() {
             </div>
             <div className="flex items-center justify-between px-8 py-3 bg-orange-50/20">
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-black uppercase text-orange-600 tracking-[0.2em] leading-none mb-1">Pesos COP</span>
+                    <span className="text-[9px] font-black uppercase text-orange-600 tracking-[0.2em] leading-none mb-1">Pesos COP ($)</span>
                     <span className="text-2xl font-black text-slate-900 tracking-tighter"><span className="text-orange-500 mr-1.5">$</span>{totals.cop.toLocaleString('es-CO')}</span>
                 </div>
                 <div className="text-right flex flex-col justify-center">
@@ -218,22 +217,23 @@ export default function NewSalePage() {
                     </Button>
                 </div>
 
-                {/* TABLA DE FACTURACIÓN (INDUSTRIAL) */}
+                {/* TABLA DE FACTURACIÓN TRICURRENCY */}
                 <div className="flex-1 overflow-y-auto bg-white scrollbar-hide">
                     {watchItems.length > 0 ? (
                         <Table className="bg-white border-collapse">
                             <TableHeader className="bg-slate-50 sticky top-0 z-10">
                                 <TableRow className="border-b">
                                     <TableHead className="font-black uppercase text-[10px] h-12 pl-6 tracking-widest text-slate-500">Item / Imagen</TableHead>
-                                    <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-500">PVP Unit.</TableHead>
+                                    <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-500">PVP Unit ($)</TableHead>
                                     <TableHead className="text-center font-black uppercase text-[10px] h-12 tracking-widest text-slate-500">Cantidad</TableHead>
-                                    <TableHead className="text-right font-black uppercase text-[10px] h-12 pr-6 tracking-widest text-slate-500">Subtotal Neto</TableHead>
+                                    <TableHead className="text-right font-black uppercase text-[10px] h-12 pr-6 tracking-widest text-slate-500">Subtotal Tricomponente</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {fields.map((item, index) => {
                                     const subVES = item.price * item.quantity * (1 + (item.taxRate || 0));
                                     const subUSD = subVES / tasaBCV;
+                                    const subCOP = subUSD * tasaCOP;
                                     return (
                                         <TableRow key={item.id} className="group border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                             <TableCell className="py-4 pl-6">
@@ -248,7 +248,7 @@ export default function NewSalePage() {
                                                     <div className="flex flex-col gap-0.5">
                                                         <span className="font-black uppercase text-xs text-slate-900 tracking-tight leading-tight">{item.name}</span>
                                                         <div className="flex items-center gap-2">
-                                                            <Badge variant="outline" className="text-[8px] font-black h-4 px-1.5 border-slate-200 text-slate-400">STOCK: {item.stock}</Badge>
+                                                            <Badge variant="outline" className={cn("text-[8px] font-black h-4 px-1.5 border-slate-200", item.stock < 5 ? "text-red-600 bg-red-50 border-red-100" : "text-slate-400")}>STOCK: {item.stock}</Badge>
                                                             <span className="text-[9px] font-mono text-slate-400 uppercase">Ref: {item.productId.slice(-6)}</span>
                                                         </div>
                                                     </div>
@@ -262,18 +262,22 @@ export default function NewSalePage() {
                                             </TableCell>
                                             <TableCell className="p-0">
                                                 <div className="flex items-center justify-center gap-3">
-                                                    <button onClick={() => update(index, { ...fields[index], quantity: Math.max(0.1, item.quantity - (item.isWeightable ? 0.1 : 1)) })} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"><Minus className="h-3 w-3"/></button>
-                                                    <span className="font-black text-sm w-10 text-center text-slate-900">{item.quantity}</span>
-                                                    <button onClick={() => handleProductSelect(fields[index] as any, (item.isWeightable ? 0.1 : 1))} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3 w-3"/></button>
+                                                    <button onClick={() => update(index, { ...fields[index], quantity: Math.max(0.1, item.quantity - (item.isWeightable ? 0.1 : 1)) })} className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"><Minus className="h-3.5 w-3.5"/></button>
+                                                    <span className="font-black text-sm w-12 text-center text-slate-900">{item.quantity}</span>
+                                                    <button onClick={() => handleProductSelect(fields[index] as any, (item.isWeightable ? 0.1 : 1))} className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3.5 w-3.5"/></button>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right pr-6 py-4">
-                                                <div className="flex items-center justify-end gap-4">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="font-black text-base text-slate-900 tracking-tighter">Bs. {subVES.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                                                        <span className="text-[10px] font-bold text-emerald-600 uppercase">$ {subUSD.toFixed(2)}</span>
+                                                <div className="flex items-center justify-end gap-5">
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <span className="font-black text-base text-slate-900 tracking-tighter">$ {subUSD.toFixed(2)}</span>
+                                                        <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase">
+                                                            <span>Bs. {subVES.toLocaleString('es-VE')}</span>
+                                                            <span className="opacity-30">|</span>
+                                                            <span className="text-orange-600/70">{subCOP.toLocaleString('es-CO')} COP</span>
+                                                        </div>
                                                     </div>
-                                                    <button onClick={() => remove(index)} className="h-9 w-9 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center border-2 border-transparent"><Trash2 className="h-4 w-4" /></button>
+                                                    <button onClick={() => remove(index)} className="h-10 w-10 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-all flex items-center justify-center border-2 border-transparent"><Trash2 className="h-4 w-4" /></button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -298,9 +302,9 @@ export default function NewSalePage() {
                 <div className="h-10 bg-slate-50 text-slate-400 flex items-center px-6 justify-between shrink-0 border-t">
                     <div className="flex items-center gap-6 text-[9px] font-black uppercase tracking-widest">
                         <div className="flex items-center gap-2"><div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Nodo Cloud Activo</div>
-                        <div className="flex items-center gap-2 opacity-50"><Hash className="h-3 w-3" /> Transacción en curso...</div>
+                        <div className="flex items-center gap-2 opacity-50"><TrendingUp className="h-3 w-3" /> Transacción Multimoneda...</div>
                     </div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-primary italic">Krea Terminal v94.5 PRO</div>
+                    <div className="text-[9px] font-black uppercase tracking-widest text-primary italic">Krea Terminal v95.0 PRO</div>
                 </div>
             </main>
 
@@ -381,8 +385,14 @@ export default function NewSalePage() {
                                     <span className="text-5xl font-black tracking-tighter">Bs. {totals.ves.toLocaleString('es-VE')}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-4">
-                                    <span className="text-xl font-black text-white/80 tracking-tighter">$ {totals.usd.toFixed(2)}</span>
-                                    <Badge className="bg-white/20 text-white border-none font-black text-[9px] uppercase tracking-widest">USD Base</Badge>
+                                    <div className="flex flex-col">
+                                        <span className="text-xl font-black text-white/80 tracking-tighter">$ {totals.usd.toFixed(2)}</span>
+                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Eq. Dólar Base</span>
+                                    </div>
+                                    <div className="text-right flex flex-col">
+                                        <span className="text-sm font-black text-orange-400 tracking-tight">{totals.cop.toLocaleString('es-CO')} COP</span>
+                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Eq. Pesos</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -390,7 +400,7 @@ export default function NewSalePage() {
                         <div className="bg-slate-50 border-2 border-dashed p-4 rounded-2xl flex items-start gap-3">
                             <Info className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
                             <p className="text-[9px] font-bold text-slate-500 leading-tight uppercase italic">
-                                Verifique los ítems antes de proceder al cobro. La anulación requiere permiso de supervisor.
+                                Sistema de cobro blindado. Verifique el monto en pesos antes de confirmar para evitar diferencias de cambio.
                             </p>
                         </div>
                     </div>
@@ -426,7 +436,7 @@ export default function NewSalePage() {
                         <AlertDialogTitle className="text-3xl font-black uppercase italic tracking-tighter">¿Anular Operación?</AlertDialogTitle>
                     </div>
                     <AlertDialogDescription className="font-bold text-slate-500">
-                        Esta acción vaciará el carrito actual. El stock reservado será liberado.
+                        Esta acción vaciará el carrito actual. El stock reservado será liberado para otros clientes.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="mt-6 gap-3">
@@ -441,7 +451,9 @@ export default function NewSalePage() {
             onClose={() => setIsPaymentOpen(false)}
             totalVES={totals.ves}
             totalUSD={totals.usd}
+            totalCOP={totals.cop}
             tasaBCV={tasaBCV}
+            tasaCOP={tasaCOP}
             isSubmitting={isSubmitting}
             onConfirm={handleFinalizeSale}
        />
