@@ -29,9 +29,6 @@ interface User {
 function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r shadow-xl bg-white z-50">
-      <SidebarHeader className="h-16 border-b flex items-center justify-center overflow-hidden">
-        <Logo className="scale-90 group-data-[collapsible=icon]:scale-50 transition-all duration-300" />
-      </SidebarHeader>
       <SidebarContent className="scrollbar-hide py-4">
         <SideNav />
       </SidebarContent>
@@ -45,11 +42,10 @@ function Header({ user, isGlobalAdmin }: { user: User | null; isGlobalAdmin: boo
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-white/80 backdrop-blur-md px-4 lg:px-6 shadow-sm z-30 sticky top-0">
       <div className="flex items-center gap-3">
+        {/* Logo siempre visible en la cabecera para mantener identidad de marca */}
+        <Logo className="scale-75 origin-left" />
+        <div className="h-6 w-[1px] bg-border mx-1" />
         <SidebarTrigger className="h-10 w-10 hover:bg-primary/5 text-primary" />
-        <div className="hidden lg:block h-4 w-[1px] bg-border mx-2" />
-        <div className="lg:hidden">
-           <Logo className="scale-75 origin-left" />
-        </div>
       </div>
       
       <div className="flex items-center gap-3">
@@ -60,35 +56,37 @@ function Header({ user, isGlobalAdmin }: { user: User | null; isGlobalAdmin: boo
           </div>
         )}
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-primary/10 hover:border-primary transition-all active:scale-90">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground font-black text-xs">
-                  {user?.name?.charAt(0).toUpperCase() ?? 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64 border-2 shadow-2xl mt-1 rounded-2xl p-2">
-            <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50 px-3 pt-2 pb-1">Usuario Activo</DropdownMenuLabel>
-            <div className="px-3 pb-3">
-              <p className="text-sm font-black truncate">{user?.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate font-medium">{user?.email}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              className="cursor-pointer text-red-600 font-black text-xs uppercase p-3 rounded-xl hover:bg-red-50"
-              onClick={() => {
-                localStorage.clear();
-                router.push('/login');
-              }}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Cerrar Sesión</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-primary/10 hover:border-primary transition-all active:scale-90">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-black text-xs">
+                      {user?.name?.charAt(0).toUpperCase() ?? 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 border-2 shadow-2xl mt-1 rounded-2xl p-2">
+                <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest opacity-50 px-3 pt-2 pb-1">Usuario Activo</DropdownMenuLabel>
+                <div className="px-3 pb-3">
+                  <p className="text-sm font-black truncate">{user?.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate font-medium">{user?.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  className="cursor-pointer text-red-600 font-black text-xs uppercase p-3 rounded-xl hover:bg-red-50"
+                  onClick={() => {
+                    localStorage.clear();
+                    router.push('/login');
+                  }}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Cerrar Sesión</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </div>
     </header>
   );
