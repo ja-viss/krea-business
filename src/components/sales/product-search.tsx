@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -64,8 +65,8 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
       }
     };
 
-    // CORRECCIÓN: Reducimos debounce para mayor velocidad de respuesta
-    const debounce = setTimeout(fetchProducts, 100);
+    // Latencia ultra-baja para escaneo y búsqueda
+    const debounce = setTimeout(fetchProducts, 80);
     return () => clearTimeout(debounce);
   }, [query]);
   
@@ -88,25 +89,6 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
     setMultiplier(1);
   };
 
-  const handleScan = async (scannedCode: string) => {
-    setShowScanner(false);
-    setLoading(true);
-    try {
-        const storeId = localStorage.getItem('storeId');
-        const response = await fetch(`/api/products/lookup?storeId=${storeId}&code=${scannedCode}`);
-        const data = await response.json();
-        
-        if (!response.ok) throw new Error(data.message || 'No encontrado');
-
-        toast({ title: "Producto Escaneado", description: `${data.name} añadido (Cant: ${multiplier})` });
-        handleSelect(data);
-    } catch (error: any) {
-        toast({ variant: "destructive", title: "Fallo de Escaneo", description: error.message });
-    } finally {
-        setLoading(false);
-    }
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && results.length > 0) {
           e.preventDefault();
@@ -121,16 +103,16 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
             <div className='absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2'>
                 <Search className="h-4 w-4 text-muted-foreground" />
                 {multiplier > 1 && (
-                    <Badge variant="outline" className='bg-primary/10 text-primary border-primary/20 h-6 font-black'>
+                    <Badge variant="outline" className='bg-primary/10 text-primary border-primary/20 h-6 font-black text-[10px]'>
                         {multiplier}x
                     </Badge>
                 )}
             </div>
             <Input
                 ref={inputRef}
-                placeholder="Escanea barras o escribe (ej: 12*Leche)..."
+                placeholder="Escanea o busca (ej: 12*Leche)..."
                 className={cn(
-                    "h-12 text-lg font-bold transition-all border-2 rounded-xl focus:ring-4 focus:ring-primary/5",
+                    "h-12 text-lg font-bold transition-all border-none focus-visible:ring-0",
                     multiplier > 1 ? "pl-16" : "pl-10"
                 )}
                 value={query}
@@ -139,18 +121,16 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
                 autoFocus
             />
             {loading && (
-                <div className='absolute right-12 top-1/2 -translate-y-1/2'>
+                <div className='absolute right-4 top-1/2 -translate-y-1/2'>
                     <Zap className='h-4 w-4 text-primary animate-pulse fill-primary' />
                 </div>
             )}
         </div>
       </div>
 
-      {showScanner && <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />}
-
       {(results.length > 0) && (
-        <div className="absolute top-full mt-2 w-full rounded-2xl border bg-white shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
-          <ul className="max-h-60 overflow-y-auto">
+        <div className="absolute top-full mt-2 w-full rounded-2xl border-2 bg-white shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
+          <ul className="max-h-64 overflow-y-auto">
             {results.map((product, idx) => (
               <li
                 key={product._id}
@@ -176,6 +156,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
                             <span className="text-[9px] text-muted-foreground font-mono uppercase">
                                 Stock: <span className={cn("font-bold", product.stock < product.minStock ? "text-red-500" : "text-green-600")}>{product.stock}</span>
                             </span>
+                            <span className="text-[9px] font-black bg-muted px-1.5 rounded uppercase">{product.category}</span>
                         </div>
                     </div>
                 </div>

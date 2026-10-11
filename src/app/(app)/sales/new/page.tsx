@@ -26,9 +26,10 @@ import {
     CreditCard,
     Coins,
     ArrowRightLeft,
-    Fingerprint,
-    Hash,
-    CheckCircle2
+    CheckCircle2,
+    Wallet,
+    DollarSign,
+    RefreshCcw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -54,11 +55,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const METHODS = [
     { id: 'Efectivo', label: 'Efectivo', icon: Banknote },
-    { id: 'Pago Móvil', label: 'Pago Móvil', icon: Smartphone },
+    { id: 'Pago Móvil', label: 'P. Móvil', icon: Smartphone },
     { id: 'Tarjeta', label: 'Punto', icon: CreditCard },
     { id: 'Zelle', label: 'Zelle', icon: ShieldCheck },
     { id: 'Binance', label: 'Binance', icon: Coins },
-    { id: 'Pesos', label: 'Pesos COP', icon: ArrowRightLeft },
+    { id: 'Pesos', label: 'Pesos', icon: ArrowRightLeft },
+];
+
+const CURRENCIES = [
+    { id: 'USD', label: 'Dólares ($)', symbol: '$' },
+    { id: 'VES', label: 'Bolívares (Bs)', symbol: 'Bs' },
+    { id: 'COP', label: 'Pesos (COP)', symbol: 'P.' },
 ];
 
 const saleSchema = z.object({
@@ -79,7 +86,8 @@ interface Payment {
     method: string;
     amount: number;
     currency: 'USD' | 'VES' | 'COP';
-    reference?: string;
+    amountReceived?: number;
+    changeGiven?: number;
 }
 
 export default function NewSalePage() {
@@ -90,24 +98,19 @@ export default function NewSalePage() {
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
   
-  // Scanner state
   const [isScannerActive, setIsScannerActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef<BrowserMultiFormatReader | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Payment State
   const [payments, setPayments] = useState<Payment[]>([]);
   const [currentMethod, setCurrentMethod] = useState('Efectivo');
   const [currentCurrency, setCurrentCurrency] = useState<'USD' | 'VES' | 'COP'>('USD');
-  const [amountInput, setAmountInput] = useState('');
+  const [amountReceived, setAmountReceived] = useState('');
 
   const form = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
-    defaultValues: {
-      customerName: 'Consumidor Final',
-      items: [],
-    },
+    defaultValues: { customerName: 'Consumidor Final', items: [] },
   });
 
   const { fields, append, remove, update } = useFieldArray({
@@ -118,31 +121,6 @@ export default function NewSalePage() {
   const watchItems = form.watch('items');
   const tasaBCV = rates.usd?.usd || 52.40;
   const tasaCOPValue = rates.cop?.rate || 4200;
-
-  useEffect(() => {
-    if (isScannerActive) {
-      const hints = new Map();
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.CODE_128, BarcodeFormat.QR_CODE]);
-      codeReader.current = new BrowserMultiFormatReader(hints);
-      codeReader.current.decodeFromVideoDevice(undefined, videoRef.current!, (result) => {
-        if (result) handleBarcodeScanned(result.getText());
-      });
-    } else {
-      codeReader.current?.reset();
-    }
-    return () => codeReader.current?.reset();
-  }, [isScannerActive]);
-
-  const handleBarcodeScanned = async (code: string) => {
-    try {
-      const storeId = localStorage.getItem('storeId');
-      const res = await fetch(`/api/products/lookup?storeId=${storeId}&code=${code}`);
-      if (res.ok) {
-        const product = await res.json();
-        handleProductSelect(product);
-      }
-    } catch (e) {}
-  };
 
   const totals = useMemo(() => {
     let exento = 0, gravable = 0, iva = 0;
@@ -168,10 +146,17 @@ export default function NewSalePage() {
   const remainingUSD = remainingVES / tasaBCV;
   const remainingCOP = (remainingVES / tasaBCV) * tasaCOPValue;
 
+  const changeDue = useMemo(() => {
+    const received = parseFloat(amountReceived);
+    if (isNaN(received) || received <= 0) return 0;
+    
+    let currentLimit = currentCurrency === 'USD' ? remainingUSD : currentCurrency === 'COP' ? remainingCOP : remainingVES;
+    return Math.max(0, received - currentLimit);
+  }, [amountReceived, currentCurrency, remainingVES, remainingUSD, remainingCOP]);
+
   useEffect(() => {
-    if (currentCurrency === 'USD') setAmountInput(remainingUSD.toFixed(2));
-    else if (currentCurrency === 'COP') setAmountInput(Math.ceil(remainingCOP).toString());
-    else setAmountInput(remainingVES.toFixed(2));
+    const defaultVal = currentCurrency === 'USD' ? remainingUSD : currentCurrency === 'COP' ? remainingCOP : remainingVES;
+    setAmountReceived(defaultVal > 0 ? defaultVal.toFixed(2) : '');
   }, [currentCurrency, remainingVES, remainingUSD, remainingCOP]);
 
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
@@ -181,27 +166,30 @@ export default function NewSalePage() {
     } else {
       append({ productId: String(product._id), name: product.name, price: product.price, quantity, stock: product.stock, taxRate: product.taxRate, isWeightable: product.isWeightable });
     }
-    setTimeout(() => searchRef.current?.focus(), 50);
   };
 
   const handleAddPayment = () => {
-    const amount = parseFloat(amountInput);
-    if (isNaN(amount) || amount <= 0) return;
+    const received = parseFloat(amountReceived);
+    if (isNaN(received) || received <= 0) return;
+
+    let targetLimit = currentCurrency === 'USD' ? remainingUSD : currentCurrency === 'COP' ? remainingCOP : remainingVES;
+    const appliedAmount = Math.min(received, targetLimit);
 
     setPayments([...payments, {
         method: currentMethod,
-        amount: amount,
-        currency: currentCurrency
+        amount: appliedAmount,
+        currency: currentCurrency,
+        amountReceived: received,
+        changeGiven: changeDue
     }]);
-    setAmountInput('');
+    setAmountReceived('');
   };
 
   const handleProcessSale = async () => {
     if (remainingVES > 0.1) {
-        toast({ variant: 'destructive', title: "Cuenta Incompleta", description: "Aún hay saldo pendiente por cobrar." });
+        toast({ variant: 'destructive', title: "Saldo Pendiente", description: "Cobra el total antes de facturar." });
         return;
     }
-
     setIsSubmitting(true);
     try {
         const storeId = localStorage.getItem('storeId');
@@ -211,8 +199,7 @@ export default function NewSalePage() {
             body: JSON.stringify({ ...form.getValues(), payments, totalAmount: totals.ves, storeId }),
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.message || "Error al procesar la venta");
-        toast({ title: 'Venta Procesada Exitosamente' });
+        if (!response.ok) throw new Error(result.message);
         router.push(`/sales/${result._id}/invoice?print=true`);
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Error', description: e.message });
@@ -221,208 +208,198 @@ export default function NewSalePage() {
   };
 
   return (
-    <div className="flex h-full w-full bg-white overflow-hidden">
-       <div className="flex-1 flex flex-col p-4 md:p-6 space-y-4 md:space-y-6 overflow-hidden">
-            {/* CABECERA MULTIMONEDA */}
-            <div className="grid grid-cols-3 gap-3 md:gap-4 shrink-0">
-                <div className="p-3 md:p-4 bg-slate-50 border-2 rounded-2xl flex flex-col">
-                    <span className="text-[8px] md:text-[9px] font-black uppercase text-slate-400">Total Dólares</span>
-                    <span className="text-xl md:text-2xl font-black text-slate-900">$ {totals.usd.toFixed(2)}</span>
+    <div className="flex h-screen w-full bg-white overflow-hidden">
+       {/* AREA IZQUIERDA: PRODUCTOS */}
+       <div className="flex-1 flex flex-col p-4 md:p-6 space-y-4 overflow-hidden border-r">
+            <div className="grid grid-cols-3 gap-4 shrink-0">
+                <div className="p-3 bg-slate-50 border-2 rounded-2xl flex flex-col justify-center h-20">
+                    <span className="text-[10px] font-black uppercase text-slate-400">Total USD</span>
+                    <span className="text-2xl font-black text-slate-900">$ {totals.usd.toFixed(2)}</span>
                 </div>
-                <div className="p-3 md:p-4 bg-primary/5 border-2 border-primary/20 rounded-2xl flex flex-col relative overflow-hidden">
-                    <div className="flex justify-between items-center relative z-10">
-                        <span className="text-[8px] md:text-[9px] font-black uppercase text-primary">Total Bolívares</span>
-                        <Badge className="text-[7px] md:text-[8px] h-4 bg-primary/20 text-primary border-none">BCV: {tasaBCV}</Badge>
+                <div className="p-3 bg-primary/5 border-2 border-primary/20 rounded-2xl flex flex-col justify-center h-20">
+                    <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black uppercase text-primary">Total VES</span>
+                        <Badge className="text-[8px] bg-primary/20 text-primary border-none">BCV: {tasaBCV}</Badge>
                     </div>
-                    <span className="text-xl md:text-2xl font-black text-primary relative z-10">Bs. {totals.ves.toLocaleString('es-VE')}</span>
+                    <span className="text-2xl font-black text-primary">Bs. {totals.ves.toLocaleString('es-VE')}</span>
                 </div>
-                <div className="p-3 md:p-4 bg-slate-50 border-2 rounded-2xl flex flex-col">
-                    <span className="text-[8px] md:text-[9px] font-black uppercase text-slate-400">Total Pesos</span>
-                    <span className="text-xl md:text-2xl font-black text-slate-900">$ {totals.cop.toLocaleString('es-CO')}</span>
+                <div className="p-3 bg-slate-50 border-2 rounded-2xl flex flex-col justify-center h-20">
+                    <span className="text-[10px] font-black uppercase text-slate-400">Total COP</span>
+                    <span className="text-2xl font-black text-slate-900">{Math.ceil(totals.cop).toLocaleString()} P.</span>
                 </div>
             </div>
 
-            <div className="flex gap-2 md:gap-3 shrink-0">
+            <div className="flex gap-2 shrink-0">
                 <div className="flex-1 bg-white rounded-2xl shadow-sm border-2 p-1 focus-within:border-primary transition-all">
                     <ProductSearch onProductSelect={handleProductSelect} inputRef={searchRef} />
                 </div>
-                <Button variant={isScannerActive ? "destructive" : "outline"} className="h-12 w-12 md:h-14 md:w-14 rounded-2xl border-2" onClick={() => setIsScannerActive(!isScannerActive)}>
-                    {isScannerActive ? <X className="h-5 w-5 md:h-6 md:w-6" /> : <Camera className="h-5 w-5 md:h-6 md:w-6" />}
+                <Button variant={isScannerActive ? "destructive" : "outline"} className="h-12 w-12 rounded-2xl border-2" onClick={() => setIsScannerActive(!isScannerActive)}>
+                    <Camera className="h-6 w-6" />
                 </Button>
             </div>
 
-            {isScannerActive && (
-                <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden border-4 border-primary">
-                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="w-full h-0.5 bg-primary/50 animate-pulse" /></div>
-                </div>
-            )}
-
-            <div className="flex-1 border-2 rounded-2xl overflow-hidden flex flex-col min-h-0 bg-white">
+            <div className="flex-1 border-2 rounded-2xl overflow-hidden flex flex-col min-h-0 bg-white shadow-sm">
                 <div className="flex-1 overflow-y-auto scrollbar-hide">
                     <Table>
-                        <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b">
+                        <TableHeader className="bg-slate-50 sticky top-0 z-10">
                             <TableRow>
-                                <TableHead className="font-black uppercase text-[8px] md:text-[10px] pl-4 md:pl-8">Producto</TableHead>
-                                <TableHead className="text-center font-black uppercase text-[8px] md:text-[10px]">Precio (Bs)</TableHead>
-                                <TableHead className="text-center font-black uppercase text-[8px] md:text-[10px]">Cant.</TableHead>
-                                <TableHead className="text-right font-black uppercase text-[8px] md:text-[10px] pr-4 md:pr-8">Subtotal</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] pl-6">Descripción</TableHead>
+                                <TableHead className="text-center font-black uppercase text-[10px]">Precio</TableHead>
+                                <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px] pr-6">Subtotal</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {fields.map((item, index) => (
                                 <TableRow key={item.id} className="hover:bg-slate-50/50">
-                                    <TableCell className="py-2 md:py-4 pl-4 md:pl-8">
+                                    <TableCell className="py-3 pl-6">
                                         <div className="flex flex-col">
-                                            <span className="font-black uppercase text-[10px] md:text-xs truncate max-w-[120px] md:max-w-none">{item.name}</span>
-                                            <span className="text-[7px] md:text-[9px] font-bold text-slate-400">SKU: {item.productId.slice(-6)}</span>
+                                            <span className="font-black uppercase text-xs truncate max-w-[200px]">{item.name}</span>
+                                            <span className="text-[9px] font-bold text-slate-400">SKU: {item.productId.slice(-6).toUpperCase()}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-center py-2 md:py-4 font-bold text-[10px] md:text-xs">Bs. {item.price.toLocaleString()}</TableCell>
-                                    <TableCell className="text-center py-2 md:py-4">
-                                        <div className="flex items-center justify-center gap-1 md:gap-2">
-                                            <button onClick={() => { const v = Number(watchItems[index].quantity); if (v > 1) update(index, { ...fields[index], quantity: v - 1 }); else remove(index); }} className="h-6 w-6 md:h-7 md:w-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><Minus className="h-3 w-3"/></button>
-                                            <span className="font-black text-[10px] md:text-xs w-6 md:w-8">{watchItems[index].quantity}</span>
-                                            <button onClick={() => { const v = Number(watchItems[index].quantity); update(index, { ...fields[index], quantity: v + 1 }); }} className="h-6 w-6 md:h-7 md:w-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3 w-3"/></button>
+                                    <TableCell className="text-center font-bold text-xs">Bs. {item.price.toLocaleString()}</TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button onClick={() => { const v = Number(watchItems[index].quantity); if (v > 1) update(index, { ...fields[index], quantity: v - 1 }); else remove(index); }} className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><Minus className="h-3 w-3"/></button>
+                                            <span className="font-black text-xs w-8">{watchItems[index].quantity}</span>
+                                            <button onClick={() => { const v = Number(watchItems[index].quantity); update(index, { ...fields[index], quantity: v + 1 }); }} className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3 w-3"/></button>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right pr-4 md:pr-8 font-black text-[10px] md:text-sm">{(item.price * watchItems[index].quantity).toLocaleString()} Bs.</TableCell>
+                                    <TableCell className="text-right pr-6 font-black text-sm">{(item.price * watchItems[index].quantity).toLocaleString()} Bs.</TableCell>
                                 </TableRow>
                             ))}
-                            {fields.length === 0 && <TableRow><TableCell colSpan={4} className="h-40 md:h-60 text-center opacity-20"><Receipt className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2"/><p className="text-[8px] md:text-[10px] font-black uppercase">Esperando artículos...</p></TableCell></TableRow>}
+                            {fields.length === 0 && <TableRow><TableCell colSpan={4} className="h-60 text-center opacity-20"><Receipt className="h-16 w-16 mx-auto mb-2"/><p className="text-xs font-black uppercase">Terminal listo • Escanea productos</p></TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </div>
             </div>
        </div>
 
-       <aside className="w-72 md:w-96 bg-slate-50/50 border-l-2 flex flex-col shrink-0 overflow-y-auto scrollbar-hide">
-            <div className="p-4 md:p-6 space-y-4 md:space-y-6 flex-1">
-                {/* SECCIÓN CLIENTE */}
+       {/* SIDEBAR DERECHO: PAGO Y CLIENTE */}
+       <aside className="w-80 md:w-96 bg-slate-50/30 flex flex-col shrink-0 overflow-y-auto scrollbar-hide">
+            <div className="p-5 space-y-6 flex-1">
                 <div className="space-y-3">
-                    <Label className="text-[8px] md:text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                        <User className="h-3 w-3" /> Identificación Cliente
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                        <User className="h-3 w-3" /> Ficha del Cliente
                     </Label>
-                    <div className="bg-white p-1 rounded-xl border-2">
-                        <CustomerSearch onCustomerSelect={(c) => { setSelectedCustomer(c); form.setValue('customerId', c._id); form.setValue('customerName', c.name); }} />
-                    </div>
-                    {selectedCustomer && (
-                        <div className="p-2 bg-primary/10 rounded-lg flex justify-between items-center border border-primary/20 animate-in zoom-in-95">
-                            <span className="text-[10px] font-black uppercase text-primary truncate max-w-[150px]">{selectedCustomer.name}</span>
-                            <button onClick={() => setSelectedCustomer(null)}><X className="h-3 w-3 text-primary" /></button>
+                    {!selectedCustomer ? (
+                        <div className="bg-white p-1 rounded-xl border-2 shadow-sm">
+                            <CustomerSearch onCustomerSelect={(c) => { setSelectedCustomer(c); form.setValue('customerId', c._id); form.setValue('customerName', c.name); }} />
+                        </div>
+                    ) : (
+                        <div className="p-3 bg-primary/10 rounded-2xl flex justify-between items-center border-2 border-primary/20 animate-in zoom-in-95">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase text-primary truncate max-w-[200px]">{selectedCustomer.name}</span>
+                                <span className="text-[9px] font-bold text-primary/60">{selectedCustomer.idNumber}</span>
+                            </div>
+                            <button onClick={() => { setSelectedCustomer(null); form.setValue('customerId', undefined); form.setValue('customerName', 'Consumidor Final'); }} className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-primary shadow-sm hover:bg-red-50 hover:text-red-500 transition-all"><X className="h-4 w-4" /></button>
                         </div>
                     )}
                 </div>
 
                 <Separator />
 
-                {/* SECCIÓN PAGOS (SPLIT PAYMENT) */}
-                <div className="space-y-4">
-                    <Label className="text-[8px] md:text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                        <Calculator className="h-3 w-3" /> Liquidación Multidivisa
-                    </Label>
-
-                    {/* SALDO PENDIENTE */}
-                    <div className={cn("p-4 rounded-2xl border-2 transition-all shadow-lg overflow-hidden relative", remainingVES > 0 ? "bg-primary border-primary text-white" : "bg-emerald-500 border-emerald-600 text-white")}>
-                        <div className="absolute top-0 right-0 p-2 opacity-10"><ShieldCheck className="h-16 w-16" /></div>
-                        <p className="text-[9px] font-black uppercase opacity-60 relative z-10">Saldo por Cobrar</p>
-                        <p className="text-3xl font-black tracking-tighter relative z-10">Bs. {remainingVES.toLocaleString('es-VE')}</p>
-                        <div className="flex gap-2 text-[9px] font-bold opacity-80 uppercase relative z-10 mt-1">
-                            <span>$ {remainingUSD.toFixed(2)}</span>
-                            <span>|</span>
-                            <span>{Math.ceil(remainingCOP).toLocaleString()} COP</span>
-                        </div>
+                <div className="space-y-5">
+                    <div className={cn("p-5 rounded-3xl border-2 transition-all shadow-xl overflow-hidden relative", remainingVES > 0.1 ? "bg-primary border-primary text-white" : "bg-emerald-600 border-emerald-700 text-white")}>
+                        <div className="absolute top-0 right-0 p-2 opacity-10"><Calculator className="h-20 w-20" /></div>
+                        <p className="text-[10px] font-black uppercase opacity-60 relative z-10">Saldo Pendiente</p>
+                        <p className="text-4xl font-black tracking-tighter relative z-10">Bs. {remainingVES.toLocaleString('es-VE')}</p>
+                        {remainingVES > 0.1 && (
+                            <div className="flex gap-2 text-[10px] font-bold opacity-80 uppercase relative z-10 mt-1">
+                                <span>$ {remainingUSD.toFixed(2)}</span>
+                                <span className="opacity-30">|</span>
+                                <span>{Math.ceil(remainingCOP).toLocaleString()} COP</span>
+                            </div>
+                        )}
+                        {remainingVES <= 0.1 && <div className="flex items-center gap-2 mt-1 relative z-10 text-[10px] font-black uppercase"><CheckCircle2 className="h-4 w-4" /> Pago Completado</div>}
                     </div>
 
-                    {/* MÉTODOS DE PAGO RAPIDOS */}
-                    <div className="grid grid-cols-3 gap-2">
-                        {METHODS.map(m => (
-                            <button 
-                                key={m.id}
-                                onClick={() => {
-                                    setCurrentMethod(m.id);
-                                    if (['Zelle', 'Binance'].includes(m.id)) setCurrentCurrency('USD');
-                                    else if (m.id === 'Pesos') setCurrentCurrency('COP');
-                                    else setCurrentCurrency('VES');
-                                }}
-                                className={cn(
-                                    "flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all gap-1",
-                                    currentMethod === m.id ? "bg-primary/10 border-primary text-primary" : "bg-white border-transparent hover:bg-slate-100"
-                                )}
-                            >
-                                <m.icon className="h-4 w-4" />
-                                <span className="text-[7px] md:text-[8px] font-black uppercase leading-none">{m.label}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* INPUT DE ABONO */}
-                    <div className="bg-white p-3 rounded-2xl border-2 border-dashed space-y-3">
-                        <div className="flex gap-2">
-                            <Select value={currentCurrency} onValueChange={(v:any) => setCurrentCurrency(v)}>
-                                <SelectTrigger className="w-20 h-10 font-black text-[10px]"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="USD" className="font-bold text-[10px]">$</SelectItem>
-                                    <SelectItem value="VES" className="font-bold text-[10px]">Bs</SelectItem>
-                                    <SelectItem value="COP" className="font-bold text-[10px]">COP</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Input 
-                                type="number" 
-                                className="h-10 text-right font-black text-sm border-2" 
-                                value={amountInput}
-                                onChange={e => setAmountInput(e.target.value)}
-                            />
+                    <div className="space-y-4 bg-white p-5 rounded-[2rem] border-2 shadow-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                             <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-50 ml-1">Vía de Pago</Label>
+                                <Select value={currentMethod} onValueChange={setCurrentMethod}>
+                                    <SelectTrigger className="h-10 font-black text-[10px] rounded-xl"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {METHODS.map(m => <SelectItem key={m.id} value={m.id} className="font-bold text-[10px] uppercase">{m.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                             </div>
+                             <div className="space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase opacity-50 ml-1">Moneda</Label>
+                                <Select value={currentCurrency} onValueChange={(v:any) => setCurrentCurrency(v)}>
+                                    <SelectTrigger className="h-10 font-black text-[10px] rounded-xl"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {CURRENCIES.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-[10px] uppercase">{c.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                             </div>
                         </div>
-                        <Button className="w-full h-10 font-black uppercase text-[10px] bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white" onClick={handleAddPayment}>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase text-primary ml-1">Efectivo Recibido</Label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">{CURRENCIES.find(c => c.id === currentCurrency)?.symbol}</span>
+                                <Input type="number" step="0.01" className="h-14 pl-10 text-xl font-black border-2 rounded-2xl focus:ring-4 focus:ring-primary/5" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} onFocus={(e) => e.target.select()} />
+                            </div>
+                        </div>
+
+                        {changeDue > 0 && (
+                            <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl flex justify-between items-center animate-in zoom-in-95">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black uppercase text-emerald-600">Cambio (Vuelto)</span>
+                                    <span className="text-2xl font-black text-emerald-700">{CURRENCIES.find(c => c.id === currentCurrency)?.symbol} {changeDue.toLocaleString()}</span>
+                                </div>
+                                <RefreshCcw className="h-6 w-6 text-emerald-500 opacity-20" />
+                            </div>
+                        )}
+
+                        <Button className="w-full h-12 font-black uppercase text-[10px] rounded-xl bg-slate-900 text-white hover:bg-black transition-all shadow-lg" onClick={handleAddPayment} disabled={!amountReceived || parseFloat(amountReceived) <= 0}>
                             <Plus className="h-3 w-3 mr-2" /> Agregar Abono
                         </Button>
                     </div>
 
-                    {/* LISTA DE PAGOS AGREGADOS */}
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-hide">
+                    <div className="space-y-2">
                         {payments.map((p, i) => (
-                            <div key={i} className="flex justify-between items-center p-2 bg-white rounded-lg border shadow-sm animate-in slide-in-from-right-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded bg-primary/5 flex items-center justify-center text-primary"><CheckCircle2 className="h-3.5 w-3.5" /></div>
+                            <div key={i} className="flex justify-between items-center p-3 bg-white rounded-2xl border-2 border-slate-100 shadow-sm animate-in slide-in-from-right-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-xl bg-primary/5 flex items-center justify-center text-primary"><CheckCircle2 className="h-4 w-4" /></div>
                                     <div className="flex flex-col">
                                         <span className="text-[8px] font-black uppercase opacity-40 leading-none">{p.method}</span>
-                                        <span className="text-[10px] font-black">{p.currency === 'USD' ? '$' : ''} {p.amount.toLocaleString()} {p.currency}</span>
+                                        <span className="text-[11px] font-black">{p.currency === 'USD' ? '$' : p.currency === 'VES' ? 'Bs' : 'P.'} {p.amount.toLocaleString()}</span>
                                     </div>
                                 </div>
-                                <button onClick={() => setPayments(payments.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
+                                <button onClick={() => setPayments(payments.filter((_, idx) => idx !== i))} className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
                             </div>
                         ))}
                     </div>
                 </div>
-
-                <Separator />
-
-                {/* TOTALES FINALES */}
-                <div className="space-y-1">
-                    <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-slate-400 uppercase"><span>IVA (16%):</span><span>Bs. {totals.iva.toLocaleString()}</span></div>
-                    <div className="flex justify-between text-[8px] md:text-[9px] font-bold text-slate-400 uppercase"><span>Exento:</span><span>Bs. {totals.exento.toLocaleString()}</span></div>
-                </div>
             </div>
 
-            {/* BOTÓN FINAL */}
-            <div className="p-4 md:p-6 bg-white border-t space-y-3">
+            <div className="p-5 bg-white border-t space-y-4">
                 <Button 
-                    className="w-full h-14 md:h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-base md:text-lg shadow-xl" 
+                    className="w-full h-16 rounded-[2rem] bg-primary hover:bg-primary/90 text-white font-black uppercase text-lg shadow-2xl transition-all active:scale-95 disabled:opacity-50" 
                     onClick={handleProcessSale} 
                     disabled={watchItems.length === 0 || remainingVES > 0.1 || isSubmitting}
                 >
-                    {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <ShieldCheck className="mr-3 h-6 w-6" />}
-                    Finalizar Despacho
+                    {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <ShieldCheck className="mr-3 h-8 w-8" />}
+                    Emitir Ticket
                 </Button>
-                <button onClick={() => setIsClearDialogOpen(true)} className="w-full text-[8px] md:text-[10px] font-black uppercase text-red-500 hover:underline opacity-40">Vaciar Orden</button>
+                <button onClick={() => setIsClearDialogOpen(true)} className="w-full text-[9px] font-black uppercase text-slate-300 hover:text-red-500 transition-colors tracking-widest">Anular Proceso</button>
             </div>
        </aside>
 
        <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-            <AlertDialogContent className="border-4 rounded-3xl">
-                <AlertDialogHeader><AlertDialogTitle className="text-xl font-black uppercase italic text-red-600">¿Anular proceso de venta?</AlertDialogTitle><AlertDialogDescription className="font-bold">Se eliminarán todos los artículos y pagos registrados en esta sesión.</AlertDialogDescription></AlertDialogHeader>
-                <AlertDialogFooter className="mt-4 gap-2"><AlertDialogCancel className="font-bold uppercase text-[10px] rounded-xl h-11 flex-1 border-2">Volver</AlertDialogCancel><AlertDialogAction onClick={() => { form.reset({ items: [], customerName: 'Consumidor Final' }); setPayments([]); }} className="bg-red-600 font-black uppercase text-[10px] rounded-xl h-11 flex-1">Confirmar</AlertDialogAction></AlertDialogFooter>
+            <AlertDialogContent className="border-4 rounded-[2.5rem]">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-xl font-black uppercase italic text-red-600 flex items-center gap-2"><Trash2 className="h-6 w-6" /> ¿Vaciar todo el terminal?</AlertDialogTitle>
+                    <AlertDialogDescription className="font-bold">Se perderán todos los artículos y abonos cargados hasta el momento.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="mt-4 gap-2">
+                    <AlertDialogCancel className="font-bold uppercase text-[10px] rounded-2xl h-12 flex-1 border-2">Cerrar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { form.reset({ items: [], customerName: 'Consumidor Final' }); setPayments([]); }} className="bg-red-600 font-black uppercase text-[10px] rounded-2xl h-12 flex-1">Vaciar Terminal</AlertDialogAction>
+                </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
     </div>
