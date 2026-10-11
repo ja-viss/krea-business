@@ -95,7 +95,7 @@ export default function NewSalePage() {
 
   const watchItems = form.watch('items');
 
-  const tasaBCV = rates.usd?.usd || 0;
+  const tasaBCV = rates.usd?.usd || 52.40;
 
   // Cálculos de Totales
   const totals = useMemo(() => {
@@ -140,10 +140,16 @@ export default function NewSalePage() {
   }, [receivedAmount, paymentCurrency, totals]);
 
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
-    const existing = fields.findIndex(item => item.productId === String(product._id));
-    if (existing > -1) {
-      const newQty = parseFloat(watchItems[existing].quantity.toString()) + quantity;
-      update(existing, { ...fields[existing], quantity: newQty });
+    // CORRECCIÓN: Buscamos en watchItems para tener el estado real y evitar duplicados
+    const existingIndex = watchItems.findIndex(item => item.productId === String(product._id));
+    
+    if (existingIndex > -1) {
+      const currentItem = watchItems[existingIndex];
+      const newQty = Number(currentItem.quantity) + quantity;
+      update(existingIndex, {
+        ...currentItem,
+        quantity: newQty
+      });
     } else {
         append({
             productId: String(product._id),
@@ -155,7 +161,9 @@ export default function NewSalePage() {
             isWeightable: product.isWeightable
         });
     }
-    searchRef.current?.focus();
+    
+    // Enfocamos el buscador para la siguiente carga
+    setTimeout(() => searchRef.current?.focus(), 50);
   };
 
   const handleEmitTicket = async () => {
@@ -172,7 +180,7 @@ export default function NewSalePage() {
                 payments: [{
                     method: paymentMethod,
                     amount: totals.ves,
-                    currency: 'VES', // Siempre se liquida en VES internamente
+                    currency: 'VES',
                 }],
                 totalAmount: totals.ves,
                 storeId 
@@ -191,8 +199,8 @@ export default function NewSalePage() {
   return (
     <div className="flex h-full w-full bg-slate-50 overflow-hidden">
        
-       {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS */}
-       <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
+       {/* SECCIÓN IZQUIERDA: LISTADO DE PRODUCTOS (Maximizada) */}
+       <div className="flex-1 flex flex-col p-4 overflow-hidden">
             <div className="bg-white rounded-xl shadow-sm border p-4 mb-4">
                 <div className="relative group">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
@@ -217,22 +225,39 @@ export default function NewSalePage() {
                                     <TableCell className="py-4 pl-6">
                                         <div className="flex flex-col">
                                             <span className="font-black uppercase text-xs text-slate-700">{item.name}</span>
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">REF: {item.productId.slice(-6)}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">REF: {item.productId.slice(-6).toUpperCase()}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center py-4">
                                         <span className="font-bold text-xs text-slate-600">Bs. {item.price.toLocaleString('es-VE')}</span>
                                     </TableCell>
                                     <TableCell className="text-center py-4">
-                                        <div className="flex items-center justify-center gap-3">
-                                            <button onClick={() => update(index, { ...fields[index], quantity: Math.max(0.1, item.quantity - 1) })} className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"><Minus className="h-3 w-3"/></button>
-                                            <span className="font-black text-sm">{item.quantity}</span>
-                                            <button onClick={() => handleProductSelect(fields[index] as any, 1)} className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3 w-3"/></button>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button 
+                                                onClick={() => {
+                                                    const val = Number(watchItems[index].quantity);
+                                                    if (val > 1) update(index, { ...fields[index], quantity: val - 1 });
+                                                    else remove(index);
+                                                }} 
+                                                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                                            >
+                                                <Minus className="h-4 w-4"/>
+                                            </button>
+                                            <span className="font-black text-sm w-10 text-center">{watchItems[index].quantity}</span>
+                                            <button 
+                                                onClick={() => {
+                                                    const val = Number(watchItems[index].quantity);
+                                                    update(index, { ...fields[index], quantity: val + 1 });
+                                                }} 
+                                                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"
+                                            >
+                                                <Plus className="h-4 w-4"/>
+                                            </button>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right pr-6 py-4">
                                         <div className="flex items-center justify-end gap-4">
-                                            <span className="font-black text-sm text-slate-900">{(item.price * item.quantity).toLocaleString('es-VE')}</span>
+                                            <span className="font-black text-sm text-slate-900">{(item.price * watchItems[index].quantity).toLocaleString('es-VE')}</span>
                                             <button onClick={() => remove(index)} className="text-slate-300 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
                                         </div>
                                     </TableCell>
@@ -240,7 +265,7 @@ export default function NewSalePage() {
                             )) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-64 text-center">
-                                        <p className="text-sm font-bold text-slate-300 italic">Escanea o busca productos para facturar.</p>
+                                        <p className="text-sm font-bold text-slate-300 italic">Esperando productos para procesar.</p>
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -250,14 +275,14 @@ export default function NewSalePage() {
             </div>
        </div>
 
-       {/* SECCIÓN DERECHA: PANEL DE PAGO */}
-       <aside className="w-[380px] bg-white border-l shadow-2xl flex flex-col shrink-0 overflow-hidden">
-            <div className="p-6 space-y-6 flex-1 overflow-y-auto scrollbar-hide">
+       {/* SECCIÓN DERECHA: PANEL DE PAGO (Ajustado y responsivo) */}
+       <aside className="w-full max-w-[320px] lg:max-w-[380px] bg-white border-l shadow-2xl flex flex-col shrink-0 overflow-hidden transition-all">
+            <div className="p-4 lg:p-6 space-y-4 lg:space-y-6 flex-1 overflow-y-auto scrollbar-hide">
                 
-                <div className="space-y-4">
+                <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Forma de Pago</Label>
                     <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                        <SelectTrigger className="h-12 font-bold text-sm border-2 rounded-xl bg-slate-50">
+                        <SelectTrigger className="h-10 lg:h-12 font-bold text-sm border-2 rounded-xl bg-slate-50">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-2">
@@ -269,12 +294,12 @@ export default function NewSalePage() {
                     </Select>
                 </div>
 
-                <div className="p-5 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 lg:p-5 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 space-y-4 lg:space-y-6">
+                    <div className="grid grid-cols-2 gap-3 lg:gap-4">
                         <div className="space-y-2">
-                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Moneda de Pago</Label>
+                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Recibido en</Label>
                             <Select value={paymentCurrency} onValueChange={(v: any) => setPaymentCurrency(v)}>
-                                <SelectTrigger className="h-11 font-bold text-xs bg-white border-2 rounded-xl">
+                                <SelectTrigger className="h-10 lg:h-11 font-bold text-xs bg-white border-2 rounded-xl">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-2">
@@ -284,10 +309,10 @@ export default function NewSalePage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Monto Recibido</Label>
+                            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Monto</Label>
                             <Input 
                                 type="number" 
-                                className="h-11 font-black text-center text-lg border-2 rounded-xl"
+                                className="h-10 lg:h-11 font-black text-center text-lg border-2 rounded-xl"
                                 value={receivedAmount}
                                 onChange={e => setReceivedAmount(e.target.value)}
                                 onFocus={e => e.target.select()}
@@ -296,46 +321,49 @@ export default function NewSalePage() {
                     </div>
 
                     <div className="flex justify-between items-center pt-2">
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cambio a Entregar:</span>
-                        <span className="text-2xl font-black text-emerald-500 underline decoration-2 underline-offset-4 tracking-tighter">
-                            {paymentCurrency === 'USD' ? '$' : 'Bs.'} {changeToGive.toLocaleString()}
-                        </span>
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Vuelto:</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-black text-emerald-500 tracking-tighter">
+                                {paymentCurrency === 'USD' ? '$' : 'Bs.'} {changeToGive.toLocaleString('es-VE')}
+                            </span>
+                            <Coins className="h-5 w-5 text-emerald-500 opacity-40" />
+                        </div>
                     </div>
                 </div>
 
-                <div className="space-y-3 px-2">
+                <div className="space-y-2 px-2">
                     <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase text-slate-400">Gravable (IVA 16%):</span>
-                        <span className="text-xs font-bold text-slate-500 font-mono">Bs.S {totals.gravable.toLocaleString()}</span>
+                        <span className="text-[9px] font-black uppercase text-slate-400">Base Gravable (16%):</span>
+                        <span className="text-xs font-bold text-slate-500">Bs. {totals.gravable.toLocaleString('es-VE')}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase text-slate-400">Monto Exento:</span>
-                        <span className="text-xs font-bold text-slate-500 font-mono">Bs.S {totals.exento.toLocaleString()}</span>
+                        <span className="text-[9px] font-black uppercase text-slate-400">Total Exento:</span>
+                        <span className="text-xs font-bold text-slate-500">Bs. {totals.exento.toLocaleString('es-VE')}</span>
                     </div>
                 </div>
 
                 <div className="pt-4 border-t-2 border-slate-100">
                     <div className="flex justify-between items-baseline">
                         <span className="text-xs font-black uppercase text-primary tracking-widest">Total Bs:</span>
-                        <span className="text-4xl font-black text-primary tracking-tighter">
-                            Bs.S {totals.ves.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        <span className="text-3xl lg:text-4xl font-black text-primary tracking-tighter">
+                            Bs. {totals.ves.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                         </span>
                     </div>
-                    <div className="flex justify-between items-center mt-3 opacity-60 italic">
-                        <span className="text-[10px] font-black uppercase text-slate-400">Equiv. Divisa:</span>
+                    <div className="flex justify-between items-center mt-2 lg:mt-3 opacity-60 italic">
+                        <span className="text-[10px] font-black uppercase text-slate-400">Ref. Divisa:</span>
                         <span className="text-sm font-black text-slate-900">$ {totals.usd.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="p-6 bg-slate-50 border-t shrink-0">
+            <div className="p-4 lg:p-6 bg-slate-50 border-t shrink-0">
                 <Button 
-                    className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 transition-all active:scale-95"
+                    className="w-full h-14 lg:h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-base lg:text-lg shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95"
                     onClick={handleEmitTicket}
                     disabled={isSubmitting || watchItems.length === 0}
                 >
                     {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <Printer className="h-6 w-6" />}
-                    Emitir Ticket
+                    Emitir Despacho
                 </Button>
             </div>
        </aside>
@@ -343,9 +371,9 @@ export default function NewSalePage() {
        <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
             <AlertDialogContent className="border-4 rounded-3xl">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl font-black uppercase italic">¿Anular Venta?</AlertDialogTitle>
+                    <AlertDialogTitle className="text-xl font-black uppercase italic">¿Anular Operación?</AlertDialogTitle>
                     <AlertDialogDescription className="font-bold text-slate-400 uppercase text-xs">
-                        Se perderán los artículos cargados en la sesión actual.
+                        Se perderán los artículos cargados actualmente.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

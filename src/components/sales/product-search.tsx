@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -65,7 +64,8 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
       }
     };
 
-    const debounce = setTimeout(fetchProducts, 150);
+    // CORRECCIÓN: Reducimos debounce para mayor velocidad de respuesta
+    const debounce = setTimeout(fetchProducts, 100);
     return () => clearTimeout(debounce);
   }, [query]);
   
@@ -150,7 +150,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
 
       {(results.length > 0) && (
         <div className="absolute top-full mt-2 w-full rounded-2xl border bg-white shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
-          <ul className="max-h-80 overflow-y-auto">
+          <ul className="max-h-60 overflow-y-auto">
             {results.map((product, idx) => (
               <li
                 key={product._id}
@@ -176,13 +176,11 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
                             <span className="text-[9px] text-muted-foreground font-mono uppercase">
                                 Stock: <span className={cn("font-bold", product.stock < product.minStock ? "text-red-500" : "text-green-600")}>{product.stock}</span>
                             </span>
-                            <Badge variant="outline" className="text-[8px] h-3 px-1 opacity-50 uppercase">{product.category}</Badge>
                         </div>
                     </div>
                 </div>
                 <div className='text-right shrink-0'>
                     <span className='font-black text-slate-900 text-sm'>Bs. {product.price.toLocaleString('es-VE')}</span>
-                    <span className='block text-[8px] font-black text-emerald-600 uppercase tracking-tighter'>$ {(product.price / 52.45).toFixed(2)}</span>
                 </div>
               </li>
             ))}
