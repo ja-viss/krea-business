@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -41,7 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { differenceInDays, isBefore, addDays } from 'date-fns';
+import { differenceInDays, isBefore, addDays, format } from 'date-fns';
 
 interface InventoryMetrics {
   totalValue: number;
@@ -114,6 +113,23 @@ export default function InventoryPage() {
   }, [products, searchQuery]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(value);
+
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+    try {
+        const storeId = localStorage.getItem('storeId');
+        const res = await fetch(`/api/products/${productToDelete._id}?storeId=${storeId}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) throw new Error("No se pudo eliminar el producto.");
+        toast({ title: "Producto Eliminado" });
+        fetchProducts();
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Error", description: e.message });
+    } finally {
+        setProductToDelete(null);
+    }
+  };
 
   return (
     <div className="flex flex-1 flex-col pb-safe">
@@ -218,6 +234,19 @@ export default function InventoryPage() {
             </Table>
         </Card>
       </main>
+
+      <AlertDialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
+        <AlertDialogContent className="border-4 mx-4 rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black uppercase italic">¿Eliminar producto del catálogo?</AlertDialogTitle>
+            <AlertDialogDescription className="font-bold">Esta acción es permanente y afectará los reportes históricos asociados a este SKU.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <AlertDialogCancel className="font-bold rounded-xl h-12">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600 font-black uppercase shadow-lg h-12 rounded-xl">Confirmar Eliminación</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
