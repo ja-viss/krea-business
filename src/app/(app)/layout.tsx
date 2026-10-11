@@ -12,12 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut, Menu, ShieldCheck, ChevronLeft, ChevronRight, PanelLeft } from 'lucide-react';
+import { LogOut, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import { SideNav } from '@/components/side-nav';
 import { BottomNav } from '@/components/bottom-nav';
-import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -28,7 +27,7 @@ interface User {
 
 function AppSidebar() {
   return (
-    <Sidebar collapsible="icon" className="border-r shadow-xl bg-white z-50">
+    <Sidebar collapsible="offcanvas" className="border-r shadow-xl bg-white z-50">
       <SidebarContent className="scrollbar-hide py-4">
         <SideNav />
       </SidebarContent>
@@ -42,7 +41,6 @@ function Header({ user, isGlobalAdmin }: { user: User | null; isGlobalAdmin: boo
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-white/80 backdrop-blur-md px-4 lg:px-6 shadow-sm z-30 sticky top-0">
       <div className="flex items-center gap-3">
-        {/* Logo siempre visible en la cabecera para mantener identidad de marca */}
         <Logo className="scale-75 origin-left" />
         <div className="h-6 w-[1px] bg-border mx-1" />
         <SidebarTrigger className="h-10 w-10 hover:bg-primary/5 text-primary" />

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,7 +7,6 @@ import { navLinks, type NavLink } from '@/lib/nav-links';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
@@ -47,19 +45,13 @@ export function SideNav() {
   if (!mounted) return null;
 
   const filteredLinks = navLinks.filter(link => {
-    // 1. Si es Admin Global, solo ve links de Global
     if (isGlobalAdmin) {
       return link.isGlobal === true;
     }
-    
-    // 2. Si es usuario de tienda, filtrar por roles y MODULE FLAGS
     if (link.isGlobal) return false;
-
-    // Validación de Feature Flag (Banderas de Módulo)
     if (link.moduleKey && enabledModules) {
         if (enabledModules[link.moduleKey] === false) return false;
     }
-
     return true;
   });
 
@@ -87,7 +79,7 @@ export function SideNav() {
         <nav className="flex flex-col gap-6 px-4">
             {categories.map(category => (
                 <div key={category} className="space-y-1">
-                    <p className="px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 mb-2">
+                    <p className="px-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 mb-2 group-data-[collapsible=icon]:hidden">
                         {category}
                     </p>
                     <div className="space-y-1">
@@ -105,13 +97,10 @@ export function SideNav() {
                                             isActive && 'bg-primary/10 text-primary font-black border-l-4 border-primary rounded-l-none'
                                         )}
                                         >
-                                        <link.icon className={cn("h-4 w-4", isActive && "text-primary")} />
-                                        <span className={cn("text-xs font-bold uppercase tracking-tight", isActive && "font-black")}>{link.label}</span>
+                                        <link.icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} />
+                                        <span className={cn("text-xs font-bold uppercase tracking-tight truncate group-data-[collapsible=icon]:hidden", isActive && "font-black")}>{link.label}</span>
                                         </Link>
                                     </TooltipTrigger>
-                                    <TooltipContent side="right">
-                                        <p>{link.label}</p>
-                                    </TooltipContent>
                                     </Tooltip>
                                 );
                             })}
@@ -121,7 +110,7 @@ export function SideNav() {
         </nav>
 
         {isGlobalAdmin && (
-            <div className="px-4 mt-8 pt-4 border-t">
+            <div className="px-4 mt-8 pt-4 border-t group-data-[collapsible=icon]:hidden">
                 <button
                     onClick={() => setIsMaintenanceDialogOpen(true)}
                     disabled={isTogglingMaintenance}
