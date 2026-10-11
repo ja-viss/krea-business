@@ -45,10 +45,17 @@ export async function PUT(req: NextRequest) {
     if (updateData.seniatCondition) flatUpdate.seniatCondition = updateData.seniatCondition;
     if (updateData.footerMessage) flatUpdate.footerMessage = updateData.footerMessage;
     if (updateData.ticketFontSize) flatUpdate.ticketFontSize = updateData.ticketFontSize;
+    if (updateData.businessType) flatUpdate.businessType = updateData.businessType;
     
-    // Nueva opción de modo de operación
     if (updateData.enforceCashControl !== undefined) {
         flatUpdate.enforceCashControl = updateData.enforceCashControl;
+    }
+
+    if (updateData.botApi) {
+        if (updateData.botApi.enabled !== undefined) flatUpdate['botApi.enabled'] = updateData.botApi.enabled;
+        if (updateData.botApi.apiKey) flatUpdate['botApi.apiKey'] = updateData.botApi.apiKey;
+        if (updateData.botApi.webhookUrl !== undefined) flatUpdate['botApi.webhookUrl'] = updateData.botApi.webhookUrl;
+        if (updateData.botApi.webhookSecret) flatUpdate['botApi.webhookSecret'] = updateData.botApi.webhookSecret;
     }
 
     if (updateData.pagoMovil) {
@@ -73,7 +80,7 @@ export async function PUT(req: NextRequest) {
         userName: userName || 'Admin',
         action: 'CONFIG_SISTEMA_ACTUALIZADA',
         module: 'Configuración',
-        details: `Actualización de parámetros generales y modo de operación: ${updateData.enforceCashControl ? 'Control Activado' : 'Modo Libre'}`,
+        details: `Actualización de parámetros generales y modo de operación: ${updateData.botApi ? 'Bot API Configurada' : 'Ajustes Generales'}`,
         targetId: storeId,
         newState: flatUpdate
     });

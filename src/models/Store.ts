@@ -66,6 +66,8 @@ export interface IStore extends Document {
   botApi?: {
     enabled: boolean;
     apiKey: string;
+    webhookUrl?: string;
+    webhookSecret?: string;
     permissions: string[];
     createdAt: Date;
   };
@@ -136,6 +138,8 @@ const StoreSchema: Schema = new Schema({
   botApi: {
     enabled: { type: Boolean, default: false },
     apiKey: { type: String },
+    webhookUrl: { type: String },
+    webhookSecret: { type: String },
     permissions: [{ type: String }],
     createdAt: { type: Date, default: Date.now }
   },
