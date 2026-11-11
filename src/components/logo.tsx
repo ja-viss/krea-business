@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 export function Logo({ className }: { className?: string }) {
   return (
-    <div className={cn('flex items-center justify-center p-2 select-none', className)}>
+    <div className={cn('flex items-center justify-center p-0 select-none', className)}>
       <div className="flex flex-col items-center justify-center">
         {/* Logotipo Tipográfico Premium v2.1 - Tamaño Ajustado */}
         <span className="text-4xl font-black tracking-tighter text-primary italic transform -skew-x-6 drop-shadow-sm select-none">

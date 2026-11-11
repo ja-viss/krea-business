@@ -108,11 +108,11 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
 
             <main className="flex-1 p-2 md:p-4 flex justify-center items-start print:p-0 print:block">
                 {/* TICKET 58mm ULTRA-COMPACTO */}
-                <Card className="w-full max-w-[300px] p-2 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-xl print:rounded-none mx-auto overflow-hidden">
+                <Card className="w-full max-w-[300px] p-2 pt-0 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-xl print:rounded-none mx-auto overflow-hidden">
                     
-                    {/* CABECERA PEGADA */}
-                    <div className="flex flex-col items-center text-center mb-1 border-b-2 border-slate-950 pb-1">
-                        <div className="mb-0 scale-50 print:scale-40 origin-center"><Logo /></div>
+                    {/* CABECERA PEGADA AL BORDE SUPERIOR */}
+                    <div className="flex flex-col items-center text-center mb-1 border-b-2 border-slate-950 pb-1 pt-0">
+                        <div className="mb-0 scale-50 print:scale-40 origin-top pt-0 h-auto overflow-hidden"><Logo /></div>
                         <h1 className="text-[11px] font-black uppercase leading-none print:text-[11pt] mb-0.5">{store?.name || 'KREA BUSINESS'}</h1>
                         <p className="text-[9px] font-black print:text-[8pt] leading-none">RIF: {store?.rif || 'J-00000000-0'}</p>
                     </div>
