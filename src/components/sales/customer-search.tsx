@@ -149,13 +149,13 @@ export function CustomerSearch({ onCustomerSelect, inputRef }: CustomerSearchPro
       </div>
 
       {showResults && (
-        <div className="absolute top-full mt-1 w-full rounded-xl border-2 bg-card shadow-2xl z-[110] overflow-hidden">
+        <div className="absolute top-full mt-1 w-full rounded-xl border-2 bg-white shadow-2xl z-[110] overflow-hidden">
           {loading && <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">Buscando...</div>}
           {!loading && (
             <ul className="max-h-60 overflow-y-auto">
               {results.map((customer, idx) => (
                 <li
-                  key={customer._id}
+                  key={String(customer._id)}
                   className={cn(
                       "p-3 border-b cursor-pointer flex justify-between items-center transition-colors",
                       idx === 0 ? "bg-primary/5" : "hover:bg-muted"

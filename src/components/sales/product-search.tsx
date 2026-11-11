@@ -125,7 +125,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
           <ul className="max-h-64 overflow-y-auto">
             {results.map((product, idx) => (
               <li
-                key={product._id}
+                key={String(product._id)}
                 className={cn(
                     "p-3 border-b last:border-0 cursor-pointer flex justify-between items-center transition-all",
                     idx === 0 ? "bg-slate-50 border-l-4 border-l-primary" : "hover:bg-slate-50"
