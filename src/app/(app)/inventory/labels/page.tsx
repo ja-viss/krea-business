@@ -15,7 +15,8 @@ import {
     Loader2, 
     LayoutGrid,
     AlertCircle,
-    Barcode
+    Barcode,
+    ShoppingBag
 } from 'lucide-react';
 import { ProductSearch } from '@/components/sales/product-search';
 import { IProduct } from '@/models/Product';
@@ -75,10 +76,10 @@ export default function LabelsPage() {
     return (
         <div className="flex flex-1 flex-col bg-background">
             {/* VISTA WEB INTERACTIVA */}
-            <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-5xl mx-auto w-full print:hidden">
+            <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-5xl mx-auto w-full print:hidden overflow-y-auto scrollbar-hide">
                 <PageHeader 
-                    title="Etiquetas Profesionales" 
-                    description="Genera identificadores de estantería con precios y códigos de barras."
+                    title="Etiquetas de Estantería" 
+                    description="Optimizado para impresión térmica 58mm (Basic 230)."
                     actions={
                         <Button variant="outline" asChild className="font-bold border-2">
                             <Link href="/inventory"><ChevronLeft className="mr-2 h-4 w-4" /> Volver</Link>
@@ -86,12 +87,12 @@ export default function LabelsPage() {
                     }
                 />
 
-                <div className="grid gap-6 lg:grid-cols-12">
+                <div className="grid gap-6 lg:grid-cols-12 items-start">
                     <div className="lg:col-span-7 space-y-6">
                         <Card className="border-2 shadow-sm">
                             <CardHeader className="bg-muted/5 border-b py-3">
                                 <CardTitle className="text-[11px] font-black uppercase flex items-center gap-2 text-slate-600">
-                                    <Search className="h-4 w-4 text-primary" /> Selector de Productos
+                                    <Search className="h-4 w-4 text-primary" /> Selección de Artículos
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-6">
@@ -133,7 +134,7 @@ export default function LabelsPage() {
                                                 <TableRow>
                                                     <TableCell colSpan={3} className="h-40 text-center text-muted-foreground italic">
                                                         <Tag className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                                                        <p className="text-xs font-bold uppercase opacity-40">Busca productos para empezar</p>
+                                                        <p className="text-xs font-bold uppercase opacity-40">Busca productos para el lote</p>
                                                     </TableCell>
                                                 </TableRow>
                                             )}
@@ -145,70 +146,76 @@ export default function LabelsPage() {
                     </div>
 
                     <div className="lg:col-span-5 space-y-6">
-                        <Card className="border-2 border-primary/20 bg-primary/[0.02] shadow-xl overflow-hidden">
-                            <CardHeader className="bg-primary/5 border-b py-3">
-                                <CardTitle className="text-[11px] font-black uppercase text-primary flex items-center gap-2">
-                                    <LayoutGrid className="h-4 w-4" /> Resumen de Lote
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-6 space-y-6">
-                                <div className="flex justify-between items-center bg-white p-4 rounded-xl border-2 border-dashed">
-                                    <span className="opacity-60 uppercase text-[10px] font-black">Total Etiquetas:</span>
-                                    <span className="text-3xl font-black text-primary tracking-tighter">{totalLabels}</span>
-                                </div>
-                                <div className="p-4 bg-amber-50 border-2 border-amber-100 rounded-xl flex items-start gap-3">
-                                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                                    <p className="text-[10px] font-bold text-amber-800 leading-tight">
-                                        RECOMENDACIÓN: Para un acabado profesional, desactiva "Encabezados y pies de página" en las opciones de impresión del navegador.
-                                    </p>
-                                </div>
-                                <Button 
-                                    className="w-full h-16 text-lg font-black uppercase shadow-2xl" 
-                                    disabled={labelQueue.length === 0 || isPrinting}
-                                    onClick={handlePrint}
-                                >
-                                    {isPrinting ? <Loader2 className="animate-spin mr-2" /> : <Printer className="mr-2 h-6 w-6" />}
-                                    Imprimir Lote
-                                </Button>
-                            </CardContent>
-                        </Card>
-
-                        {/* PREVIEW EN VIVO */}
-                        <div className="p-4 border-2 border-dashed rounded-2xl bg-muted/20">
-                             <p className="text-[9px] font-black uppercase text-center opacity-40 mb-4 tracking-widest italic">Previsualización Industrial</p>
-                             <div className="bg-white border-[1px] border-black rounded-sm p-3 mx-auto w-[180px] h-[95px] shadow-2xl flex flex-col justify-between pointer-events-none text-left">
-                                <p className="text-[10px] font-black uppercase leading-tight line-clamp-1 border-b pb-1">PRODUCTO DE MUESTRA</p>
-                                <div className="flex items-center justify-between my-1">
-                                    <div className="flex items-baseline gap-0.5">
-                                        <span className="text-[7px] font-bold">Bs.</span>
-                                        <span className="text-xl font-black">1.450,00</span>
+                        {/* PREVIEW EN VIVO 58MM */}
+                        <div className="p-6 border-4 border-dashed rounded-[2.5rem] bg-slate-50 flex flex-col items-center">
+                             <p className="text-[9px] font-black uppercase text-center text-primary mb-6 tracking-widest italic">Mockup Impresión 58mm</p>
+                             <div className="bg-white border-[1px] border-slate-300 rounded-sm p-4 w-[210px] h-[110px] shadow-2xl flex flex-col justify-between pointer-events-none text-left relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-1 opacity-5"><ShoppingBag className="h-12 w-12" /></div>
+                                <p className="text-[11px] font-black uppercase leading-tight line-clamp-1 border-b-2 border-black pb-1">PRODUCTO DE MUESTRA 1KG</p>
+                                <div className="flex items-center justify-between my-2">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-[8px] font-bold">Bs.</span>
+                                        <span className="text-2xl font-black tracking-tighter">1.450,00</span>
                                     </div>
-                                    <div className="bg-black text-white text-[8px] font-black px-1.5 py-0.5 rounded">REF: $40.20</div>
+                                    <div className="bg-black text-white text-[9px] font-black px-2 py-1 rounded">REF: $27.60</div>
                                 </div>
-                                <div className="flex flex-col items-center">
-                                    <div className="h-4 w-full flex items-end gap-[1px]">
-                                        {[1,2,1,3,1,2,1,1,2,3,1,2,1].map((w,i) => <div key={i} className="bg-black h-full" style={{width: `${w}px`}}></div>)}
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <div className="h-5 w-full flex items-end gap-[1px]">
+                                        {[2,1,4,1,1,3,1,2,1,4,2,1,1,3,1,2,4,1].map((w,i) => <div key={i} className="bg-black h-full" style={{width: `${w}px`}}></div>)}
                                     </div>
-                                    <span className="text-[7px] font-mono font-bold mt-0.5">759123456789</span>
+                                    <span className="text-[8px] font-mono font-bold tracking-[0.2em]">759123456789</span>
                                 </div>
                              </div>
                         </div>
+
+                        <Card className="border-2 border-primary shadow-xl overflow-hidden rounded-3xl">
+                            <CardHeader className="bg-primary p-4 text-white">
+                                <CardTitle className="text-[10px] font-black uppercase flex items-center gap-2">
+                                    <LayoutGrid className="h-4 w-4" /> Parámetros de Salida
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-6 space-y-6">
+                                <div className="flex justify-between items-center bg-muted/30 p-4 rounded-2xl border-2 border-dashed">
+                                    <span className="opacity-60 uppercase text-[10px] font-black">Total Etiquetas:</span>
+                                    <span className="text-3xl font-black text-primary tracking-tighter">{totalLabels}</span>
+                                </div>
+                                <div className="p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl flex items-start gap-3">
+                                    <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                                    <p className="text-[10px] font-bold text-blue-800 leading-tight uppercase italic">
+                                        DRIVERS: El sistema forzará el ancho a 58mm. Asegúrate de que el rollo de papel esté bien alineado.
+                                    </p>
+                                </div>
+                            </CardContent>
+                            <CardFooter className="p-6 pt-0">
+                                <Button 
+                                    className={cn(
+                                        "w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl transition-all",
+                                        labelQueue.length > 0 ? "bg-primary" : "bg-muted"
+                                    )} 
+                                    disabled={labelQueue.length === 0 || isPrinting}
+                                    onClick={handlePrint}
+                                >
+                                    {isPrinting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <Printer className="mr-3 h-8 w-8" />}
+                                    Imprimir Lote
+                                </Button>
+                            </CardFooter>
+                        </Card>
                     </div>
                 </div>
             </main>
 
-            {/* MOTOR DE IMPRESIÓN (SOLO VISIBLE EN PAPEL) */}
-            <div className="hidden print:block bg-white">
+            {/* MOTOR DE IMPRESIÓN (SOLO VISIBLE EN PAPEL) - OPTIMIZADO 58MM */}
+            <div className="hidden print:block bg-white w-[58mm]">
                 {labelQueue.flatMap((product) => 
                     Array.from({ length: product.quantityToPrint }).map((_, idx) => (
                         <div key={`${product._id}-${idx}`} className="p-print-label">
                             <div className="label-wrapper">
-                                {/* Cabecera: Nombre */}
+                                {/* Cabecera: Nombre Máximo Contraste */}
                                 <div className="label-header">
                                     <h2 className="label-title">{product.name}</h2>
                                 </div>
                                 
-                                {/* Cuerpo: Precios */}
+                                {/* Cuerpo: Precio Gigante */}
                                 <div className="label-body">
                                     <div className="label-price-main">
                                         <span className="label-symbol">Bs.</span>
@@ -219,12 +226,12 @@ export default function LabelsPage() {
                                     </div>
                                 </div>
 
-                                {/* Pie: Código de Barras */}
+                                {/* Pie: Código de Barras Legible */}
                                 <div className="label-footer">
                                     <div className="barcode-box">
                                         <div className="barcode-bars">
-                                            {/* Patrón EAN-13 Simulado */}
-                                            {[2,1,3,1,1,2,4,1,2,1,3,1,2,2,1,3,1,1,2,4,1].map((w, i) => (
+                                            {/* Patrón EAN-13 Simulado de alta densidad */}
+                                            {[3,1,2,4,1,1,3,2,1,4,3,1,2,4,1,1,3,2,1,4,2,1].map((w, i) => (
                                                 <div key={i} className="bar" style={{ flex: w, backgroundColor: 'black' }}></div>
                                             ))}
                                         </div>
@@ -243,110 +250,114 @@ export default function LabelsPage() {
                 @media print {
                     @page {
                         margin: 0;
-                        size: 50mm 25mm;
+                        size: 58mm auto;
                     }
                     html, body {
                         background: white !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                        width: 50mm;
-                        height: 25mm;
-                        overflow: hidden;
+                        width: 58mm;
+                        overflow: visible;
                     }
-                    header, nav, aside, main, button, .print\\:hidden {
+                    header, nav, aside, main, button, .print\\:hidden, .bottom-nav {
                         display: none !important;
                     }
                     .p-print-label {
-                        width: 50mm;
-                        height: 25mm;
+                        width: 58mm;
+                        min-height: 30mm;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         page-break-after: always;
                         background: white;
-                        padding: 1.5mm;
+                        padding: 2mm;
                         box-sizing: border-box;
                     }
                     .label-wrapper {
                         width: 100%;
-                        height: 100%;
-                        border: 0.5pt solid black;
+                        border: 1pt solid black;
                         display: flex;
                         flex-direction: column;
                         justify-content: space-between;
-                        padding: 1mm;
+                        padding: 1.5mm;
                         box-sizing: border-box;
                     }
                     .label-header {
-                        border-bottom: 0.3pt solid black;
-                        padding-bottom: 0.5mm;
+                        border-bottom: 0.5pt solid black;
+                        padding-bottom: 1mm;
+                        margin-bottom: 1mm;
                     }
                     .label-title {
                         font-family: 'Inter', sans-serif;
-                        font-size: 8pt;
+                        font-size: 9pt;
                         font-weight: 900;
                         text-transform: uppercase;
                         margin: 0;
-                        line-height: 1;
+                        line-height: 1.1;
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
+                        text-align: center;
                     }
                     .label-body {
                         display: flex;
-                        justify-content: space-between;
+                        flex-direction: column;
                         align-items: center;
-                        margin: 1mm 0;
+                        gap: 1mm;
+                        margin: 1.5mm 0;
                     }
                     .label-price-main {
                         display: flex;
                         align-items: baseline;
-                        gap: 0.3mm;
+                        gap: 0.5mm;
                     }
                     .label-symbol {
-                        font-size: 6pt;
-                        font-weight: 700;
+                        font-size: 7pt;
+                        font-weight: 800;
                     }
                     .label-amount {
-                        font-size: 15pt;
+                        font-size: 20pt;
                         font-weight: 900;
-                        letter-spacing: -0.5pt;
+                        letter-spacing: -1pt;
+                        line-height: 1;
                     }
                     .label-price-ref {
-                        font-size: 7pt;
+                        font-size: 8pt;
                         font-weight: 900;
                         background: black;
                         color: white;
-                        padding: 0.4mm 1.5mm;
-                        border-radius: 0.5mm;
+                        padding: 0.8mm 3mm;
+                        border-radius: 1mm;
+                        width: 80%;
+                        text-align: center;
                     }
                     .label-footer {
                         display: flex;
                         justify-content: center;
-                        padding-top: 0.5mm;
+                        padding-top: 1mm;
                     }
                     .barcode-box {
-                        width: 85%;
+                        width: 90%;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                     }
                     .barcode-bars {
-                        height: 4.5mm;
+                        height: 6mm;
                         width: 100%;
                         display: flex;
                         align-items: stretch;
-                        gap: 0.4mm;
+                        gap: 0.5mm;
                     }
                     .bar {
                         height: 100%;
                     }
                     .barcode-text {
                         font-family: 'Courier New', monospace;
-                        font-size: 6pt;
-                        font-weight: bold;
-                        margin-top: 0.5mm;
-                        letter-spacing: 0.8pt;
+                        font-size: 7pt;
+                        font-weight: 900;
+                        margin-top: 0.8mm;
+                        letter-spacing: 1.2pt;
                     }
                 }
             `}</style>
