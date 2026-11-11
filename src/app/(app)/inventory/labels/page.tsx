@@ -150,21 +150,21 @@ export default function LabelsPage() {
                         {/* PREVIEW EN VIVO 58MM */}
                         <div className="p-6 border-4 border-dashed rounded-[2.5rem] bg-slate-50 flex flex-col items-center">
                              <p className="text-[9px] font-black uppercase text-center text-primary mb-6 tracking-widest italic">Mockup Impresión 58mm</p>
-                             <div className="bg-white border-[1px] border-slate-300 rounded-sm p-4 w-[210px] h-[110px] shadow-2xl flex flex-col justify-between pointer-events-none text-left relative overflow-hidden">
+                             <div className="bg-white border-2 border-black rounded-sm p-4 w-[210px] h-[115px] shadow-2xl flex flex-col justify-between pointer-events-none text-left relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-1 opacity-5"><ShoppingBag className="h-12 w-12" /></div>
-                                <p className="text-[11px] font-black uppercase leading-tight line-clamp-1 border-b-2 border-black pb-1">PRODUCTO DE MUESTRA 1KG</p>
+                                <p className="text-[12px] font-black uppercase leading-tight line-clamp-1 border-b-2 border-black pb-1 shadow-sm">PRODUCTO DE MUESTRA 1KG</p>
                                 <div className="flex items-center justify-between my-2">
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-[8px] font-bold">Bs.</span>
-                                        <span className="text-2xl font-black tracking-tighter">1.450,00</span>
+                                        <span className="text-[9px] font-black">Bs.</span>
+                                        <span className="text-2xl font-black tracking-tighter drop-shadow-sm">1.450,00</span>
                                     </div>
-                                    <div className="bg-black text-white text-[9px] font-black px-2 py-1 rounded">REF: $27.60</div>
+                                    <div className="bg-black text-white text-[10px] font-black px-2 py-1.5 rounded shadow-md">REF: $27.60</div>
                                 </div>
                                 <div className="flex flex-col items-center gap-0.5">
-                                    <div className="h-5 w-full flex items-end gap-[1px]">
-                                        {[2,1,4,1,1,3,1,2,1,4,2,1,1,3,1,2,4,1].map((w,i) => <div key={i} className="bg-black h-full" style={{width: `${w}px`}}></div>)}
+                                    <div className="h-6 w-full flex items-end gap-[1px]">
+                                        {[2,1,4,1,1,3,1,2,1,4,2,1,1,3,1,2,4,1,3,1,2].map((w,i) => <div key={i} className="bg-black h-full" style={{width: `${w}px`}}></div>)}
                                     </div>
-                                    <span className="text-[8px] font-mono font-bold tracking-[0.2em]">759123456789</span>
+                                    <span className="text-[9px] font-mono font-black tracking-[0.25em]">759123456789</span>
                                 </div>
                              </div>
                         </div>
@@ -216,7 +216,7 @@ export default function LabelsPage() {
                                     <h2 className="label-title">{product.name}</h2>
                                 </div>
                                 
-                                {/* Cuerpo: Precio Gigante */}
+                                {/* Cuerpo: Precio Gigante con sombreado forzado */}
                                 <div className="label-body">
                                     <div className="label-price-main">
                                         <span className="label-symbol">Bs.</span>
@@ -232,7 +232,7 @@ export default function LabelsPage() {
                                     <div className="barcode-box">
                                         <div className="barcode-bars">
                                             {/* Patrón EAN-13 Simulado de alta densidad */}
-                                            {[3,1,2,4,1,1,3,2,1,4,3,1,2,4,1,1,3,2,1,4,2,1].map((w, i) => (
+                                            {[4,1,2,4,1,2,3,2,1,4,4,1,2,4,1,2,3,2,1,4,2,2].map((w, i) => (
                                                 <div key={i} className="bar" style={{ flex: w, backgroundColor: 'black' }}></div>
                                             ))}
                                         </div>
@@ -259,6 +259,7 @@ export default function LabelsPage() {
                         padding: 0 !important;
                         width: 58mm;
                         overflow: visible;
+                        color: black !important;
                     }
                     header, nav, aside, main, button, .print\\:hidden, .bottom-nav {
                         display: none !important;
@@ -271,27 +272,28 @@ export default function LabelsPage() {
                         justify-content: center;
                         page-break-after: always;
                         background: white;
-                        padding: 2mm;
+                        padding: 2.5mm;
                         box-sizing: border-box;
                     }
                     .label-wrapper {
                         width: 100%;
-                        border: 1pt solid black;
+                        border: 1.5pt solid black;
                         display: flex;
                         flex-direction: column;
                         justify-content: space-between;
-                        padding: 1.5mm;
+                        padding: 2mm;
                         box-sizing: border-box;
+                        background: white;
                     }
                     .label-header {
-                        border-bottom: 0.5pt solid black;
+                        border-bottom: 1.2pt solid black;
                         padding-bottom: 1mm;
-                        margin-bottom: 1mm;
+                        margin-bottom: 1.5mm;
                     }
                     .label-title {
                         font-family: 'Inter', sans-serif;
-                        font-size: 9pt;
-                        font-weight: 900;
+                        font-size: 9.5pt;
+                        font-weight: 950; /* Peso máximo para remarcar */
                         text-transform: uppercase;
                         margin: 0;
                         line-height: 1.1;
@@ -299,66 +301,72 @@ export default function LabelsPage() {
                         overflow: hidden;
                         text-overflow: ellipsis;
                         text-align: center;
+                        /* Sombreado simulado para impresoras térmicas (grosor extra) */
+                        text-shadow: 0.2pt 0.2pt 0 black;
                     }
                     .label-body {
                         display: flex;
                         flex-direction: column;
                         align-items: center;
-                        gap: 1mm;
+                        gap: 1.5mm;
                         margin: 1.5mm 0;
                     }
                     .label-price-main {
                         display: flex;
                         align-items: baseline;
-                        gap: 0.5mm;
+                        gap: 0.8mm;
                     }
                     .label-symbol {
-                        font-size: 7pt;
-                        font-weight: 800;
-                    }
-                    .label-amount {
-                        font-size: 20pt;
-                        font-weight: 900;
-                        letter-spacing: -1pt;
-                        line-height: 1;
-                    }
-                    .label-price-ref {
                         font-size: 8pt;
                         font-weight: 900;
-                        background: black;
-                        color: white;
-                        padding: 0.8mm 3mm;
-                        border-radius: 1mm;
-                        width: 80%;
+                    }
+                    .label-amount {
+                        font-size: 21pt;
+                        font-weight: 950;
+                        letter-spacing: -1.2pt;
+                        line-height: 1;
+                        text-shadow: 0.3pt 0.3pt 0 black;
+                    }
+                    .label-price-ref {
+                        font-size: 9pt;
+                        font-weight: 950;
+                        background: black !important;
+                        color: white !important;
+                        padding: 1mm 4mm;
+                        border-radius: 0.5mm;
+                        width: 85%;
                         text-align: center;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                     .label-footer {
                         display: flex;
                         justify-content: center;
-                        padding-top: 1mm;
+                        padding-top: 1.5mm;
                     }
                     .barcode-box {
-                        width: 90%;
+                        width: 95%;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
                     }
                     .barcode-bars {
-                        height: 6mm;
+                        height: 7mm;
                         width: 100%;
                         display: flex;
                         align-items: stretch;
-                        gap: 0.5mm;
+                        gap: 0.4mm;
                     }
                     .bar {
                         height: 100%;
                     }
                     .barcode-text {
                         font-family: 'Courier New', monospace;
-                        font-size: 7pt;
-                        font-weight: 900;
-                        margin-top: 0.8mm;
-                        letter-spacing: 1.2pt;
+                        font-size: 7.5pt;
+                        font-weight: 950;
+                        margin-top: 1mm;
+                        letter-spacing: 1.5pt;
+                        text-shadow: 0.1pt 0.1pt 0 black;
                     }
                 }
             `}</style>
