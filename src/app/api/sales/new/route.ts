@@ -4,7 +4,6 @@ import dbConnect from '@/lib/dbConnect';
 import StoreModel from '@/models/Store';
 import { getTenantDb } from '@/lib/tenant-manager';
 import mongoose from 'mongoose';
-import { startOfMonth, endOfMonth } from 'date-fns';
 import { createLog } from '@/app/api/audit-logs/route';
 
 export async function POST(req: NextRequest) {
@@ -25,8 +24,9 @@ export async function POST(req: NextRequest) {
     session.startTransaction();
 
     try {
-        // VALIDACIÓN DE CAJA
+        // VALIDACIÓN DE CAJA (DESHABILITADA TEMPORALMENTE SEGÚN SOLICITUD)
         let activeCashSessionId = null;
+        /*
         if (store.enforceCashControl) {
             const activeSession = await models.CashSession.findOne({ 
                 status: 'Abierta' 
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
             }
             activeCashSessionId = activeSession._id;
         }
+        */
 
         // DESCUENTO DE STOCK
         for (const item of items) {
@@ -91,8 +92,8 @@ export async function POST(req: NextRequest) {
               price: i.price, 
               taxRate: i.taxRate,
             })),
-          payments: payments, // Nuevo campo para pagos mixtos
-          paymentMethod: payments[0]?.method || 'Efectivo', // Fallback para compatibilidad
+          payments: payments || [], 
+          paymentMethod: payments?.[0]?.method || body.paymentMethod || 'Efectivo',
           status: 'Pagado',
         });
         
