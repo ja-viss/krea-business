@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +27,8 @@ import {
     ShieldCheck,
     Hash,
     Plus,
-    Minus
+    Minus,
+    Camera
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { IProduct } from '@/models/Product';
@@ -39,6 +40,7 @@ import type { ICustomer } from '@/models/Customer';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
 
 const saleSchema = z.object({
   customerId: z.string().optional(),
@@ -51,7 +53,14 @@ const saleSchema = z.object({
     stock: z.number(),
     taxRate: z.number()
   })).min(1),
-  paymentMethod: z.string().default('Efectivo'),
+  // La lógica interna ahora usa un array de pagos (payments) para soportar pagos mixtos
+  payments: z.array(z.object({
+      method: z.string(),
+      amount: z.number(),
+      currency: z.string(),
+      reference: z.string().optional()
+  })).default([]),
+  paymentMethod: z.string().default('Efectivo'), // Fallback para compatibilidad
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).default('USD'),
   amountReceived: z.string().default(''),
   referenceNumber: z.string().optional(),
@@ -65,12 +74,17 @@ export default function NewSalePage() {
   const { rates } = useExchangeRates();
   const [storeConfig, setStoreConfig] = useState<any>(null);
   const productSearchRef = useRef<HTMLInputElement>(null);
+  
+  // Estados para funcionalidades avanzadas (Lógica)
+  const [showScanner, setShowScanner] = useState(false);
+  const [addedPayments, setAddedPayments] = useState<any[]>([]);
 
   const form = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
     defaultValues: {
       customerName: 'Cliente Contado',
       items: [],
+      payments: [],
       paymentMethod: 'Efectivo',
       paymentCurrency: 'USD',
       amountReceived: '',
@@ -105,6 +119,7 @@ export default function NewSalePage() {
     const handleGlobalKeys = (e: any) => {
         if (e.key === 'F1') { e.preventDefault(); productSearchRef.current?.focus(); }
         if (e.key === 'F4') { e.preventDefault(); handleFinalizeSale(); }
+        if (e.key === 'Escape') { setShowScanner(false); }
     };
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
@@ -125,11 +140,23 @@ export default function NewSalePage() {
     return { ves, usd, cop };
   }, [watchItems, rates]);
 
+  // Cálculo de saldo pendiente basado en abonos realizados
+  const paidVES = useMemo(() => {
+    return addedPayments.reduce((acc, p) => {
+        if (p.currency === 'VES') return acc + p.amount;
+        if (p.currency === 'USD') return acc + (p.amount * (rates.usd?.usd || 1));
+        if (p.currency === 'COP') return acc + ((p.amount / (rates.cop?.rate || 1)) * (rates.usd?.usd || 1));
+        return acc;
+    }, 0);
+  }, [addedPayments, rates]);
+
+  const remainingVES = Math.max(0, totals.ves - paidVES);
+  
   const targetAmount = useMemo(() => {
-      if (watchCurrency === 'VES') return totals.ves;
-      if (watchCurrency === 'COP') return totals.cop;
-      return totals.usd;
-  }, [watchCurrency, totals]);
+      if (watchCurrency === 'VES') return remainingVES;
+      if (watchCurrency === 'COP') return (remainingVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 1);
+      return remainingVES / (rates.usd?.usd || 1);
+  }, [watchCurrency, remainingVES, rates]);
 
   const allowsChange = ['Efectivo'].includes(watchMethod);
 
@@ -145,7 +172,7 @@ export default function NewSalePage() {
       return Math.max(0, received - targetAmount);
   }, [watchAmountReceived, targetAmount, allowsChange]);
 
-  const handleProductSelect = (product: IProduct, quantity: number = 1) => {
+  const handleProductSelect = useCallback((product: IProduct, quantity: number = 1) => {
     const existing = fields.findIndex(item => item.productId === String(product._id));
     if (existing > -1) {
       const currentQty = parseFloat(watchItems[existing].quantity.toString()) || 0;
@@ -160,7 +187,7 @@ export default function NewSalePage() {
             taxRate: product.taxRate
         });
     }
-  };
+  }, [fields, append, update, watchItems]);
 
   const handleAdjustQuantity = (index: number, delta: number) => {
     const currentItem = watchItems[index];
@@ -176,10 +203,41 @@ export default function NewSalePage() {
     }
   };
 
+  const handleAddPayment = () => {
+      const amount = parseFloat(watchAmountReceived) || 0;
+      if (amount <= 0) return;
+
+      const newPayment = {
+          method: watchMethod,
+          amount: Math.min(amount, targetAmount),
+          currency: watchCurrency,
+          reference: form.getValues('referenceNumber')
+      };
+
+      setAddedPayments([...addedPayments, newPayment]);
+      form.setValue('amountReceived', '');
+      form.setValue('referenceNumber', '');
+  };
+
   const handleFinalizeSale = async () => {
     if (watchItems.length === 0) return;
-    if ((parseFloat(watchAmountReceived) || 0) < targetAmount * 0.999) {
-        toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago recibido es menor al total.' });
+    
+    // Si no se han agregado abonos pero el monto recibido es correcto, crear el abono final automáticamente
+    let finalPayments = [...addedPayments];
+    if (finalPayments.length === 0) {
+        const amount = parseFloat(watchAmountReceived) || 0;
+        if (amount < targetAmount * 0.999) {
+            toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago recibido es menor al total.' });
+            return;
+        }
+        finalPayments.push({
+            method: watchMethod,
+            amount: targetAmount,
+            currency: watchCurrency,
+            reference: form.getValues('referenceNumber')
+        });
+    } else if (remainingVES > 0.05) {
+        toast({ variant: 'destructive', title: 'Saldo Pendiente', description: 'Aún falta liquidar parte de la cuenta.' });
         return;
     }
 
@@ -191,8 +249,8 @@ export default function NewSalePage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 ...form.getValues(), 
-                amountReceived: parseFloat(watchAmountReceived) || 0,
-                change,
+                payments: finalPayments,
+                totalAmount: totals.ves,
                 storeId 
             }),
         });
@@ -213,8 +271,8 @@ export default function NewSalePage() {
   }, [storeConfig, totals]);
 
   return (
-    <div className="flex flex-1 flex-col h-screen bg-background">
-       <main className="flex-1 p-4 md:px-6 pt-4 pb-6 overflow-y-auto flex flex-col gap-4">
+    <div className="flex flex-1 flex-col min-h-screen bg-background">
+       <main className="flex-1 p-4 md:px-6 pt-4 pb-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
@@ -244,14 +302,36 @@ export default function NewSalePage() {
                 {/* CARRITO */}
                 <div className="lg:col-span-7 flex flex-col gap-4">
                     <Card className='immersive-card rounded-2xl'>
-                        <CardContent className="p-3">
-                            <ProductSearch inputRef={productSearchRef} onProductSelect={handleProductSelect} />
+                        <CardContent className="p-3 flex gap-2">
+                            <div className="flex-1">
+                                <ProductSearch inputRef={productSearchRef} onProductSelect={handleProductSelect} />
+                            </div>
+                            <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-2" onClick={() => setShowScanner(!showScanner)}>
+                                <Camera className="h-5 w-5" />
+                            </Button>
                         </CardContent>
                     </Card>
 
+                    {showScanner && (
+                        <div className="relative h-[300px] w-full rounded-2xl overflow-hidden border-4 border-primary/20 bg-black">
+                            <BarcodeScanner onScan={(code) => {
+                                // Lógica de búsqueda rápida de producto por código
+                                fetch(`/api/products/lookup?storeId=${localStorage.getItem('storeId')}&code=${code}`)
+                                    .then(res => res.json())
+                                    .then(p => {
+                                        if (p._id) {
+                                            handleProductSelect(p, 1);
+                                            toast({ title: "Producto escaneado", description: p.name });
+                                        }
+                                    });
+                            }} onClose={() => setShowScanner(false)} />
+                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-50 rounded-full" onClick={() => setShowScanner(false)}><X /></Button>
+                        </div>
+                    )}
+
                     <Card className="immersive-card rounded-2xl flex-1 overflow-hidden">
                         <CardContent className="p-0 h-full">
-                            <div className="overflow-auto h-full max-h-[500px]">
+                            <div className="overflow-auto max-h-[600px]">
                                 <Table>
                                     <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                                         <TableRow>
@@ -427,6 +507,9 @@ export default function NewSalePage() {
                                                         {...form.register('referenceNumber')}
                                                     />
                                                 </div>
+                                                <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5 truncate">
+                                                    {storeConfig?.pagoMovil?.phone || 'SIN CUENTA'}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -464,11 +547,26 @@ export default function NewSalePage() {
                                                 </span>
                                             </div>
                                         </div>
+                                        <div className="flex gap-2">
+                                            {[1, 5, 10, 20, 50, 100].map(val => (
+                                                <button 
+                                                    key={val}
+                                                    type="button"
+                                                    className="flex-1 h-8 rounded-lg bg-white border-2 text-[10px] font-black hover:bg-primary/5 active:scale-95 transition-all"
+                                                    onClick={() => form.setValue('amountReceived', val.toString())}
+                                                >
+                                                    ${val}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full gap-2 opacity-60 py-4">
                                         <ShieldCheck className="h-8 w-8 text-primary" />
                                         <p className="text-[10px] font-black uppercase">Liquidación {watchMethod} Directa</p>
+                                        <div className="px-4 py-1 bg-white rounded-full font-bold text-sm">
+                                            {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(targetAmount)}
+                                        </div>
                                         <div className="w-full mt-2">
                                             <Input 
                                                 placeholder="Nº Referencia / Aprobación" 

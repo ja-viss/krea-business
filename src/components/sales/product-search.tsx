@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
-import { Search, Camera, Zap, Package } from 'lucide-react';
+import { Search, Zap, Package } from 'lucide-react';
 import type { IProduct } from '@/models/Product';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -22,7 +20,6 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
   const searchContainerRef = useRef<HTMLDivElement>(null);
   
   const [multiplier, setMultiplier] = useState<number>(1);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProducts = async () => {
