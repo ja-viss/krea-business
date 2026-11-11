@@ -192,7 +192,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                     </div>
 
                     {/* PIE DE PÁGINA ULTRA-MINIMALISTA */}
-                    <div className="mt-2 text-center">
+                    <div className="mt-2 text-center pb-1">
                         <div className="px-4 mb-1">
                             <div className="border-t border-slate-950 w-full"></div>
                             <p className="text-[7px] font-black uppercase print:text-[6pt] mt-0.5">RECIBIDO CONFORME</p>
@@ -201,8 +201,6 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                             DOCUMENTO DE CONTROL INTERNO.<br/>NO VALIDO COMO FACTURA FISCAL.
                         </p>
                     </div>
-
-                    <div className="h-4 print:h-8"></div>
                 </Card>
             </main>
 
@@ -220,7 +218,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                         -webkit-print-color-adjust: exact;
                         color: black !important;
                     }
-                    header, nav, aside, button, .print\\:hidden { 
+                    header, nav, aside, button, .print\\:hidden, .bottom-nav { 
                         display: none !important; 
                     }
                     main { 

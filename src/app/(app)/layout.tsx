@@ -1,7 +1,7 @@
 'use client';
 
 import { Logo } from '@/components/logo';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,6 +94,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setIsMounted(true);
@@ -115,6 +116,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!isMounted) return null;
 
+  const isInvoicePage = pathname.includes('/invoice');
+
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
@@ -127,7 +130,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
 
-          <BottomNav />
+          {!isInvoicePage && <BottomNav />}
         </div>
       </div>
     </SidebarProvider>
