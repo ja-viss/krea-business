@@ -32,12 +32,12 @@ import {
     Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { IProduct } from '@/models/Product';
+import type { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
 import Link from 'next/link';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { CustomerSearch } from '@/components/sales/customer-search';
-import { ICustomer } from '@/models/Customer';
+import type { ICustomer } from '@/models/Customer';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
