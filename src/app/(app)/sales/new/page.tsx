@@ -53,12 +53,6 @@ const saleSchema = z.object({
     stock: z.number(),
     taxRate: z.number()
   })).min(1),
-  payments: z.array(z.object({
-      method: z.string(),
-      amount: z.number(),
-      currency: z.string(),
-      reference: z.string().optional()
-  })).default([]),
   paymentMethod: z.string().default('Efectivo'),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).default('USD'),
   amountReceived: z.string().default(''),
@@ -74,14 +68,12 @@ export default function NewSalePage() {
   const [storeConfig, setStoreConfig] = useState<any>(null);
   const productSearchRef = useRef<HTMLInputElement>(null);
   const [showScanner, setShowScanner] = useState(false);
-  const [addedPayments, setAddedPayments] = useState<any[]>([]);
 
   const form = useForm<z.infer<typeof saleSchema>>({
     resolver: zodResolver(saleSchema),
     defaultValues: {
       customerName: 'Cliente Contado',
       items: [],
-      payments: [],
       paymentMethod: 'Efectivo',
       paymentCurrency: 'USD',
       amountReceived: '',
@@ -129,31 +121,19 @@ export default function NewSalePage() {
         const tax = sub * (i.taxRate || 0);
         totalVES += (sub + tax);
     });
+    
     const ves = Math.round(totalVES * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
+    
     return { ves, usd, cop };
   }, [watchItems, rates]);
 
-  const paidVES = useMemo(() => {
-    return addedPayments.reduce((acc, p) => {
-        if (p.currency === 'VES') return acc + p.amount;
-        if (p.currency === 'USD') return acc + (p.amount * (rates.usd?.usd || 1));
-        if (p.currency === 'COP') return acc + ((p.amount / (rates.cop?.rate || 1)) * (rates.usd?.usd || 1));
-        return acc;
-    }, 0);
-  }, [addedPayments, rates]);
-
-  const remainingVES = Math.max(0, totals.ves - paidVES);
-
   const targetAmount = useMemo(() => {
-      const remainingForCurrency = (curr: string) => {
-          if (curr === 'VES') return remainingVES;
-          if (curr === 'COP') return (remainingVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 1);
-          return remainingVES / (rates.usd?.usd || 1);
-      };
-      return remainingForCurrency(watchCurrency);
-  }, [watchCurrency, remainingVES, rates]);
+      if (watchCurrency === 'VES') return totals.ves;
+      if (watchCurrency === 'COP') return totals.cop;
+      return totals.usd;
+  }, [watchCurrency, totals]);
 
   const allowsChange = ['Efectivo'].includes(watchMethod);
 
@@ -189,43 +169,21 @@ export default function NewSalePage() {
   const handleAdjustQuantity = (index: number, delta: number) => {
     const currentItem = watchItems[index];
     if (!currentItem) return;
+
     const currentQty = parseFloat(currentItem.quantity.toString()) || 0;
     const nextQty = Math.max(0, currentQty + delta);
-    if (nextQty <= 0) remove(index);
-    else update(index, { ...fields[index], quantity: nextQty });
-  };
-
-  const handleAddPayment = () => {
-    const amount = parseFloat(watchAmountReceived) || 0;
-    if (amount <= 0) return;
-    const newPayment = {
-        method: watchMethod,
-        amount: Math.min(amount, targetAmount),
-        currency: watchCurrency,
-        reference: form.getValues('referenceNumber')
-    };
-    setAddedPayments([...addedPayments, newPayment]);
-    form.setValue('amountReceived', '');
-    form.setValue('referenceNumber', '');
+    
+    if (nextQty <= 0) {
+        remove(index);
+    } else {
+        update(index, { ...fields[index], quantity: nextQty });
+    }
   };
 
   const handleFinalizeSale = async () => {
     if (watchItems.length === 0) return;
-    let finalPayments = [...addedPayments];
-    if (finalPayments.length === 0) {
-        const amount = parseFloat(watchAmountReceived) || 0;
-        if (amount < targetAmount * 0.999) {
-            toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago recibido es menor al total.' });
-            return;
-        }
-        finalPayments.push({
-            method: watchMethod,
-            amount: targetAmount,
-            currency: watchCurrency,
-            reference: form.getValues('referenceNumber')
-        });
-    } else if (remainingVES > 0.05) {
-        toast({ variant: 'destructive', title: 'Saldo Pendiente', description: 'Aún falta liquidar parte de la cuenta.' });
+    if ((parseFloat(watchAmountReceived) || 0) < targetAmount * 0.999) {
+        toast({ variant: 'destructive', title: 'Monto Incompleto', description: 'El pago recibido es menor al total.' });
         return;
     }
 
@@ -237,8 +195,8 @@ export default function NewSalePage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 ...form.getValues(), 
-                payments: finalPayments,
-                totalAmount: totals.ves,
+                amountReceived: parseFloat(watchAmountReceived) || 0,
+                change,
                 storeId 
             }),
         });
@@ -301,7 +259,7 @@ export default function NewSalePage() {
                     </Card>
 
                     {showScanner && (
-                        <div className="relative h-[300px] w-full rounded-2xl overflow-hidden border-4 border-primary/20 bg-black">
+                        <div className="relative h-[300px] w-full rounded-2xl overflow-hidden border-4 border-primary/20 bg-black animate-in zoom-in-95">
                             <BarcodeScanner onScan={(code) => {
                                 fetch(`/api/products/lookup?storeId=${localStorage.getItem('storeId')}&code=${code}`)
                                     .then(res => res.json())
@@ -354,7 +312,14 @@ export default function NewSalePage() {
                                             </TableRow>
                                         )}) : (
                                             <TableRow>
-                                                <TableCell colSpan={4} className='h-60 text-center opacity-20 font-black uppercase text-[10px] tracking-[0.2em]'>Caja vacía.</TableCell>
+                                                <TableCell colSpan={4} className='h-60 text-center'>
+                                                    <div className="flex flex-col items-center gap-3 opacity-20">
+                                                        <div className="p-6 bg-muted rounded-full">
+                                                            <Zap className="h-10 w-10 fill-current" />
+                                                        </div>
+                                                        <p className="font-black uppercase text-[10px] tracking-[0.2em]">Caja vacía. Iniciar escaneo.</p>
+                                                    </div>
+                                                </TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
@@ -381,8 +346,29 @@ export default function NewSalePage() {
                             <div className="space-y-3">
                                 <Label className="text-[10px] font-black uppercase text-muted-foreground">Método de Pago</Label>
                                 <div className="grid grid-cols-3 gap-2">
-                                    {['Efectivo', 'Pago Móvil', 'Tarjeta', 'Zelle', 'Binance', 'Pesos'].map((m) => (
-                                        <Button key={m} variant={watchMethod === m ? 'default' : 'outline'} className="h-12 font-black uppercase text-[9px] rounded-xl border-2" onClick={() => form.setValue('paymentMethod', m)}>{m}</Button>
+                                    {[
+                                        { id: 'Pago Móvil', icon: Smartphone },
+                                        { id: 'Tarjeta', icon: CreditCard },
+                                        { id: 'Efectivo', icon: Banknote },
+                                        { id: 'Zelle', icon: CheckCircle2 },
+                                        { id: 'Binance', icon: Coins },
+                                        { id: 'Biopago', icon: ShieldCheck },
+                                    ].map((m) => (
+                                        <button 
+                                            key={m.id}
+                                            type="button"
+                                            className={cn(
+                                                "h-12 flex items-center gap-2 px-3 rounded-xl transition-all font-black text-[9px] uppercase border-2",
+                                                watchMethod === m.id ? "border-primary bg-primary/5 text-primary" : "border-transparent bg-muted/40 text-muted-foreground"
+                                            )}
+                                            onClick={() => {
+                                                form.setValue('paymentMethod', m.id);
+                                                if (['Efectivo', 'Zelle', 'Binance'].includes(m.id)) form.setValue('paymentCurrency', 'USD');
+                                                else form.setValue('paymentCurrency', 'VES');
+                                            }}
+                                        >
+                                            <m.icon className="h-4 w-4" /> {m.id}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
@@ -392,7 +378,7 @@ export default function NewSalePage() {
                                         <Label className="text-[9px] font-black uppercase opacity-60">Recibido ({watchCurrency})</Label>
                                         <Input type="number" className="h-12 text-2xl font-black bg-white rounded-xl border-2" value={watchAmountReceived} onChange={e => form.setValue('amountReceived', e.target.value)} />
                                     </div>
-                                    <div className={cn("rounded-xl p-3 flex flex-col justify-center", change > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground")}>
+                                    <div className={cn("rounded-xl p-3 flex flex-col justify-center", change > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground/40")}>
                                         <span className="text-[8px] font-black uppercase">Vuelto</span>
                                         <span className="text-xl font-black">{formatCurrency(change)}</span>
                                     </div>
@@ -405,7 +391,7 @@ export default function NewSalePage() {
                             </div>
                         </CardContent>
                         <div className="p-4 bg-muted/20 border-t">
-                             <Button onClick={handleFinalizeSale} disabled={isSubmitting || watchItems.length === 0} className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl">
+                             <Button onClick={handleFinalizeSale} disabled={isSubmitting || watchItems.length === 0} className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90">
                                 {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <Printer className="mr-3 h-6 w-6" />}
                                 CERRAR VENTA (F4)
                             </Button>

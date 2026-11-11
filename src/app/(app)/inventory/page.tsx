@@ -128,8 +128,8 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col">
-      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1400px] mx-auto w-full overflow-y-auto">
+    <div className="flex flex-1 flex-col overflow-y-auto">
+      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1400px] mx-auto w-full">
         <PageHeader
           title="Inventario"
           description="Gestión física y control de vencimientos."
