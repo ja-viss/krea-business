@@ -215,8 +215,8 @@ export default function NewSalePage() {
   }, [storeConfig, totals]);
 
   return (
-    <div className="flex flex-1 flex-col h-screen overflow-hidden bg-background">
-       <main className="flex-1 p-4 md:px-6 pt-4 pb-6 overflow-hidden flex flex-col gap-4">
+    <div className="flex flex-1 flex-col min-h-full bg-background">
+       <main className="flex-1 p-4 md:px-6 pt-4 pb-6 flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/sales"><ChevronLeft className="h-5 w-5" /></Link></Button>
@@ -242,9 +242,9 @@ export default function NewSalePage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 flex-1 overflow-hidden">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 flex-1">
                 {/* CARRITO */}
-                <div className="lg:col-span-7 flex flex-col gap-4 overflow-hidden">
+                <div className="lg:col-span-7 flex flex-col gap-4">
                     <Card className='immersive-card rounded-2xl'>
                         <CardContent className="p-3">
                             <ProductSearch inputRef={productSearchRef} onProductSelect={handleProductSelect} />
@@ -253,7 +253,7 @@ export default function NewSalePage() {
 
                     <Card className="immersive-card rounded-2xl flex-1 overflow-hidden">
                         <CardContent className="p-0 h-full">
-                            <div className="overflow-auto h-full">
+                            <div className="overflow-auto max-h-[600px]">
                                 <Table>
                                     <TableHeader className='bg-muted/30 sticky top-0 z-10'>
                                         <TableRow>
@@ -328,7 +328,7 @@ export default function NewSalePage() {
                 </div>
 
                 {/* LIQUIDACIÓN */}
-                <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
+                <div className="lg:col-span-5 flex flex-col gap-4">
                     {/* TOTALES */}
                     <Card className="immersive-card rounded-2xl bg-white border-2 border-primary/10 overflow-hidden shadow-xl">
                         <CardContent className="p-4 grid grid-cols-3 gap-2">
@@ -348,7 +348,7 @@ export default function NewSalePage() {
                     </Card>
 
                     <Card className="immersive-card rounded-2xl flex-1 overflow-hidden flex flex-col">
-                        <CardContent className="p-4 space-y-4 flex-1 flex flex-col">
+                        <CardContent className="p-4 space-y-4 flex-1 flex flex-col overflow-y-auto">
                             <div className="flex items-center gap-3">
                                 <div className="flex-1">
                                     <CustomerSearch onCustomerSelect={(c) => {
@@ -402,7 +402,7 @@ export default function NewSalePage() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 bg-muted/20 rounded-2xl p-4 border-2 border-dashed border-border/50">
+                            <div className="flex-1 bg-muted/20 rounded-2xl p-4 border-2 border-dashed border-border/50 overflow-y-auto">
                                 {watchMethod === 'Pago Móvil' ? (
                                     <div className="flex gap-4 animate-in slide-in-from-right-4">
                                         <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0 flex items-center justify-center w-[130px] h-[130px]">

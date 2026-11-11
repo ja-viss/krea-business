@@ -50,8 +50,6 @@
   body {
     @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans text-[16px] leading-relaxed;
     min-height: 100dvh;
-    height: 100dvh;
-    overflow: hidden;
   }
   
   input, textarea, select {
