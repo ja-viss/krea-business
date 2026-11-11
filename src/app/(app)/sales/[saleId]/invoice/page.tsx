@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,16 +15,21 @@ import {
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { format, parseISO } from 'date-fns';
 import { Logo } from '@/components/logo';
+import { toPng } from 'html-to-image';
+import { useToast } from '@/hooks/use-toast';
 
 export default function InvoicePage({ params }: { params: Promise<{ saleId: string }> }) {
     const router = useRouter();
     const { saleId } = use(params);
     const searchParams = useSearchParams();
     const autoPrint = searchParams.get('print') === 'true';
+    const { toast } = useToast();
+    const ticketRef = useRef<HTMLDivElement>(null);
 
     const [sale, setSale] = useState<any>(null);
     const [store, setStore] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isSharing, setIsSharing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { rates } = useExchangeRates();
 
@@ -62,6 +68,45 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
         }
     }, [loading, sale, autoPrint]);
     
+    const handleShare = async () => {
+        if (!ticketRef.current || !sale) return;
+        setIsSharing(true);
+        try {
+            // Capturamos el ticket como imagen PNG
+            const dataUrl = await toPng(ticketRef.current, { 
+                quality: 1.0,
+                backgroundColor: '#ffffff',
+                style: {
+                    transform: 'scale(1)',
+                    margin: '0'
+                }
+            });
+            
+            const blob = await (await fetch(dataUrl)).blob();
+            const file = new File([blob], `nota-entrega-${sale.invoiceNumber}.png`, { type: 'image/png' });
+
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `Nota de Entrega ${sale.invoiceNumber}`,
+                    text: `Hola, adjunto el comprobante de despacho de ${store?.name || 'Krea Business'}.`,
+                });
+            } else {
+                // Fallback: Descarga directa para compartir manualmente
+                const link = document.createElement('a');
+                link.download = `nota-entrega-${sale.invoiceNumber}.png`;
+                link.href = dataUrl;
+                link.click();
+                toast({ title: "Imagen lista", description: "Se ha descargado el comprobante para compartir manualmente." });
+            }
+        } catch (err) {
+            console.error(err);
+            toast({ variant: 'destructive', title: "Error", description: "No se pudo generar la imagen para compartir." });
+        } finally {
+            setIsSharing(false);
+        }
+    };
+
     const formatCurrency = (value: number) => 
         new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
@@ -100,15 +145,23 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                     <Button variant="outline" className="h-9 px-4 font-black uppercase text-[10px] rounded-lg border-2" onClick={() => window.print()}>
                         <Printer className="mr-2 h-4 w-4" /> Imprimir
                     </Button>
-                    <Button className="h-9 px-4 font-black uppercase text-[10px] rounded-lg bg-emerald-600 hover:bg-emerald-700">
-                        <Share2 className="mr-2 h-4 w-4" /> Enviar
+                    <Button 
+                        onClick={handleShare}
+                        disabled={isSharing}
+                        className="h-9 px-4 font-black uppercase text-[10px] rounded-lg bg-emerald-600 hover:bg-emerald-700"
+                    >
+                        {isSharing ? <Loader2 className="animate-spin h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />} 
+                        Enviar
                     </Button>
                 </div>
             </div>
 
             <main className="flex-1 p-2 md:p-4 flex justify-center items-start print:p-0 print:block">
                 {/* TICKET 58mm ULTRA-COMPACTO */}
-                <Card className="w-full max-w-[300px] p-2 pt-0 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-xl print:rounded-none mx-auto overflow-hidden">
+                <Card 
+                    ref={ticketRef}
+                    className="w-full max-w-[300px] p-2 pt-0 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-xl print:rounded-none mx-auto overflow-hidden"
+                >
                     
                     {/* CABECERA PEGADA AL BORDE SUPERIOR */}
                     <div className="flex flex-col items-center text-center mb-1 border-b-2 border-slate-950 pb-1 pt-0">
@@ -165,7 +218,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                     <div className="pt-1 border-t-2 border-slate-950 px-0.5 leading-tight">
                         <div className="flex justify-between items-center text-[9px] font-black uppercase print:text-[8pt]">
                             <span>SUBTOTAL</span>
-                            <span>{formatCurrency(sale.subtotals?.general + sale.subtotals?.exempt)}</span>
+                            <span>{formatCurrency((sale.subtotals?.general || 0) + (sale.subtotals?.exempt || 0))}</span>
                         </div>
                         <div className="flex justify-between items-end mt-0.5">
                             <span className="text-[11px] font-black uppercase print:text-[10pt]">TOTAL Bs.</span>
