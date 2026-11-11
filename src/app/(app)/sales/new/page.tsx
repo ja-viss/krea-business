@@ -53,14 +53,13 @@ const saleSchema = z.object({
     stock: z.number(),
     taxRate: z.number()
   })).min(1),
-  // La lógica interna ahora usa un array de pagos (payments) para soportar pagos mixtos
   payments: z.array(z.object({
       method: z.string(),
       amount: z.number(),
       currency: z.string(),
       reference: z.string().optional()
   })).default([]),
-  paymentMethod: z.string().default('Efectivo'), // Fallback para compatibilidad
+  paymentMethod: z.string().default('Efectivo'),
   paymentCurrency: z.enum(['USD', 'VES', 'COP']).default('USD'),
   amountReceived: z.string().default(''),
   referenceNumber: z.string().optional(),
@@ -74,8 +73,6 @@ export default function NewSalePage() {
   const { rates } = useExchangeRates();
   const [storeConfig, setStoreConfig] = useState<any>(null);
   const productSearchRef = useRef<HTMLInputElement>(null);
-  
-  // Estados para funcionalidades avanzadas (Lógica)
   const [showScanner, setShowScanner] = useState(false);
   const [addedPayments, setAddedPayments] = useState<any[]>([]);
 
@@ -132,15 +129,12 @@ export default function NewSalePage() {
         const tax = sub * (i.taxRate || 0);
         totalVES += (sub + tax);
     });
-    
     const ves = Math.round(totalVES * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
-    
     return { ves, usd, cop };
   }, [watchItems, rates]);
 
-  // Cálculo de saldo pendiente basado en abonos realizados
   const paidVES = useMemo(() => {
     return addedPayments.reduce((acc, p) => {
         if (p.currency === 'VES') return acc + p.amount;
@@ -151,11 +145,14 @@ export default function NewSalePage() {
   }, [addedPayments, rates]);
 
   const remainingVES = Math.max(0, totals.ves - paidVES);
-  
+
   const targetAmount = useMemo(() => {
-      if (watchCurrency === 'VES') return remainingVES;
-      if (watchCurrency === 'COP') return (remainingVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 1);
-      return remainingVES / (rates.usd?.usd || 1);
+      const remainingForCurrency = (curr: string) => {
+          if (curr === 'VES') return remainingVES;
+          if (curr === 'COP') return (remainingVES / (rates.usd?.usd || 1)) * (rates.cop?.rate || 1);
+          return remainingVES / (rates.usd?.usd || 1);
+      };
+      return remainingForCurrency(watchCurrency);
   }, [watchCurrency, remainingVES, rates]);
 
   const allowsChange = ['Efectivo'].includes(watchMethod);
@@ -192,37 +189,28 @@ export default function NewSalePage() {
   const handleAdjustQuantity = (index: number, delta: number) => {
     const currentItem = watchItems[index];
     if (!currentItem) return;
-
     const currentQty = parseFloat(currentItem.quantity.toString()) || 0;
     const nextQty = Math.max(0, currentQty + delta);
-    
-    if (nextQty <= 0) {
-        remove(index);
-    } else {
-        update(index, { ...fields[index], quantity: nextQty });
-    }
+    if (nextQty <= 0) remove(index);
+    else update(index, { ...fields[index], quantity: nextQty });
   };
 
   const handleAddPayment = () => {
-      const amount = parseFloat(watchAmountReceived) || 0;
-      if (amount <= 0) return;
-
-      const newPayment = {
-          method: watchMethod,
-          amount: Math.min(amount, targetAmount),
-          currency: watchCurrency,
-          reference: form.getValues('referenceNumber')
-      };
-
-      setAddedPayments([...addedPayments, newPayment]);
-      form.setValue('amountReceived', '');
-      form.setValue('referenceNumber', '');
+    const amount = parseFloat(watchAmountReceived) || 0;
+    if (amount <= 0) return;
+    const newPayment = {
+        method: watchMethod,
+        amount: Math.min(amount, targetAmount),
+        currency: watchCurrency,
+        reference: form.getValues('referenceNumber')
+    };
+    setAddedPayments([...addedPayments, newPayment]);
+    form.setValue('amountReceived', '');
+    form.setValue('referenceNumber', '');
   };
 
   const handleFinalizeSale = async () => {
     if (watchItems.length === 0) return;
-    
-    // Si no se han agregado abonos pero el monto recibido es correcto, crear el abono final automáticamente
     let finalPayments = [...addedPayments];
     if (finalPayments.length === 0) {
         const amount = parseFloat(watchAmountReceived) || 0;
@@ -315,7 +303,6 @@ export default function NewSalePage() {
                     {showScanner && (
                         <div className="relative h-[300px] w-full rounded-2xl overflow-hidden border-4 border-primary/20 bg-black">
                             <BarcodeScanner onScan={(code) => {
-                                // Lógica de búsqueda rápida de producto por código
                                 fetch(`/api/products/lookup?storeId=${localStorage.getItem('storeId')}&code=${code}`)
                                     .then(res => res.json())
                                     .then(p => {
@@ -325,7 +312,6 @@ export default function NewSalePage() {
                                         }
                                     });
                             }} onClose={() => setShowScanner(false)} />
-                            <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-50 rounded-full" onClick={() => setShowScanner(false)}><X /></Button>
                         </div>
                     )}
 
@@ -354,48 +340,21 @@ export default function NewSalePage() {
                                                 </TableCell>
                                                 <TableCell className='text-center'>
                                                     <div className="flex items-center justify-center gap-1">
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            className="h-7 w-7 rounded-full border-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
-                                                            onClick={() => handleAdjustQuantity(index, -1)}
-                                                        >
-                                                            <Minus className="h-3 w-3" />
-                                                        </Button>
-                                                        <Input 
-                                                            type="number" 
-                                                            className='w-12 h-8 text-center font-black bg-muted/50 border-none rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none' 
-                                                            {...form.register(`items.${index}.quantity`)} 
-                                                        />
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="icon" 
-                                                            className="h-7 w-7 rounded-full border-2 border-primary/20 text-primary hover:bg-primary/5"
-                                                            onClick={() => handleAdjustQuantity(index, 1)}
-                                                        >
-                                                            <Plus className="h-3 w-3" />
-                                                        </Button>
+                                                        <Button variant="outline" size="icon" className="h-7 w-7 rounded-full border-2" onClick={() => handleAdjustQuantity(index, -1)}><Minus className="h-3 w-3" /></Button>
+                                                        <Input type="number" className='w-12 h-8 text-center font-black bg-muted/50 border-none rounded-lg' {...form.register(`items.${index}.quantity`)} />
+                                                        <Button variant="outline" size="icon" className="h-7 w-7 rounded-full border-2" onClick={() => handleAdjustQuantity(index, 1)}><Plus className="h-3 w-3" /></Button>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6 font-black text-sm text-slate-800">
                                                     {currentItem ? formatCurrency(currentItem.price * currentItem.quantity * (1 + (currentItem.taxRate || 0))) : '0,00'}
                                                 </TableCell>
                                                 <TableCell className="pr-4">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => remove(index)}>
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
                                                 </TableCell>
                                             </TableRow>
                                         )}) : (
                                             <TableRow>
-                                                <TableCell colSpan={4} className='h-60 text-center'>
-                                                    <div className="flex flex-col items-center gap-3 opacity-20">
-                                                        <div className="p-6 bg-muted rounded-full">
-                                                            <Zap className="h-10 w-10 fill-current" />
-                                                        </div>
-                                                        <p className="font-black uppercase text-[10px] tracking-[0.2em]">Caja vacía. Iniciar escaneo.</p>
-                                                    </div>
-                                                </TableCell>
+                                                <TableCell colSpan={4} className='h-60 text-center opacity-20 font-black uppercase text-[10px] tracking-[0.2em]'>Caja vacía.</TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
@@ -407,185 +366,46 @@ export default function NewSalePage() {
 
                 {/* LIQUIDACIÓN */}
                 <div className="lg:col-span-5 flex flex-col gap-4">
-                    {/* TOTALES */}
                     <Card className="immersive-card rounded-2xl bg-white border-2 border-primary/10 overflow-hidden shadow-xl">
                         <CardContent className="p-4 grid grid-cols-3 gap-2">
-                             <div className="flex flex-col border-r pr-2">
-                                <span className="text-[9px] font-black uppercase text-muted-foreground">Bolívares (VES)</span>
-                                <span className="text-xl font-black tracking-tighter text-slate-900">Bs. {formatCurrency(totals.ves)}</span>
-                             </div>
-                             <div className="flex flex-col border-r px-2">
-                                <span className="text-[9px] font-black uppercase text-primary">Dólares (USD)</span>
-                                <span className="text-xl font-black tracking-tighter text-primary">${formatCurrency(totals.usd)}</span>
-                             </div>
-                             <div className="flex flex-col pl-2">
-                                <span className="text-[9px] font-black uppercase text-muted-foreground">Pesos (COP)</span>
-                                <span className="text-xl font-black tracking-tighter text-slate-700">{totals.cop.toLocaleString()}</span>
-                             </div>
+                             <div className="flex flex-col border-r pr-2"><span className="text-[9px] font-black uppercase text-muted-foreground">Bolívares</span><span className="text-xl font-black">Bs. {formatCurrency(totals.ves)}</span></div>
+                             <div className="flex flex-col border-r px-2"><span className="text-[9px] font-black uppercase text-primary">Dólares</span><span className="text-xl font-black text-primary">${formatCurrency(totals.usd)}</span></div>
+                             <div className="flex flex-col pl-2"><span className="text-[9px] font-black uppercase text-muted-foreground">Pesos</span><span className="text-xl font-black">{totals.cop.toLocaleString()}</span></div>
                         </CardContent>
                     </Card>
 
                     <Card className="immersive-card rounded-2xl flex flex-col">
-                        <CardContent className="p-4 space-y-4 flex flex-col">
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1">
-                                    <CustomerSearch onCustomerSelect={(c) => {
-                                        form.setValue('customerId', c._id);
-                                        form.setValue('customerName', c.name);
-                                        setSelectedCustomer(c);
-                                    }} />
-                                </div>
-                                {selectedCustomer ? (
-                                    <Badge className="bg-primary h-11 px-3 rounded-xl gap-2 font-black uppercase text-[10px]">
-                                        <UserCheck className="h-3.5 w-3.5" /> {selectedCustomer.name.split(' ')[0]}
-                                        <button onClick={() => setSelectedCustomer(null)} className="ml-1 hover:text-red-200"><X size={12} /></button>
-                                    </Badge>
-                                ) : (
-                                    <div className="bg-muted px-4 h-11 flex items-center rounded-xl text-[10px] font-black uppercase opacity-40 italic">Consumidor Final</div>
-                                )}
-                            </div>
-
+                        <CardContent className="p-4 space-y-4">
+                            <CustomerSearch onCustomerSelect={(c) => { form.setValue('customerId', c._id); form.setValue('customerName', c.name); setSelectedCustomer(c); }} />
                             <Separator />
-
                             <div className="space-y-3">
-                                <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Método de Pago</Label>
+                                <Label className="text-[10px] font-black uppercase text-muted-foreground">Método de Pago</Label>
                                 <div className="grid grid-cols-3 gap-2">
-                                    {[
-                                        { id: 'Pago Móvil', icon: Smartphone, color: 'text-primary' },
-                                        { id: 'Tarjeta', icon: CreditCard, color: 'text-blue-600' },
-                                        { id: 'Efectivo', icon: Banknote, color: 'text-green-600' },
-                                        { id: 'Zelle', icon: CheckCircle2, color: 'text-purple-600' },
-                                        { id: 'Binance', icon: Coins, color: 'text-amber-500' },
-                                        { id: 'Biopago', icon: ShieldCheck, color: 'text-red-500' },
-                                    ].map((m) => (
-                                        <button 
-                                            key={m.id}
-                                            type="button"
-                                            className={cn(
-                                                "h-12 flex items-center gap-2 px-3 rounded-xl transition-all font-black text-[9px] uppercase border-2",
-                                                watchMethod === m.id 
-                                                    ? "border-primary bg-primary/5 text-primary" 
-                                                    : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted/80"
-                                            )}
-                                            onClick={() => {
-                                                form.setValue('paymentMethod', m.id);
-                                                if (['Efectivo', 'Zelle', 'Binance'].includes(m.id)) form.setValue('paymentCurrency', 'USD');
-                                                else form.setValue('paymentCurrency', 'VES');
-                                            }}
-                                        >
-                                            <m.icon className={cn("h-4 w-4", watchMethod === m.id ? m.color : "text-muted-foreground/40")} />
-                                            {m.id}
-                                        </button>
+                                    {['Efectivo', 'Pago Móvil', 'Tarjeta', 'Zelle', 'Binance', 'Pesos'].map((m) => (
+                                        <Button key={m} variant={watchMethod === m ? 'default' : 'outline'} className="h-12 font-black uppercase text-[9px] rounded-xl border-2" onClick={() => form.setValue('paymentMethod', m)}>{m}</Button>
                                     ))}
                                 </div>
                             </div>
-
-                            <div className="bg-muted/20 rounded-2xl p-4 border-2 border-dashed border-border/50">
-                                {watchMethod === 'Pago Móvil' ? (
-                                    <div className="flex gap-4 animate-in slide-in-from-right-4">
-                                        <div className="bg-white p-1 rounded-lg border-2 shadow-sm shrink-0 flex items-center justify-center w-[130px] h-[130px]">
-                                             {qrString ? (
-                                                <img 
-                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrString)}&ecc=L`} 
-                                                    alt="QR" className="w-[120px] h-[120px]"
-                                                />
-                                             ) : (
-                                                <div className="text-[8px] font-black text-center text-muted-foreground p-2 uppercase">Configuración pendiente en ajustes</div>
-                                             )}
-                                        </div>
-                                        <div className="flex-1 space-y-2">
-                                            <div className="bg-primary/10 p-2 rounded-lg">
-                                                <p className="text-[10px] font-black uppercase text-primary leading-none">Cobro Exacto</p>
-                                                <p className="text-lg font-black text-slate-800">Bs. {formatCurrency(totals.ves)}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <Hash className="h-3 w-3 text-muted-foreground" />
-                                                    <Input 
-                                                        placeholder="Ref. (últimos 6)" 
-                                                        className="h-8 text-xs font-bold bg-white"
-                                                        {...form.register('referenceNumber')}
-                                                    />
-                                                </div>
-                                                <div className="text-[8px] font-bold text-muted-foreground uppercase pl-5 truncate">
-                                                    {storeConfig?.pagoMovil?.phone || 'SIN CUENTA'}
-                                                </div>
-                                            </div>
-                                        </div>
+                            <div className="bg-muted/20 rounded-2xl p-4 border-2 border-dashed">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <Label className="text-[9px] font-black uppercase opacity-60">Recibido ({watchCurrency})</Label>
+                                        <Input type="number" className="h-12 text-2xl font-black bg-white rounded-xl border-2" value={watchAmountReceived} onChange={e => form.setValue('amountReceived', e.target.value)} />
                                     </div>
-                                ) : allowsChange ? (
-                                    <div className="space-y-4 animate-in slide-in-from-bottom-2">
-                                        <div className="flex gap-2">
-                                            {['USD', 'VES', 'COP'].map((curr: any) => (
-                                                <button 
-                                                    key={curr}
-                                                    type="button"
-                                                    className={cn(
-                                                        "flex-1 h-9 rounded-lg font-black text-[10px] transition-all border-2",
-                                                        watchCurrency === curr ? "bg-white border-primary text-primary" : "bg-transparent border-transparent text-muted-foreground"
-                                                    )}
-                                                    onClick={() => form.setValue('paymentCurrency', curr)}
-                                                >
-                                                    {curr}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <Label className="text-[9px] font-black uppercase opacity-60">Recibido ({watchCurrency})</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    className="h-12 text-2xl font-black bg-white rounded-xl border-2" 
-                                                    placeholder="0.00"
-                                                    {...form.register('amountReceived')}
-                                                />
-                                            </div>
-                                            <div className={cn("rounded-xl p-3 flex flex-col justify-center", change > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground/40")}>
-                                                <span className="text-[8px] font-black uppercase">Vuelto</span>
-                                                <span className="text-xl font-black leading-none">
-                                                    {watchCurrency === 'USD' ? '$' : watchCurrency === 'COP' ? '' : 'Bs.'} {formatCurrency(change)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            {[1, 5, 10, 20, 50, 100].map(val => (
-                                                <button 
-                                                    key={val}
-                                                    type="button"
-                                                    className="flex-1 h-8 rounded-lg bg-white border-2 text-[10px] font-black hover:bg-primary/5 active:scale-95 transition-all"
-                                                    onClick={() => form.setValue('amountReceived', val.toString())}
-                                                >
-                                                    ${val}
-                                                </button>
-                                            ))}
-                                        </div>
+                                    <div className={cn("rounded-xl p-3 flex flex-col justify-center", change > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground")}>
+                                        <span className="text-[8px] font-black uppercase">Vuelto</span>
+                                        <span className="text-xl font-black">{formatCurrency(change)}</span>
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-full gap-2 opacity-60 py-4">
-                                        <ShieldCheck className="h-8 w-8 text-primary" />
-                                        <p className="text-[10px] font-black uppercase">Liquidación {watchMethod} Directa</p>
-                                        <div className="px-4 py-1 bg-white rounded-full font-bold text-sm">
-                                            {watchCurrency === 'USD' ? '$' : 'Bs.'} {formatCurrency(targetAmount)}
-                                        </div>
-                                        <div className="w-full mt-2">
-                                            <Input 
-                                                placeholder="Nº Referencia / Aprobación" 
-                                                className="h-9 text-xs text-center font-bold bg-white"
-                                                {...form.register('referenceNumber')}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
+                                </div>
+                                <div className="flex gap-2 mt-4">
+                                    {['USD', 'VES', 'COP'].map((curr: any) => (
+                                        <Button key={curr} variant={watchCurrency === curr ? 'secondary' : 'ghost'} size="sm" className="flex-1 font-black text-[10px]" onClick={() => form.setValue('paymentCurrency', curr)}>{curr}</Button>
+                                    ))}
+                                </div>
                             </div>
                         </CardContent>
-
                         <div className="p-4 bg-muted/20 border-t">
-                             <Button 
-                                type="button"
-                                onClick={handleFinalizeSale}
-                                disabled={isSubmitting || watchItems.length === 0}
-                                className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl bg-primary text-white hover:bg-primary/90 transition-all border-none"
-                            >
+                             <Button onClick={handleFinalizeSale} disabled={isSubmitting || watchItems.length === 0} className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl">
                                 {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <Printer className="mr-3 h-6 w-6" />}
                                 CERRAR VENTA (F4)
                             </Button>

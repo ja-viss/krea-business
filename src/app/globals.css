@@ -50,7 +50,7 @@
   body {
     @apply bg-[#f8fafc] text-foreground antialiased selection:bg-primary/10 font-sans text-[16px] leading-relaxed;
     min-height: 100dvh;
-    overflow-y: auto; /* Permitir scroll global */
+    overflow-y: auto;
   }
   
   input, textarea, select {
@@ -74,8 +74,8 @@
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 @media print {
-    @page { margin: 0; size: 58mm auto; }
-    body { background: white !important; font-family: 'Courier New', Courier, monospace !important; margin: 0; padding: 0; width: 58mm; }
+    @page { margin: 0; size: 80mm auto; }
+    body { background: white !important; font-family: 'Courier New', Courier, monospace !important; margin: 0; padding: 0; width: 80mm; }
     header, nav, aside, button, .print\:hidden, .bottom-nav { display: none !important; }
-    main { padding: 0 !important; margin: 0 !important; width: 58mm !important; }
+    main { padding: 0 !important; margin: 0 !important; width: 80mm !important; }
 }

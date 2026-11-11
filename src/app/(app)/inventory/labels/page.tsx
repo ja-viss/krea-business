@@ -19,7 +19,7 @@ import {
     ShoppingBag
 } from 'lucide-react';
 import { ProductSearch } from '@/components/sales/product-search';
-import { IProduct } from '@/models/Product';
+import type { IProduct } from '@/models/Product';
 import { useToast } from '@/hooks/use-toast';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import Link from 'next/link';
@@ -44,7 +44,7 @@ export default function LabelsPage() {
                 : item
             ));
         } else {
-            setLabelQueue([...labelQueue, { ...product, quantityToPrint: 1 }]);
+            setLabelQueue([...labelQueue, { ...product, quantityToPrint: 1 } as LabelItem]);
         }
         toast({ title: "Añadido a cola", description: `${product.name}` });
     };
@@ -76,8 +76,7 @@ export default function LabelsPage() {
 
     return (
         <div className="flex flex-1 flex-col bg-background">
-            {/* VISTA WEB INTERACTIVA */}
-            <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-5xl mx-auto w-full print:hidden overflow-y-auto scrollbar-hide">
+            <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-5xl mx-auto w-full print:hidden">
                 <PageHeader 
                     title="Etiquetas de Estantería" 
                     description="Optimizado para impresión térmica 58mm (Basic 230)."
@@ -98,7 +97,6 @@ export default function LabelsPage() {
                             </CardHeader>
                             <CardContent className="pt-6">
                                 <ProductSearch onProductSelect={handleAddProduct} />
-                                
                                 <div className="mt-6 rounded-xl border-2 overflow-hidden bg-white">
                                     <Table>
                                         <TableHeader className="bg-muted/50">
@@ -118,26 +116,14 @@ export default function LabelsPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        <Input 
-                                                            type="number" 
-                                                            className="w-16 h-9 mx-auto text-center font-black border-2" 
-                                                            value={item.quantityToPrint}
-                                                            onChange={(e) => handleQtyChange(String(item._id), e.target.value)}
-                                                        />
+                                                        <Input type="number" className="w-16 h-9 mx-auto text-center font-black border-2" value={item.quantityToPrint} onChange={(e) => handleQtyChange(String(item._id), e.target.value)} />
                                                     </TableCell>
                                                     <TableCell className="pr-4">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleRemove(String(item._id))}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400" onClick={() => handleRemove(String(item._id))}><Trash2 className="h-4 w-4" /></Button>
                                                     </TableCell>
                                                 </TableRow>
                                             )) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={3} className="h-40 text-center text-muted-foreground italic">
-                                                        <Tag className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                                                        <p className="text-xs font-bold uppercase opacity-40">Busca productos para el lote</p>
-                                                    </TableCell>
-                                                </TableRow>
+                                                <TableRow><TableCell colSpan={3} className="h-40 text-center text-muted-foreground italic"><Tag className="h-10 w-10 mx-auto mb-2 opacity-10" /><p className="text-xs font-bold uppercase opacity-40">Busca productos para el lote</p></TableCell></TableRow>
                                             )}
                                         </TableBody>
                                     </Table>
@@ -147,57 +133,28 @@ export default function LabelsPage() {
                     </div>
 
                     <div className="lg:col-span-5 space-y-6">
-                        {/* PREVIEW EN VIVO 58MM */}
                         <div className="p-6 border-4 border-dashed rounded-[2.5rem] bg-slate-50 flex flex-col items-center">
-                             <p className="text-[9px] font-black uppercase text-center text-primary mb-6 tracking-widest italic">Mockup Impresión 58mm</p>
                              <div className="bg-white border-2 border-black rounded-sm p-4 w-[210px] h-[115px] shadow-2xl flex flex-col justify-between pointer-events-none text-left relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-1 opacity-5"><ShoppingBag className="h-12 w-12" /></div>
-                                <p className="text-[12px] font-black uppercase leading-tight line-clamp-1 border-b-2 border-black pb-1 shadow-sm">PRODUCTO DE MUESTRA 1KG</p>
+                                <p className="text-[12px] font-black uppercase leading-tight line-clamp-1 border-b-2 border-black pb-1">MUESTRA DE PRODUCTO</p>
                                 <div className="flex items-center justify-between my-2">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-[9px] font-black">Bs.</span>
-                                        <span className="text-2xl font-black tracking-tighter drop-shadow-sm">1.450,00</span>
-                                    </div>
-                                    <div className="bg-black text-white text-[10px] font-black px-2 py-1.5 rounded shadow-md">REF: $27.60</div>
+                                    <div className="flex items-baseline gap-1"><span className="text-[9px] font-black">Bs.</span><span className="text-2xl font-black tracking-tighter">1.450,00</span></div>
+                                    <div className="bg-black text-white text-[10px] font-black px-2 py-1.5 rounded">REF: $27.60</div>
                                 </div>
-                                <div className="flex flex-col items-center gap-0.5">
-                                    <div className="h-6 w-full flex items-end gap-[1px]">
-                                        {[2,1,4,1,1,3,1,2,1,4,2,1,1,3,1,2,4,1,3,1,2].map((w,i) => <div key={i} className="bg-black h-full" style={{width: `${w}px`}}></div>)}
-                                    </div>
-                                    <span className="text-[9px] font-mono font-black tracking-[0.25em]">759123456789</span>
-                                </div>
+                                <div className="h-6 w-full flex items-end gap-[1px]">{[2,1,4,1,1,3,1,2].map((w,i) => <div key={i} className="bg-black h-full" style={{width: `${w}px`}}></div>)}</div>
                              </div>
                         </div>
 
                         <Card className="border-2 border-primary shadow-xl overflow-hidden rounded-3xl">
-                            <CardHeader className="bg-primary p-4 text-white">
-                                <CardTitle className="text-[10px] font-black uppercase flex items-center gap-2">
-                                    <LayoutGrid className="h-4 w-4" /> Parámetros de Salida
-                                </CardTitle>
-                            </CardHeader>
+                            <CardHeader className="bg-primary p-4 text-white"><CardTitle className="text-[10px] font-black uppercase flex items-center gap-2">Parámetros</CardTitle></CardHeader>
                             <CardContent className="pt-6 space-y-6">
                                 <div className="flex justify-between items-center bg-muted/30 p-4 rounded-2xl border-2 border-dashed">
                                     <span className="opacity-60 uppercase text-[10px] font-black">Total Etiquetas:</span>
-                                    <span className="text-3xl font-black text-primary tracking-tighter">{totalLabels}</span>
-                                </div>
-                                <div className="p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl flex items-start gap-3">
-                                    <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                                    <p className="text-[10px] font-bold text-blue-800 leading-tight uppercase italic">
-                                        DRIVERS: El sistema forzará el ancho a 58mm. Asegúrate de que el rollo de papel esté bien alineado.
-                                    </p>
+                                    <span className="text-3xl font-black text-primary">{totalLabels}</span>
                                 </div>
                             </CardContent>
                             <CardFooter className="p-6 pt-0">
-                                <Button 
-                                    className={cn(
-                                        "w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl transition-all",
-                                        labelQueue.length > 0 ? "bg-primary" : "bg-muted"
-                                    )} 
-                                    disabled={labelQueue.length === 0 || isPrinting}
-                                    onClick={handlePrint}
-                                >
-                                    {isPrinting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <Printer className="mr-3 h-8 w-8" />}
-                                    Imprimir Lote
+                                <Button className="w-full h-16 text-lg font-black uppercase shadow-2xl rounded-2xl" disabled={labelQueue.length === 0 || isPrinting} onClick={handlePrint}>
+                                    {isPrinting ? <Loader2 className="animate-spin mr-2 h-6 w-6" /> : <Printer className="mr-3 h-8 w-8" />} Imprimir Lote
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -205,42 +162,17 @@ export default function LabelsPage() {
                 </div>
             </main>
 
-            {/* MOTOR DE IMPRESIÓN (SOLO VISIBLE EN PAPEL) - OPTIMIZADO 58MM */}
             <div className="hidden print:block bg-white w-[58mm]">
                 {labelQueue.flatMap((product) => 
                     Array.from({ length: product.quantityToPrint }).map((_, idx) => (
                         <div key={`${product._id}-${idx}`} className="p-print-label">
                             <div className="label-wrapper">
-                                {/* Cabecera: Nombre Máximo Contraste */}
-                                <div className="label-header">
-                                    <h2 className="label-title">{product.name}</h2>
-                                </div>
-                                
-                                {/* Cuerpo: Precio Gigante con sombreado forzado */}
+                                <div className="label-header"><h2 className="label-title">{product.name}</h2></div>
                                 <div className="label-body">
-                                    <div className="label-price-main">
-                                        <span className="label-symbol">Bs.</span>
-                                        <span className="label-amount">{formatCurrency(product.price)}</span>
-                                    </div>
-                                    <div className="label-price-ref">
-                                        REF: ${rates.usd?.usd ? (product.price / rates.usd.usd).toFixed(2) : '0.00'}
-                                    </div>
+                                    <div className="label-price-main"><span className="label-symbol">Bs.</span><span className="label-amount">{formatCurrency(product.price)}</span></div>
+                                    <div className="label-price-ref">REF: ${rates.usd?.usd ? (product.price / rates.usd.usd).toFixed(2) : '0.00'}</div>
                                 </div>
-
-                                {/* Pie: Código de Barras Legible */}
-                                <div className="label-footer">
-                                    <div className="barcode-box">
-                                        <div className="barcode-bars">
-                                            {/* Patrón EAN-13 Simulado de alta densidad */}
-                                            {[4,1,2,4,1,2,3,2,1,4,4,1,2,4,1,2,3,2,1,4,2,2].map((w, i) => (
-                                                <div key={i} className="bar" style={{ flex: w, backgroundColor: 'black' }}></div>
-                                            ))}
-                                        </div>
-                                        <div className="barcode-text">
-                                            {product.barcode || product.sku || String(product._id).slice(-10).toUpperCase()}
-                                        </div>
-                                    </div>
-                                </div>
+                                <div className="label-footer"><div className="barcode-box"><div className="barcode-bars">{[4,1,2,4,1,2,3,2,1,4].map((w, i) => (<div key={i} className="bar" style={{ flex: w, backgroundColor: 'black' }}></div>))}</div><div className="barcode-text">{product.barcode || product.sku}</div></div></div>
                             </div>
                         </div>
                     ))
@@ -249,125 +181,13 @@ export default function LabelsPage() {
 
             <style jsx global>{`
                 @media print {
-                    @page {
-                        margin: 0;
-                        size: 58mm auto;
-                    }
-                    html, body {
-                        background: white !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        width: 58mm;
-                        overflow: visible;
-                        color: black !important;
-                    }
-                    header, nav, aside, main, button, .print\\:hidden, .bottom-nav {
-                        display: none !important;
-                    }
-                    .p-print-label {
-                        width: 58mm;
-                        min-height: 30mm;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        page-break-after: always;
-                        background: white;
-                        padding: 2.5mm;
-                        box-sizing: border-box;
-                    }
-                    .label-wrapper {
-                        width: 100%;
-                        border: 1.5pt solid black;
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: space-between;
-                        padding: 2mm;
-                        box-sizing: border-box;
-                        background: white;
-                    }
-                    .label-header {
-                        border-bottom: 1.2pt solid black;
-                        padding-bottom: 1mm;
-                        margin-bottom: 1.5mm;
-                    }
-                    .label-title {
-                        font-family: 'Inter', sans-serif;
-                        font-size: 9.5pt;
-                        font-weight: 950; /* Peso máximo para remarcar */
-                        text-transform: uppercase;
-                        margin: 0;
-                        line-height: 1.1;
-                        white-space: nowrap;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        text-align: center;
-                        /* Sombreado simulado para impresoras térmicas (grosor extra) */
-                        text-shadow: 0.2pt 0.2pt 0 black;
-                    }
-                    .label-body {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        gap: 1.5mm;
-                        margin: 1.5mm 0;
-                    }
-                    .label-price-main {
-                        display: flex;
-                        align-items: baseline;
-                        gap: 0.8mm;
-                    }
-                    .label-symbol {
-                        font-size: 8pt;
-                        font-weight: 900;
-                    }
-                    .label-amount {
-                        font-size: 21pt;
-                        font-weight: 950;
-                        letter-spacing: -1.2pt;
-                        line-height: 1;
-                        text-shadow: 0.3pt 0.3pt 0 black;
-                    }
-                    .label-price-ref {
-                        font-size: 9pt;
-                        font-weight: 950;
-                        background: black !important;
-                        color: white !important;
-                        padding: 1mm 4mm;
-                        border-radius: 0.5mm;
-                        width: 85%;
-                        text-align: center;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    .label-footer {
-                        display: flex;
-                        justify-content: center;
-                        padding-top: 1.5mm;
-                    }
-                    .barcode-box {
-                        width: 95%;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                    }
-                    .barcode-bars {
-                        height: 7mm;
-                        width: 100%;
-                        display: flex;
-                        align-items: stretch;
-                        gap: 0.4mm;
-                    }
-                    .bar {
-                        height: 100%;
-                    }
-                    .barcode-text {
-                        font-family: 'Courier New', monospace;
-                        font-size: 7.5pt;
-                        font-weight: 950;
-                        margin-top: 1mm;
-                        letter-spacing: 1.5pt;
-                        text-shadow: 0.1pt 0.1pt 0 black;
-                    }
+                    @page { margin: 0; size: 58mm auto; }
+                    html, body { background: white !important; margin: 0; width: 58mm; overflow: visible; color: black !important; }
+                    .p-print-label { width: 58mm; display: flex; align-items: center; justify-content: center; page-break-after: always; padding: 2.5mm; box-sizing: border-box; }
+                    .label-wrapper { width: 100%; border: 1.5pt solid black; display: flex; flex-direction: column; padding: 2mm; box-sizing: border-box; background: white; }
+                    .label-title { font-size: 9.5pt; font-weight: 950; text-transform: uppercase; text-align: center; text-shadow: 0.2pt 0.2pt 0 black; margin: 0; }
+                    .label-amount { font-size: 21pt; font-weight: 950; text-shadow: 0.3pt 0.3pt 0 black; }
+                    .label-price-ref { font-size: 9pt; font-weight: 950; background: black !important; color: white !important; width: 100%; text-align: center; -webkit-print-color-adjust: exact; }
                 }
             `}</style>
         </div>

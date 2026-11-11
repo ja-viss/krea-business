@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -11,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { IProduct } from '@/models/Product';
+import type { IProduct } from '@/models/Product';
 import { ProductSearch } from '@/components/sales/product-search';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import Link from 'next/link';

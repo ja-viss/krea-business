@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { differenceInDays, isBefore, addDays, format } from 'date-fns';
+import { differenceInDays, isBefore, addDays } from 'date-fns';
+import { format } from 'date-fns';
 
 interface InventoryMetrics {
   totalValue: number;
