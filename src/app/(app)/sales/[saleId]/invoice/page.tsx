@@ -71,12 +71,12 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
         if (!ticketRef.current || !sale) return;
         setIsSharing(true);
         try {
-            // Capturamos el ticket como imagen PNG
-            // Se añade fontEmbedCSS: '' para evitar SecurityError con fuentes externas
+            // Captura optimizada para WhatsApp: calidad máxima y sin CORS issues
             const dataUrl = await toPng(ticketRef.current, { 
                 quality: 1.0,
                 backgroundColor: '#ffffff',
                 fontEmbedCSS: '', 
+                pixelRatio: 2, // Mejora la nitidez en pantallas retina
                 style: {
                     transform: 'scale(1)',
                     margin: '0',
@@ -85,28 +85,27 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
             });
             
             const blob = await (await fetch(dataUrl)).blob();
-            const file = new File([blob], `nota-entrega-${sale.invoiceNumber}.png`, { type: 'image/png' });
+            const file = new File([blob], `comprobante-${sale.invoiceNumber}.png`, { type: 'image/png' });
 
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title: `Nota de Entrega ${sale.invoiceNumber}`,
-                    text: `Comprobante de despacho - ${store?.name || 'Krea Business'}.`,
+                    text: `Hola, adjunto comprobante de tu compra en ${store?.name || 'Krea Business'}.`,
                 });
             } else {
-                // Fallback: Descarga directa
                 const link = document.createElement('a');
                 link.download = `nota-entrega-${sale.invoiceNumber}.png`;
                 link.href = dataUrl;
                 link.click();
-                toast({ title: "Imagen preparada", description: "Se ha descargado el ticket para compartir manualmente." });
+                toast({ title: "Imagen lista", description: "Descargada para envío manual." });
             }
         } catch (err: any) {
             console.error('Error sharing invoice:', err);
             toast({ 
                 variant: 'destructive', 
                 title: "Error de captura", 
-                description: "No se pudo generar la imagen. Intenta imprimir o tomar una captura de pantalla." 
+                description: "No se pudo generar la imagen. Intenta imprimir." 
             });
         } finally {
             setIsSharing(false);
@@ -119,7 +118,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
     if (loading) return (
         <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center gap-4">
             <Loader2 className="animate-spin h-10 w-10 text-primary" />
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Generando Ticket...</p>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Validando Documento...</p>
         </div>
     );
 
@@ -128,7 +127,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-2">
                 <AlertTriangle className="h-8 w-8 text-red-500" />
             </div>
-            <h2 className="text-xl font-black uppercase tracking-tighter">Error de Documento</h2>
+            <h2 className="text-xl font-black uppercase tracking-tighter">Error de Localización</h2>
             <p className="text-xs text-muted-foreground max-w-xs">{error}</p>
             <Button onClick={() => router.push('/sales')} className="rounded-xl font-black uppercase mt-4">
                 <ArrowLeft className='mr-2 h-4 w-4' />Volver a Ventas
@@ -140,134 +139,137 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
     const tasaBcv = rates.usd?.usd || 0;
     
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-100 flex flex-col overflow-y-auto print:bg-white print:static print:inset-auto">
+        <div className="fixed inset-0 z-[100] bg-slate-100 flex flex-col overflow-y-auto print:bg-white print:static print:inset-auto scrollbar-hide">
             
-            {/* BARRA DE ACCIONES */}
-            <div className="w-full bg-white border-b px-6 h-14 flex items-center justify-between shrink-0 print:hidden sticky top-0 z-50 shadow-sm">
+            {/* ACCIONES SUPERIORES */}
+            <div className="w-full bg-white border-b px-6 h-16 flex items-center justify-between shrink-0 print:hidden sticky top-0 z-50 shadow-md">
                 <Button variant="ghost" onClick={() => router.push('/sales')} className="font-black text-[10px] uppercase text-slate-400">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Panel de Ventas
                 </Button>
-                <div className="flex gap-2">
-                    <Button variant="outline" className="h-9 px-4 font-black uppercase text-[10px] rounded-lg border-2" onClick={() => window.print()}>
+                <div className="flex gap-3">
+                    <Button variant="outline" className="h-10 px-5 font-black uppercase text-[10px] rounded-xl border-2" onClick={() => window.print()}>
                         <Printer className="mr-2 h-4 w-4" /> Imprimir
                     </Button>
                     <Button 
                         onClick={handleShare}
                         disabled={isSharing}
-                        className="h-9 px-4 font-black uppercase text-[10px] rounded-lg bg-emerald-600 hover:bg-emerald-700"
+                        className="h-10 px-6 font-black uppercase text-[10px] rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20"
                     >
                         {isSharing ? <Loader2 className="animate-spin h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />} 
-                        Enviar
+                        Enviar WhatsApp
                     </Button>
                 </div>
             </div>
 
-            <main className="flex-1 p-2 md:p-4 flex justify-center items-start print:p-0 print:block">
-                {/* TICKET 58mm ULTRA-COMPACTO */}
+            <main className="flex-1 p-4 md:p-8 flex justify-center items-start print:p-0 print:block bg-slate-100 print:bg-white">
+                {/* TICKET DIGITAL/IMPRESO OPTIMIZADO PARA 58mm */}
                 <Card 
                     ref={ticketRef}
-                    className="w-full max-w-[300px] p-2 pt-0 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-xl print:rounded-none mx-auto overflow-hidden"
+                    className="w-full max-w-[320px] p-4 pt-1 pb-4 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-900 rounded-[2rem] print:rounded-none mx-auto overflow-hidden flex flex-col"
                 >
                     
-                    {/* CABECERA SIN MÁRGENES - PEGADA AL TOPE */}
-                    <div className="flex flex-col items-center text-center mb-1 border-b-2 border-slate-950 pb-1 pt-0 mt-0">
-                        <div className="mb-0 scale-50 print:scale-40 origin-top pt-0 h-auto overflow-hidden -mt-2"><Logo /></div>
-                        <h1 className="text-[11px] font-black uppercase leading-none print:text-[11pt] mb-0.5 -mt-1">{store?.name || 'KREA BUSINESS'}</h1>
-                        <p className="text-[9px] font-black print:text-[8pt] leading-none">RIF: {store?.rif || 'J-00000000-0'}</p>
-                    </div>
-
-                    {/* CONTROL DE VENTA */}
-                    <div className="mb-1">
-                        <div className="bg-slate-950 text-white text-center py-0.5 print:bg-transparent print:text-slate-950 print:border-b-2 print:border-slate-950">
-                            <p className="text-[10px] font-black uppercase print:text-[9pt] leading-none">NOTA ENTREGA: {String(sale.invoiceNumber).padStart(6, '0')}</p>
+                    {/* CABECERA: LOGO PEGADO AL TOPE */}
+                    <div className="flex flex-col items-center text-center mb-2 pt-0 border-b-2 border-slate-900 pb-2">
+                        <div className="scale-75 print:scale-50 origin-top -mb-2">
+                            <Logo />
                         </div>
-                        <div className="flex justify-between items-center mt-1 px-0.5 text-[9px] font-black uppercase print:text-[8pt] leading-none">
-                            <span>{format(parseISO(String(sale.createdAt)), "dd/MM/yyyy")}</span>
-                            <span>{format(parseISO(String(sale.createdAt)), "HH:mm")}</span>
+                        <h1 className="text-[14px] font-black uppercase leading-tight print:text-[11pt] tracking-tight">{store?.name || 'KREA BUSINESS'}</h1>
+                        <p className="text-[10px] font-bold print:text-[8pt] leading-none opacity-80">RIF: {store?.rif || 'J-00000000-0'}</p>
+                    </div>
+
+                    {/* DATOS DE LA NOTA */}
+                    <div className="mb-3">
+                        <div className="bg-slate-900 text-white text-center py-1 rounded-lg print:bg-transparent print:text-slate-900 print:border-b-2 print:border-slate-900 print:rounded-none">
+                            <p className="text-[11px] font-black uppercase print:text-[9pt] leading-none tracking-wider">NOTA DE ENTREGA: {String(sale.invoiceNumber).padStart(6, '0')}</p>
+                        </div>
+                        <div className="flex justify-between items-center mt-2 px-1 text-[10px] font-black uppercase print:text-[8pt]">
+                            <span className="opacity-60">{format(parseISO(String(sale.createdAt)), "dd/MM/yyyy")}</span>
+                            <span className="opacity-60">{format(parseISO(String(sale.createdAt)), "HH:mm")}</span>
                         </div>
                     </div>
 
-                    {/* RECEPTOR */}
-                    <div className="border-b border-dashed border-slate-300 pb-1 mb-1 px-0.5 leading-none">
-                        <span className="text-[10px] font-black uppercase block print:text-[9pt] truncate">{sale.customerName}</span>
-                        <span className="text-[9px] font-black font-mono print:text-[8pt] opacity-70">{sale.customer?.idNumber || 'V-00000000'}</span>
+                    {/* CLIENTE */}
+                    <div className="border-b border-dashed border-slate-300 pb-2 mb-3 px-1">
+                        <span className="text-[11px] font-black uppercase block print:text-[9pt] truncate text-primary">{sale.customerName}</span>
+                        <span className="text-[10px] font-bold font-mono print:text-[8pt] opacity-50 tracking-tighter">ID: {sale.customer?.idNumber || 'V-00000000'}</span>
                     </div>
 
-                    <div className="text-center py-0.5 border-b border-slate-950 mb-1">
-                        <p className="text-[8px] font-black uppercase print:text-[7pt] tracking-widest">MONEDA: BOLIVARES (VES)</p>
+                    <div className="text-center py-1 border-b border-slate-900 mb-3 bg-slate-50">
+                        <p className="text-[9px] font-black uppercase print:text-[7pt] tracking-[0.2em] opacity-60">MONEDA: BOLÍVARES (VES)</p>
                     </div>
 
-                    {/* ITEMS */}
-                    <div className="mb-1">
-                        <div className="flex justify-between border-b border-slate-950 pb-0.5 mb-0.5 px-0.5 text-[8px] font-black uppercase print:text-[7pt]">
+                    {/* LISTADO DE ITEMS - ALTA DENSIDAD */}
+                    <div className="flex-1 mb-4">
+                        <div className="flex justify-between border-b border-slate-900 pb-1 mb-2 px-1 text-[9px] font-black uppercase print:text-[7pt] opacity-40">
                             <span>DESCRIPCIÓN</span>
-                            <span>TOTAL</span>
+                            <span>SUBTOTAL</span>
                         </div>
-                        <div className="space-y-1 print:space-y-0.5">
+                        <div className="space-y-2 print:space-y-1">
                             {sale.items.map((item: any, idx: number) => (
-                                <div key={idx} className="flex flex-col px-0.5 border-b border-slate-100 last:border-0 pb-0.5">
-                                    <div className="flex justify-between items-start gap-1">
-                                        <span className="text-[10px] font-black uppercase leading-tight flex-1 print:text-[9pt] line-clamp-2">{item.name}</span>
-                                        <span className="text-[11px] font-black print:text-[10pt] shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+                                <div key={idx} className="flex flex-col px-1 border-b border-slate-50 last:border-0 pb-1.5">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <span className="text-[11px] font-black uppercase leading-tight flex-1 print:text-[9pt]">{item.name}</span>
+                                        <span className="text-[11px] font-black print:text-[10pt] shrink-0">Bs. {formatCurrency(item.price * item.quantity)}</span>
                                     </div>
-                                    <div className="flex justify-between text-[9px] font-black text-slate-950 print:text-[9pt] leading-none mt-0.5">
-                                        <span className="bg-slate-100 px-1 rounded">CANT: {item.quantity}</span>
-                                        <span className="opacity-50">@ {formatCurrency(item.price)}</span>
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 print:text-[8pt] mt-0.5">
+                                        <span className="bg-slate-100 px-1.5 py-0.5 rounded-md text-[9px] font-black text-slate-900">CANT: {item.quantity}</span>
+                                        <span>@ {formatCurrency(item.price)}</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* TOTALES */}
-                    <div className="pt-1 border-t-2 border-slate-950 px-0.5 leading-tight">
-                        <div className="flex justify-between items-center text-[9px] font-black uppercase print:text-[8pt]">
-                            <span>SUBTOTAL</span>
+                    {/* TOTALES DE IMPACTO */}
+                    <div className="pt-2 border-t-2 border-slate-900 px-1">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase opacity-60 print:text-[8pt]">
+                            <span>SUBTOTAL GENERAL</span>
                             <span>{formatCurrency((sale.subtotals?.general || 0) + (sale.subtotals?.exempt || 0))}</span>
                         </div>
-                        <div className="flex justify-between items-end mt-0.5">
-                            <span className="text-[11px] font-black uppercase print:text-[10pt]">TOTAL Bs.</span>
+                        <div className="flex justify-between items-baseline mt-1">
+                            <span className="text-[12px] font-black uppercase print:text-[10pt]">TOTAL A PAGAR</span>
                             <div className="text-right">
-                                <span className="text-2xl font-black tracking-tighter leading-none print:text-[16pt]">{formatCurrency(sale.totalAmount)}</span>
+                                <span className="text-3xl font-black tracking-tighter leading-none print:text-[18pt] text-primary">{formatCurrency(sale.totalAmount)}</span>
+                                <span className="text-[10px] font-black ml-1 uppercase">Bs.</span>
                             </div>
                         </div>
-                        <div className="flex justify-between items-center pt-0.5 mt-0.5 border-t border-dashed border-slate-400">
-                            <span className="text-[9px] font-black uppercase text-slate-500 print:text-[8pt]">REF. USD</span>
-                            <span className="text-[12px] font-black text-slate-950 print:text-[11pt]">$ {(sale.totalAmount / (tasaBcv || 1)).toFixed(2)}</span>
+                        <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-dashed border-slate-300">
+                            <span className="text-[10px] font-black uppercase text-slate-400 print:text-[8pt]">VALOR REF. USD</span>
+                            <span className="text-[14px] font-black text-slate-900 print:text-[11pt]">$ {(sale.totalAmount / (tasaBcv || 1)).toFixed(2)}</span>
                         </div>
                     </div>
 
-                    {/* LIQUIDACIÓN */}
-                    <div className="mt-1 p-1 bg-slate-50 border-y border-slate-950 print:bg-transparent print:border-x-0">
-                        <p className="text-[8px] font-black uppercase text-center mb-0.5 print:text-[7pt]">PAGO / LIQUIDACIÓN</p>
-                        <div className="space-y-0.5">
+                    {/* DESGLOSE DE PAGO */}
+                    <div className="mt-4 p-2 bg-slate-50 rounded-xl border border-slate-200 print:bg-transparent print:border-x-0 print:border-y-2 print:border-slate-900 print:rounded-none">
+                        <p className="text-[9px] font-black uppercase text-center mb-1.5 print:text-[7pt] opacity-40">MÉTODO DE LIQUIDACIÓN</p>
+                        <div className="space-y-1">
                             {sale.payments && sale.payments.length > 0 ? sale.payments.map((p: any, i: number) => (
-                                <div key={i} className="flex justify-between items-center font-black text-[9px] uppercase print:text-[8pt] leading-none">
-                                    <span>{p.method} ({p.currency})</span>
+                                <div key={i} className="flex justify-between items-center font-black text-[10px] uppercase print:text-[8pt]">
+                                    <span className="text-slate-500">{p.method}</span>
                                     <span>{p.currency === 'USD' ? '$' : 'Bs.'} {p.amount.toLocaleString()}</span>
                                 </div>
                             )) : (
-                                <div className="flex justify-between items-center font-black text-[9px] uppercase print:text-[8pt] leading-none">
-                                    <span>{sale.paymentMethod || 'EFECTIVO'}</span>
+                                <div className="flex justify-between items-center font-black text-[10px] uppercase print:text-[8pt]">
+                                    <span className="text-slate-500">{sale.paymentMethod || 'EFECTIVO'}</span>
                                     <span>Bs. {sale.totalAmount.toLocaleString()}</span>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* PIE DE PÁGINA */}
-                    <div className="mt-2 text-center pb-1">
-                        <div className="px-4 mb-1">
-                            <div className="border-t border-slate-950 w-full"></div>
-                            <p className="text-[8px] font-black uppercase print:text-[8pt] mt-0.5">RECIBIDO CONFORME</p>
+                    {/* PIE DE PÁGINA LEGAL */}
+                    <div className="mt-6 text-center">
+                        <div className="px-6 mb-3">
+                            <div className="border-t border-slate-300 w-full"></div>
+                            <p className="text-[9px] font-black uppercase print:text-[8pt] mt-1 opacity-50">RECIBIDO CONFORME</p>
                         </div>
-                        <div className="border-2 border-slate-950 p-1 mx-0.5 bg-slate-100 print:bg-transparent">
-                            <p className="text-[9px] font-black text-slate-950 uppercase leading-tight print:text-[8pt]">
+                        <div className="border-2 border-slate-900 p-2 mx-1 bg-slate-50 print:bg-transparent rounded-xl">
+                            <p className="text-[10px] font-black text-slate-900 uppercase leading-tight print:text-[8pt]">
                                 ESTE DOCUMENTO NO ES VÁLIDO<br/>COMO FACTURA FISCAL.
                             </p>
                         </div>
-                        <p className="text-[7px] font-black uppercase print:text-[6pt] mt-1 opacity-60 italic">
-                            CONTROL ADMINISTRATIVO KREA
+                        <p className="text-[8px] font-black uppercase print:text-[6pt] mt-3 opacity-40 italic tracking-widest">
+                            SISTEMA DE GESTIÓN KREA v2.0
                         </p>
                     </div>
                 </Card>
@@ -299,7 +301,6 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                     * {
                         font-family: 'Inter', sans-serif !important;
                         color-adjust: exact;
-                        letter-spacing: -0.2px;
                     }
                 }
             `}</style>
