@@ -9,14 +9,11 @@ import {
     Printer, 
     ArrowLeft, 
     Share2, 
-    CheckCircle2, 
-    ShieldCheck, 
     Loader2 
 } from 'lucide-react';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { format, parseISO } from 'date-fns';
 import { Logo } from '@/components/logo';
-import { Separator } from '@/components/ui/separator';
 
 export default function InvoicePage({ params }: { params: Promise<{ saleId: string }> }) {
     const router = useRouter();
@@ -60,7 +57,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
 
     useEffect(() => {
         if (!loading && sale && autoPrint) {
-            const timer = setTimeout(() => window.print(), 800);
+            const timer = setTimeout(() => window.print(), 500);
             return () => clearTimeout(timer);
         }
     }, [loading, sale, autoPrint]);
@@ -109,121 +106,103 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                 </div>
             </div>
 
-            <main className="flex-1 p-2 md:p-8 flex justify-center items-start print:p-0 print:block">
-                {/* TICKET 58mm */}
-                <Card className="w-full max-w-[340px] p-4 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-2xl print:rounded-none mx-auto overflow-hidden">
+            <main className="flex-1 p-2 md:p-4 flex justify-center items-start print:p-0 print:block">
+                {/* TICKET 58mm ULTRA-COMPACTO */}
+                <Card className="w-full max-w-[300px] p-2 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-xl print:rounded-none mx-auto overflow-hidden">
                     
-                    {/* CABECERA COMPACTA */}
-                    <div className="flex flex-col items-center text-center mb-4 border-b-2 border-slate-950 pb-4">
-                        <div className="mb-1 scale-75 print:scale-50"><Logo /></div>
-                        <h1 className="text-[12px] font-black uppercase leading-none print:text-[10pt] mb-1">{store?.name || 'KREA BUSINESS'}</h1>
-                        <p className="text-[9px] font-black print:text-[7pt]">RIF: {store?.rif || 'J-00000000-0'}</p>
-                        <p className="text-[8px] font-bold uppercase leading-tight print:text-[6pt] px-2">{store?.address || 'Dirección de Despacho'}</p>
+                    {/* CABECERA PEGADA */}
+                    <div className="flex flex-col items-center text-center mb-1 border-b-2 border-slate-950 pb-1">
+                        <div className="mb-0 scale-50 print:scale-40 origin-center"><Logo /></div>
+                        <h1 className="text-[11px] font-black uppercase leading-none print:text-[10pt] mb-0.5">{store?.name || 'KREA BUSINESS'}</h1>
+                        <p className="text-[9px] font-black print:text-[7pt] leading-none">RIF: {store?.rif || 'J-00000000-0'}</p>
                     </div>
 
-                    {/* CONTROL DE VENTA */}
-                    <div className="mb-4">
-                        <div className="bg-slate-950 text-white text-center py-1 print:bg-transparent print:text-slate-950 print:border-y-2 print:border-slate-950">
-                            <p className="text-[10px] font-black uppercase print:text-[9pt]">NOTA DE ENTREGA: {String(sale.invoiceNumber).padStart(6, '0')}</p>
+                    {/* CONTROL DE VENTA COMPACTO */}
+                    <div className="mb-1">
+                        <div className="bg-slate-950 text-white text-center py-0.5 print:bg-transparent print:text-slate-950 print:border-b-2 print:border-slate-950">
+                            <p className="text-[9px] font-black uppercase print:text-[8pt] leading-none">NOTA ENTREGA: {String(sale.invoiceNumber).padStart(6, '0')}</p>
                         </div>
-                        <div className="flex justify-between items-center mt-2 px-1 text-[8px] font-black uppercase print:text-[7pt]">
-                            <span>FECHA: {format(parseISO(String(sale.createdAt)), "dd/MM/yyyy")}</span>
-                            <span>HORA: {format(parseISO(String(sale.createdAt)), "HH:mm")}</span>
+                        <div className="flex justify-between items-center mt-1 px-0.5 text-[8px] font-black uppercase print:text-[7pt] leading-none">
+                            <span>{format(parseISO(String(sale.createdAt)), "dd/MM/yyyy")}</span>
+                            <span>{format(parseISO(String(sale.createdAt)), "HH:mm")}</span>
                         </div>
                     </div>
 
                     {/* RECEPTOR */}
-                    <div className="border-b border-dashed border-slate-300 pb-2 mb-4 px-1">
-                        <span className="text-[7px] font-black uppercase text-slate-400 block print:text-[6pt]">CLIENTE:</span>
-                        <span className="text-[10px] font-black uppercase block leading-tight print:text-[8pt]">{sale.customerName}</span>
-                        <span className="text-[8px] font-bold font-mono print:text-[7pt]">{sale.customer?.idNumber || 'V-00000000'}</span>
+                    <div className="border-b border-dashed border-slate-300 pb-1 mb-1 px-0.5 leading-none">
+                        <span className="text-[10px] font-black uppercase block print:text-[8pt] truncate">{sale.customerName}</span>
+                        <span className="text-[8px] font-black font-mono print:text-[7pt] opacity-70">{sale.customer?.idNumber || 'V-00000000'}</span>
                     </div>
 
-                    {/* ITEMS - ALTA DENSIDAD */}
-                    <div className="mb-4">
-                        <div className="flex justify-between border-b-2 border-slate-950 pb-0.5 mb-1 px-1 text-[8px] font-black uppercase print:text-[7pt]">
+                    {/* ITEMS - MÁXIMA DENSIDAD */}
+                    <div className="mb-1">
+                        <div className="flex justify-between border-b border-slate-950 pb-0.5 mb-0.5 px-0.5 text-[8px] font-black uppercase print:text-[7pt]">
                             <span>DESCRIPCIÓN</span>
                             <span>TOTAL</span>
                         </div>
-                        <div className="space-y-2 print:space-y-1">
+                        <div className="space-y-1 print:space-y-0.5">
                             {sale.items.map((item: any, idx: number) => (
-                                <div key={idx} className="flex flex-col px-1 border-b border-slate-100 pb-1 last:border-0">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <span className="text-[9px] font-black uppercase leading-none flex-1 print:text-[8pt]">{item.name}</span>
-                                        <span className="text-[9px] font-black print:text-[8pt]">{formatCurrency(item.price * item.quantity)}</span>
+                                <div key={idx} className="flex flex-col px-0.5 border-b border-slate-100 last:border-0 pb-0.5">
+                                    <div className="flex justify-between items-start gap-1">
+                                        <span className="text-[9px] font-black uppercase leading-tight flex-1 print:text-[8pt] line-clamp-2">{item.name}</span>
+                                        <span className="text-[9px] font-black print:text-[8pt] shrink-0">{formatCurrency(item.price * item.quantity)}</span>
                                     </div>
-                                    <div className="flex justify-between text-[7px] font-bold text-slate-500 italic print:text-[6pt]">
+                                    <div className="flex justify-between text-[7px] font-black text-slate-500 print:text-[6pt] leading-none">
                                         <span>{item.quantity} X {formatCurrency(item.price)}</span>
-                                        <span>{item.taxRate > 0 ? '(G)' : '(E)'}</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* TOTALES REFORZADOS */}
-                    <div className="space-y-1 pt-2 border-t-2 border-slate-950 px-1">
-                        <div className="flex justify-between items-center text-[8px] font-bold uppercase print:text-[7pt]">
+                    {/* TOTALES REFORZADOS - SIN ESPACIOS */}
+                    <div className="pt-1 border-t-2 border-slate-950 px-0.5 leading-tight">
+                        <div className="flex justify-between items-center text-[8px] font-black uppercase print:text-[7pt]">
                             <span>SUBTOTAL</span>
                             <span>{formatCurrency(sale.subtotals?.general + sale.subtotals?.exempt)}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[8px] font-bold uppercase print:text-[7pt]">
-                            <span>IVA (16%)</span>
-                            <span>{formatCurrency(sale.taxDetails?.general || 0)}</span>
-                        </div>
-                        <div className="flex justify-between items-end pt-1">
-                            <span className="text-[11px] font-black uppercase print:text-[10pt]">TOTAL A PAGAR</span>
+                        <div className="flex justify-between items-end mt-0.5">
+                            <span className="text-[10px] font-black uppercase print:text-[9pt]">TOTAL Bs.</span>
                             <div className="text-right">
-                                <span className="text-[8px] font-black mr-1 print:text-[7pt]">Bs.</span>
-                                <span className="text-2xl font-black tracking-tighter leading-none print:text-[16pt]">{formatCurrency(sale.totalAmount)}</span>
+                                <span className="text-xl font-black tracking-tighter leading-none print:text-[14pt]">{formatCurrency(sale.totalAmount)}</span>
                             </div>
                         </div>
-                        <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-300">
-                            <span className="text-[8px] font-black uppercase text-slate-500 print:text-[7pt]">REF. USD (BCV)</span>
-                            <span className="text-[11px] font-black text-slate-950 print:text-[10pt]">$ {(sale.totalAmount / (tasaBcv || 1)).toFixed(2)}</span>
+                        <div className="flex justify-between items-center pt-0.5 mt-0.5 border-t border-dashed border-slate-400">
+                            <span className="text-[8px] font-black uppercase text-slate-500 print:text-[7pt]">REF. USD</span>
+                            <span className="text-[10px] font-black text-slate-950 print:text-[9pt]">$ {(sale.totalAmount / (tasaBcv || 1)).toFixed(2)}</span>
                         </div>
                     </div>
 
-                    {/* MÉTODOS DE PAGO (LIQUIDACIÓN) */}
-                    <div className="mt-4 p-2 bg-slate-50 border-2 border-slate-950 print:bg-transparent print:border-x-0 print:border-y-2 print:border-dashed">
-                        <h4 className="text-[8px] font-black uppercase mb-1 text-center print:text-[7pt]">DETALLE DE PAGO</h4>
-                        <div className="space-y-1">
+                    {/* LIQUIDACIÓN PEGADA */}
+                    <div className="mt-1 p-1 bg-slate-50 border-y border-slate-950 print:bg-transparent print:border-x-0">
+                        <p className="text-[7px] font-black uppercase text-center mb-0.5 print:text-[6pt]">LIQUIDACIÓN</p>
+                        <div className="space-y-0.5">
                             {sale.payments && sale.payments.length > 0 ? sale.payments.map((p: any, i: number) => (
-                                <div key={i} className="flex justify-between items-center font-black text-[8px] uppercase print:text-[7pt]">
+                                <div key={i} className="flex justify-between items-center font-black text-[8px] uppercase print:text-[7pt] leading-none">
                                     <span>{p.method} ({p.currency})</span>
                                     <span>{p.currency === 'USD' ? '$' : 'Bs.'} {p.amount.toLocaleString()}</span>
                                 </div>
                             )) : (
-                                <div className="flex justify-between items-center font-black text-[8px] uppercase print:text-[7pt]">
+                                <div className="flex justify-between items-center font-black text-[8px] uppercase print:text-[7pt] leading-none">
                                     <span>{sale.paymentMethod || 'EFECTIVO'}</span>
                                     <span>Bs. {sale.totalAmount.toLocaleString()}</span>
                                 </div>
                             )}
                         </div>
-                        {sale.payments?.[0]?.changeGiven > 0 && (
-                            <div className="flex justify-between items-center mt-1 pt-1 border-t border-slate-200 text-[8px] font-black text-emerald-600 print:text-[7pt]">
-                                <span>VUELTO ENTREGADO:</span>
-                                <span>{sale.payments[0].currency === 'USD' ? '$' : 'Bs.'} {sale.payments[0].changeGiven.toLocaleString()}</span>
-                            </div>
-                        )}
                     </div>
 
-                    {/* PIE DE PÁGINA */}
-                    <div className="mt-6 text-center space-y-4">
-                        <div className="px-4">
-                            <div className="border-t-2 border-slate-950 w-full mb-1"></div>
-                            <p className="text-[8px] font-black uppercase print:text-[7pt]">RECEPTOR CONFORME</p>
+                    {/* PIE DE PÁGINA ULTRA-MINIMALISTA */}
+                    <div className="mt-2 text-center">
+                        <div className="px-4 mb-1">
+                            <div className="border-t border-slate-950 w-full"></div>
+                            <p className="text-[7px] font-black uppercase print:text-[6pt] mt-0.5">RECIBIDO CONFORME</p>
                         </div>
-                        <p className="text-[7px] font-black text-slate-950 uppercase leading-none print:text-[6pt] px-2">
-                            ESTE DOCUMENTO NO ES UNA FACTURA FISCAL.<br/>SU USO ES PARA CONTROL INTERNO Y DESPACHO.
+                        <p className="text-[6px] font-black text-slate-950 uppercase leading-none print:text-[5pt] px-1 opacity-60">
+                            DOCUMENTO DE CONTROL INTERNO.<br/>NO VALIDO COMO FACTURA FISCAL.
                         </p>
-                        <div className="flex items-center justify-center gap-2 text-[7px] font-black text-slate-400 italic print:text-[6pt]">
-                            <ShieldCheck className="h-2 w-2" /> <span>KREA SUITE POS v2.0</span>
-                        </div>
                     </div>
 
-                    {/* Espaciado para el corte físico */}
-                    <div className="h-10 print:h-16"></div>
+                    <div className="h-4 print:h-8"></div>
                 </Card>
             </main>
 
@@ -253,6 +232,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                     * {
                         font-family: 'Inter', sans-serif !important;
                         color-adjust: exact;
+                        letter-spacing: -0.2px;
                     }
                 }
             `}</style>
