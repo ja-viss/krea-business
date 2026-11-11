@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 
 interface CustomerSearchProps {
   onCustomerSelect: (customer: ICustomer) => void;
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 const newCustomerSchema = z.object({

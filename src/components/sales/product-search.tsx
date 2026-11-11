@@ -10,7 +10,7 @@ import Image from 'next/image';
 
 interface ProductSearchProps {
   onProductSelect: (product: IProduct, quantity?: number) => void;
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps) {
