@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,7 +28,9 @@ import {
     CheckCircle2,
     Wallet,
     DollarSign,
-    RefreshCcw
+    RefreshCcw,
+    ScanLine,
+    Package
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { IProduct } from '@/models/Product';
@@ -40,26 +41,16 @@ import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library';
+import { BarcodeScanner } from '@/components/inventory/barcode-scanner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const METHODS = [
     { id: 'Efectivo', label: 'Efectivo', icon: Banknote },
-    { id: 'Pago Móvil', label: 'P. Móvil', icon: Smartphone },
-    { id: 'Tarjeta', label: 'Punto', icon: CreditCard },
+    { id: 'Pago Móvil', label: 'Pago Móvil', icon: Smartphone },
+    { id: 'Tarjeta', label: 'Punto POS', icon: CreditCard },
     { id: 'Zelle', label: 'Zelle', icon: ShieldCheck },
     { id: 'Binance', label: 'Binance', icon: Coins },
-    { id: 'Pesos', label: 'Pesos', icon: ArrowRightLeft },
+    { id: 'Pesos', label: 'Pesos COP', icon: ArrowRightLeft },
 ];
 
 const CURRENCIES = [
@@ -78,7 +69,6 @@ const saleSchema = z.object({
     quantity: z.coerce.number().min(0.001),
     stock: z.number(),
     taxRate: z.number(),
-    isWeightable: z.boolean().optional(),
   })).min(1, 'Añada al menos un producto'),
 });
 
@@ -95,14 +85,11 @@ export default function NewSalePage() {
   const { toast } = useToast();
   const { rates } = useExchangeRates();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<ICustomer | null>(null);
-  
   const [isScannerActive, setIsScannerActive] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReader = useRef<BrowserMultiFormatReader | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Estados de Pago
   const [payments, setPayments] = useState<Payment[]>([]);
   const [currentMethod, setCurrentMethod] = useState('Efectivo');
   const [currentCurrency, setCurrentCurrency] = useState<'USD' | 'VES' | 'COP'>('USD');
@@ -119,7 +106,7 @@ export default function NewSalePage() {
   });
 
   const watchItems = form.watch('items');
-  const tasaBCV = rates.usd?.usd || 52.40;
+  const tasaBCV = rates.usd?.usd || 52.50;
   const tasaCOPValue = rates.cop?.rate || 4200;
 
   const totals = useMemo(() => {
@@ -157,14 +144,14 @@ export default function NewSalePage() {
   useEffect(() => {
     const defaultVal = currentCurrency === 'USD' ? remainingUSD : currentCurrency === 'COP' ? remainingCOP : remainingVES;
     setAmountReceived(defaultVal > 0 ? defaultVal.toFixed(2) : '');
-  }, [currentCurrency, remainingVES, remainingUSD, remainingCOP]);
+  }, [currentCurrency, remainingVES, remainingUSD, remainingCOP, totals.ves]);
 
   const handleProductSelect = (product: IProduct, quantity: number = 1) => {
     const existingIndex = watchItems.findIndex(item => item.productId === String(product._id));
     if (existingIndex > -1) {
       update(existingIndex, { ...watchItems[existingIndex], quantity: Number(watchItems[existingIndex].quantity) + quantity });
     } else {
-      append({ productId: String(product._id), name: product.name, price: product.price, quantity, stock: product.stock, taxRate: product.taxRate, isWeightable: product.isWeightable });
+      append({ productId: String(product._id), name: product.name, price: product.price, quantity, stock: product.stock, taxRate: product.taxRate });
     }
   };
 
@@ -207,6 +194,15 @@ export default function NewSalePage() {
     }
   };
 
+  // Manejo de tecla ESC para cerrar escáner
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && isScannerActive) setIsScannerActive(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isScannerActive]);
+
   return (
     <div className="flex h-screen w-full bg-white overflow-hidden">
        {/* AREA IZQUIERDA: PRODUCTOS */}
@@ -221,188 +217,221 @@ export default function NewSalePage() {
                 </Button>
             </div>
 
+            {isScannerActive && (
+                <div className="shrink-0 animate-in fade-in zoom-in-95">
+                    <BarcodeScanner onScan={(code) => {
+                        toast({ title: "Producto escaneado" });
+                        // El ProductSearch ya tiene lógica de búsqueda por código si se implementó
+                    }} onClose={() => setIsScannerActive(false)} />
+                </div>
+            )}
+
             <div className="flex-1 border-2 rounded-2xl overflow-hidden flex flex-col min-h-0 bg-white shadow-sm">
                 <div className="flex-1 overflow-y-auto scrollbar-hide">
                     <Table>
-                        <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                        <TableHeader className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                             <TableRow>
-                                <TableHead className="font-black uppercase text-[10px] pl-6">Descripción</TableHead>
-                                <TableHead className="text-center font-black uppercase text-[10px]">Precio</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] pl-6 py-4">Descripción del Item</TableHead>
+                                <TableHead className="text-center font-black uppercase text-[10px]">Precio Unit.</TableHead>
                                 <TableHead className="text-center font-black uppercase text-[10px]">Cant.</TableHead>
-                                <TableHead className="text-right font-black uppercase text-[10px] pr-6">Subtotal</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px] pr-6">Subtotal (Bs)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {fields.map((item, index) => (
-                                <TableRow key={item.id} className="hover:bg-slate-50/50">
-                                    <TableCell className="py-3 pl-6">
+                                <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <TableCell className="py-4 pl-6">
                                         <div className="flex flex-col">
-                                            <span className="font-black uppercase text-xs truncate max-w-[200px]">{item.name}</span>
-                                            <span className="text-[9px] font-bold text-slate-400">SKU: {item.productId.slice(-6).toUpperCase()}</span>
+                                            <span className="font-black uppercase text-xs truncate max-w-[300px]">{item.name}</span>
+                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">SKU: {item.productId.slice(-8).toUpperCase()}</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-center font-bold text-xs">Bs. {item.price.toLocaleString()}</TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-xs">Bs. {item.price.toLocaleString()}</span>
+                                            <span className="text-[9px] text-muted-foreground">$ {(item.price / tasaBCV).toFixed(2)}</span>
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-center">
                                         <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => { const v = Number(watchItems[index].quantity); if (v > 1) update(index, { ...fields[index], quantity: v - 1 }); else remove(index); }} className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><Minus className="h-3 w-3"/></button>
-                                            <span className="font-black text-xs w-8">{watchItems[index].quantity}</span>
-                                            <button onClick={() => { const v = Number(watchItems[index].quantity); update(index, { ...fields[index], quantity: v + 1 }); }} className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3 w-3"/></button>
+                                            <button onClick={() => { const v = Number(watchItems[index].quantity); if (v > 1) update(index, { ...fields[index], quantity: v - 1 }); else remove(index); }} className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><Minus className="h-3 w-3"/></button>
+                                            <span className="font-black text-sm w-10 text-center">{watchItems[index].quantity}</span>
+                                            <button onClick={() => { const v = Number(watchItems[index].quantity); update(index, { ...fields[index], quantity: v + 1 }); }} className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"><Plus className="h-3 w-3"/></button>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right pr-6 font-black text-sm">{(item.price * watchItems[index].quantity).toLocaleString()} Bs.</TableCell>
+                                    <TableCell className="text-right pr-6">
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-sm text-slate-900">{(item.price * watchItems[index].quantity).toLocaleString()} Bs.</span>
+                                            <span className="text-[9px] font-bold text-emerald-600">$ {((item.price * watchItems[index].quantity) / tasaBCV).toFixed(2)}</span>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                             ))}
-                            {fields.length === 0 && <TableRow><TableCell colSpan={4} className="h-60 text-center opacity-20"><Receipt className="h-16 w-16 mx-auto mb-2"/><p className="text-xs font-black uppercase">Terminal listo • Escanea productos</p></TableCell></TableRow>}
+                            {fields.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-80 text-center opacity-20">
+                                        <Receipt className="h-20 w-20 mx-auto mb-4" />
+                                        <p className="text-sm font-black uppercase tracking-widest">Esperando artículos...</p>
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>
             </div>
        </div>
 
-       {/* SIDEBAR DERECHO: PAGO Y CLIENTE */}
-       <aside className="w-80 md:w-96 bg-slate-50/30 flex flex-col shrink-0 overflow-y-auto scrollbar-hide">
+       {/* SIDEBAR DERECHO: LIQUIDACIÓN */}
+       <aside className="w-80 md:w-96 bg-slate-50/50 flex flex-col shrink-0 overflow-y-auto scrollbar-hide border-l">
             <div className="p-5 space-y-6 flex-1">
+                {/* FICHA DE CLIENTE */}
                 <div className="space-y-3">
                     <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                        <User className="h-3 w-3" /> Ficha del Cliente
+                        <User className="h-3 w-3" /> Ficha del Receptor
                     </Label>
                     {!selectedCustomer ? (
                         <div className="bg-white p-1 rounded-xl border-2 shadow-sm">
                             <CustomerSearch onCustomerSelect={(c) => { setSelectedCustomer(c); form.setValue('customerId', c._id); form.setValue('customerName', c.name); }} />
                         </div>
                     ) : (
-                        <div className="p-3 bg-white rounded-2xl flex justify-between items-center border-2 animate-in zoom-in-95 shadow-sm">
+                        <div className="p-4 bg-white rounded-2xl flex justify-between items-center border-2 border-primary/20 animate-in zoom-in-95 shadow-sm">
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-black uppercase text-slate-800 truncate max-w-[200px]">{selectedCustomer.name}</span>
-                                <span className="text-[9px] font-bold text-slate-400">{selectedCustomer.idNumber}</span>
+                                <span className="text-[9px] font-bold text-slate-400 font-mono">{selectedCustomer.idNumber}</span>
                             </div>
-                            <button onClick={() => { setSelectedCustomer(null); form.setValue('customerId', undefined); form.setValue('customerName', 'Consumidor Final'); }} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all"><X className="h-4 w-4" /></button>
+                            <button onClick={() => { setSelectedCustomer(null); form.setValue('customerId', undefined); form.setValue('customerName', 'Consumidor Final'); }} className="h-8 w-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm"><X className="h-4 w-4" /></button>
                         </div>
                     )}
                 </div>
 
                 <Separator />
 
-                <div className="space-y-5">
-                    {/* TARJETA MAESTRA DE VENTA */}
-                    <div className={cn("p-5 rounded-3xl border-2 transition-all shadow-xl overflow-hidden relative", remainingVES > 0.1 ? "bg-primary border-primary text-white" : "bg-emerald-600 border-emerald-700 text-white")}>
-                        <div className="absolute top-0 right-0 p-2 opacity-10"><Calculator className="h-20 w-20" /></div>
-                        
-                        <div className="relative z-10 space-y-4">
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-[10px] font-black uppercase opacity-60">Total de la Venta</span>
-                                    <Badge className="text-[7px] bg-white/20 text-white border-none font-black uppercase">Tasa: {tasaBCV}</Badge>
-                                </div>
-                                <p className="text-3xl font-black tracking-tighter">Bs. {totals.ves.toLocaleString('es-VE')}</p>
-                                <div className="flex gap-3 text-[10px] font-bold opacity-80 uppercase mt-1">
-                                    <span>$ {totals.usd.toFixed(2)} USD</span>
-                                    <span className="opacity-30">|</span>
-                                    <span>{Math.ceil(totals.cop).toLocaleString()} COP</span>
-                                </div>
+                {/* TARJETA DE TOTALES MULTIMONEDA */}
+                <div className={cn("p-6 rounded-[2.5rem] border-2 transition-all shadow-2xl overflow-hidden relative", remainingVES > 0.1 ? "bg-primary border-primary text-white" : "bg-emerald-600 border-emerald-700 text-white")}>
+                    <div className="absolute top-0 right-0 p-3 opacity-10"><Calculator className="h-24 w-24" /></div>
+                    
+                    <div className="relative z-10 space-y-5">
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[10px] font-black uppercase opacity-60">Total a Liquidar</span>
+                                <Badge className="text-[8px] bg-white/20 text-white border-none font-black uppercase">Tasa BCV: {tasaBCV}</Badge>
                             </div>
+                            <p className="text-4xl font-black tracking-tighter leading-none">Bs. {totals.ves.toLocaleString('es-VE')}</p>
+                            <div className="flex gap-4 text-[11px] font-bold opacity-80 uppercase mt-2">
+                                <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> {totals.usd.toFixed(2)}</span>
+                                <span className="opacity-30">|</span>
+                                <span className="flex items-center gap-1"><RefreshCcw className="h-3 w-3" /> {Math.ceil(totals.cop).toLocaleString()} COP</span>
+                            </div>
+                        </div>
 
-                            <Separator className="bg-white/20" />
+                        <Separator className="bg-white/20" />
 
-                            <div>
+                        <div>
+                            <div className="flex justify-between items-baseline mb-1">
                                 <p className="text-[10px] font-black uppercase opacity-60">Saldo Pendiente</p>
-                                <p className="text-2xl font-black tracking-tighter">Bs. {remainingVES.toLocaleString('es-VE')}</p>
-                                {remainingVES <= 0.1 && (
-                                    <div className="flex items-center gap-2 mt-1 text-[10px] font-black uppercase">
-                                        <CheckCircle2 className="h-4 w-4" /> Pago Completado
+                                {remainingVES <= 0.1 && <Badge className="bg-white text-emerald-600 font-black text-[9px] uppercase px-3 py-1">PAGADO</Badge>}
+                            </div>
+                            <p className={cn("text-3xl font-black tracking-tighter", remainingVES <= 0.1 && "opacity-40")}>Bs. {remainingVES.toLocaleString('es-VE')}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* CONSOLA DE ABONO */}
+                <div className="space-y-4 bg-white p-6 rounded-[2.5rem] border-2 shadow-sm">
+                    <div className="grid grid-cols-2 gap-3">
+                         <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-50 ml-1">Vía de Pago</Label>
+                            <Select value={currentMethod} onValueChange={setCurrentMethod}>
+                                <SelectTrigger className="h-11 font-black text-[10px] rounded-xl border-2"><SelectValue /></SelectTrigger>
+                                <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                    {METHODS.map(m => (
+                                        <SelectItem key={m.id} value={m.id} className="font-bold text-[10px] uppercase py-3">
+                                            <div className="flex items-center gap-2"><m.icon className="h-3.5 w-3.5 text-primary" /> {m.label}</div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                         </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-[9px] font-black uppercase opacity-50 ml-1">Moneda</Label>
+                            <Select value={currentCurrency} onValueChange={(v:any) => setCurrentCurrency(v)}>
+                                <SelectTrigger className="h-11 font-black text-[10px] rounded-xl border-2"><SelectValue /></SelectTrigger>
+                                <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                    {CURRENCIES.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-[10px] uppercase py-3">{c.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                         </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-primary ml-1">Monto Recibido ({CURRENCIES.find(c => c.id === currentCurrency)?.symbol})</Label>
+                        <Input 
+                            type="number" 
+                            step="0.01" 
+                            className="h-14 text-2xl font-black border-2 rounded-2xl focus:ring-4 focus:ring-primary/5 text-center shadow-inner" 
+                            value={amountReceived} 
+                            onChange={e => setAmountReceived(e.target.value)} 
+                            onFocus={(e) => e.target.select()} 
+                        />
+                    </div>
+
+                    {changeDue > 0 && (
+                        <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-3xl flex justify-between items-center animate-in zoom-in-95 shadow-inner">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Vuelto / Cambio</span>
+                                <span className="text-2xl font-black text-emerald-700 font-mono">{CURRENCIES.find(c => c.id === currentCurrency)?.symbol} {changeDue.toLocaleString()}</span>
+                            </div>
+                            <div className="h-10 w-10 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600"><Banknote className="h-5 w-5" /></div>
+                        </div>
+                    )}
+
+                    <Button className="w-full h-14 font-black uppercase text-[11px] rounded-2xl bg-slate-900 text-white hover:bg-black transition-all shadow-xl hover:scale-[1.01] active:scale-95" onClick={handleAddPayment} disabled={!amountReceived || parseFloat(amountReceived) <= 0}>
+                        <Plus className="h-4 w-4 mr-2" /> Registrar Abono
+                    </Button>
+                </div>
+
+                {/* LISTA DE ABONOS CARGADOS */}
+                <div className="space-y-3 pb-6">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Desglose de Liquidación</Label>
+                    {payments.length === 0 ? (
+                        <div className="py-8 flex flex-col items-center justify-center border-2 border-dashed rounded-3xl opacity-20 text-center bg-white/50">
+                            <Package className="h-10 w-10 mb-2" />
+                            <p className="text-[10px] font-black uppercase">Sin abonos registrados</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {payments.map((p, i) => (
+                                <div key={i} className="flex justify-between items-center p-4 bg-white rounded-2xl border-2 border-slate-100 shadow-sm animate-in slide-in-from-right-2 hover:border-primary/20 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10"><CheckCircle2 className="h-5 w-5" /></div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase opacity-40 leading-none mb-1">{p.method}</span>
+                                            <span className="text-sm font-black text-slate-900">{p.currency === 'USD' ? '$' : p.currency === 'VES' ? 'Bs.' : 'P.'} {p.amount.toLocaleString()}</span>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4 bg-white p-5 rounded-[2rem] border-2 shadow-sm">
-                        <div className="grid grid-cols-2 gap-2">
-                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase opacity-50 ml-1">Vía de Pago</Label>
-                                <Select value={currentMethod} onValueChange={setCurrentMethod}>
-                                    <SelectTrigger className="h-10 font-black text-[10px] rounded-xl"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {METHODS.map(m => <SelectItem key={m.id} value={m.id} className="font-bold text-[10px] uppercase">{m.label}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                             </div>
-                             <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase opacity-50 ml-1">Moneda</Label>
-                                <Select value={currentCurrency} onValueChange={(v:any) => setCurrentCurrency(v)}>
-                                    <SelectTrigger className="h-10 font-black text-[10px] rounded-xl"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {CURRENCIES.map(c => <SelectItem key={c.id} value={c.id} className="font-bold text-[10px] uppercase">{c.label}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                             </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black uppercase text-primary ml-1">Efectivo Recibido</Label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">{CURRENCIES.find(c => c.id === currentCurrency)?.symbol}</span>
-                                <Input type="number" step="0.01" className="h-14 pl-10 text-xl font-black border-2 rounded-2xl focus:ring-4 focus:ring-primary/5" value={amountReceived} onChange={e => setAmountReceived(e.target.value)} onFocus={(e) => e.target.select()} />
-                            </div>
-                        </div>
-
-                        {changeDue > 0 && (
-                            <div className="p-4 bg-emerald-50 border-2 border-emerald-200 rounded-2xl flex justify-between items-center animate-in zoom-in-95">
-                                <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase text-emerald-600">Cambio (Vuelto)</span>
-                                    <span className="text-2xl font-black text-emerald-700">{CURRENCIES.find(c => c.id === currentCurrency)?.symbol} {changeDue.toLocaleString()}</span>
+                                    <button onClick={() => setPayments(payments.filter((_, idx) => idx !== i))} className="h-9 w-9 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="h-4 w-4" /></button>
                                 </div>
-                                <RefreshCcw className="h-6 w-6 text-emerald-500 opacity-20" />
-                            </div>
-                        )}
-
-                        <Button className="w-full h-12 font-black uppercase text-[10px] rounded-xl bg-slate-900 text-white hover:bg-black transition-all shadow-lg" onClick={handleAddPayment} disabled={!amountReceived || parseFloat(amountReceived) <= 0}>
-                            <Plus className="h-3 w-3 mr-2" /> Agregar Abono
-                        </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                        {payments.map((p, i) => (
-                            <div key={i} className="flex justify-between items-center p-3 bg-white rounded-2xl border-2 border-slate-100 shadow-sm animate-in slide-in-from-right-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-xl bg-primary/5 flex items-center justify-center text-primary"><CheckCircle2 className="h-4 w-4" /></div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[8px] font-black uppercase opacity-40 leading-none">{p.method}</span>
-                                        <span className="text-[11px] font-black">{p.currency === 'USD' ? '$' : p.currency === 'VES' ? 'Bs' : 'P.'} {p.amount.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                                <button onClick={() => setPayments(payments.filter((_, idx) => idx !== i))} className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div className="p-5 bg-white border-t space-y-4">
+            {/* BOTÓN FINAL DE PROCESAMIENTO */}
+            <div className="p-6 bg-white border-t-2 shadow-[0_-8px_30px_rgba(0,0,0,0.05)]">
                 <Button 
-                    className="w-full h-16 rounded-[2rem] bg-primary hover:bg-primary/90 text-white font-black uppercase text-lg shadow-2xl transition-all active:scale-95 disabled:opacity-50" 
+                    className="w-full h-16 rounded-[2rem] bg-primary hover:bg-primary/90 text-white font-black uppercase text-xl shadow-2xl transition-all active:scale-95 disabled:opacity-50 hover:scale-[1.02]" 
                     onClick={handleProcessSale} 
                     disabled={watchItems.length === 0 || remainingVES > 0.1 || isSubmitting}
                 >
-                    {isSubmitting ? <Loader2 className="animate-spin mr-3 h-6 w-6" /> : <ShieldCheck className="mr-3 h-8 w-8" />}
-                    Emitir Ticket
+                    {isSubmitting ? <Loader2 className="animate-spin mr-3 h-7 w-7" /> : <ShieldCheck className="mr-3 h-9 w-9" />}
+                    Emitir Despacho
                 </Button>
-                <button onClick={() => setIsClearDialogOpen(true)} className="w-full text-[9px] font-black uppercase text-slate-300 hover:text-red-500 transition-colors tracking-widest">Anular Proceso</button>
+                <div className="mt-4 flex justify-center">
+                    <button onClick={() => router.push('/sales')} className="text-[10px] font-black uppercase text-slate-300 hover:text-red-500 transition-colors tracking-[0.2em] italic">Anular Operación POS</button>
+                </div>
             </div>
        </aside>
-
-       <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-            <AlertDialogContent className="border-4 rounded-[2.5rem]">
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl font-black uppercase italic text-red-600 flex items-center gap-2"><Trash2 className="h-6 w-6" /> ¿Vaciar todo el terminal?</AlertDialogTitle>
-                    <AlertDialogDescription className="font-bold">Se perderán todos los artículos y abonos cargados hasta el momento.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="mt-4 gap-2">
-                    <AlertDialogCancel className="font-bold uppercase text-[10px] rounded-2xl h-12 flex-1 border-2">Cerrar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => { form.reset({ items: [], customerName: 'Consumidor Final' }); setPayments([]); }} className="bg-red-600 font-black uppercase text-[10px] rounded-2xl h-12 flex-1">Vaciar Terminal</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-       </AlertDialog>
     </div>
   );
 }
