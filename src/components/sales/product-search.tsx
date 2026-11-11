@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Search, Camera, Zap, Package } from 'lucide-react';
-import { IProduct } from '@/models/Product';
+import type { IProduct } from '@/models/Product';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';

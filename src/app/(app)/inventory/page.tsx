@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, AlertTriangle, Boxes, TrendingDown, Ban, Search, BarChart3, Package, Calendar, Trash2, Loader2, Truck, ArrowRight, Eye, Edit3, AlertCircle } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Search, Package, Trash2, Edit3 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -19,12 +19,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { IProduct } from '@/models/Product';
+import { Card } from '@/components/ui/card';
+import type { IProduct } from '@/models/Product';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -56,7 +55,6 @@ export default function InventoryPage() {
   const [metrics, setMetrics] = useState<InventoryMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [productToDelete, setProductToDelete] = useState<IProduct | null>(null);
@@ -65,8 +63,6 @@ export default function InventoryPage() {
     try {
       setLoading(true);
       const storeId = localStorage.getItem('storeId');
-      const role = localStorage.getItem('userRole') || '';
-      setUserRole(role);
 
       if (!storeId) throw new Error('No se ha iniciado sesión.');
       const response = await fetch(`/api/products?storeId=${storeId}`);
@@ -90,7 +86,6 @@ export default function InventoryPage() {
     const lowStockCount = productsData.filter(p => p.status === 'Stock Bajo').length;
     const outOfStockCount = productsData.filter(p => p.status === 'Sin Stock').length;
     
-    // Alerta de vencimiento (Próximos 15 días)
     const today = new Date();
     const horizon = addDays(today, 15);
     const nearExpiryCount = productsData.filter(p => {
@@ -132,8 +127,8 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col pb-safe">
-      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1400px] mx-auto w-full">
+    <div className="flex flex-1 flex-col">
+      <main className="flex-1 space-y-6 p-4 pt-6 md:p-8 max-w-[1400px] mx-auto w-full overflow-y-auto">
         <PageHeader
           title="Inventario"
           description="Gestión física y control de vencimientos."
@@ -177,7 +172,7 @@ export default function InventoryPage() {
             <Table>
                 <TableHeader className="bg-muted/50">
                     <TableRow>
-                        <TableHead className="pl-6 font-black text-[10px] uppercase">Producto / Pasillo</TableHead>
+                        <TableHead className="pl-6 font-black text-[10px] uppercase">Producto</TableHead>
                         <TableHead className='text-right font-black text-[10px] uppercase'>PVP (Bs)</TableHead>
                         <TableHead className='text-center font-black text-[10px] uppercase'>Vencimiento</TableHead>
                         <TableHead className='text-center font-black text-[10px] uppercase'>Stock</TableHead>

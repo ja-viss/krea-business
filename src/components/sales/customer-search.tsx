@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Search, PlusCircle, UserCheck } from 'lucide-react';
-import { ICustomer } from '@/models/Customer';
+import type { ICustomer } from '@/models/Customer';
 import {
   Dialog,
   DialogContent,
@@ -151,7 +150,7 @@ export function CustomerSearch({ onCustomerSelect, inputRef }: CustomerSearchPro
 
       {showResults && (
         <div className="absolute top-full mt-1 w-full rounded-xl border-2 bg-card shadow-2xl z-[110] overflow-hidden">
-          {loading && <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">Buscando en base de datos...</div>}
+          {loading && <div className="p-4 text-center text-sm text-muted-foreground animate-pulse">Buscando...</div>}
           {!loading && (
             <ul className="max-h-60 overflow-y-auto">
               {results.map((customer, idx) => (
@@ -175,7 +174,7 @@ export function CustomerSearch({ onCustomerSelect, inputRef }: CustomerSearchPro
                     onClick={handleAddNewCustomer}
                 >
                     <PlusCircle className="h-5 w-5" />
-                    <span className="font-black uppercase text-[10px] tracking-widest">Registrar Nuevo (Alt+N)</span>
+                    <span className="font-black uppercase text-[10px] tracking-widest">Registrar Nuevo</span>
                 </li>
             </ul>
           )}
@@ -228,7 +227,7 @@ export function CustomerSearch({ onCustomerSelect, inputRef }: CustomerSearchPro
                         <DialogFooter className='pt-2'>
                             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
                             <Button type="submit" className='font-black uppercase' disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? "Registrando..." : "Confirmar (Enter)"}
+                                {form.formState.isSubmitting ? "Registrando..." : "Confirmar"}
                             </Button>
                         </DialogFooter>
                     </form>
