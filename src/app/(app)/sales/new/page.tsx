@@ -118,6 +118,7 @@ export default function NewSalePage() {
         totalVES += (sub + tax);
     });
     
+    // Redondeo bancario a 2 decimales
     const ves = Math.round(totalVES * 100) / 100;
     const usd = rates.usd?.usd ? Math.round((ves / rates.usd.usd) * 100) / 100 : 0;
     const cop = rates.cop?.rate ? Math.round((usd * rates.cop.rate) / 100) * 100 : 0; 
@@ -187,7 +188,7 @@ export default function NewSalePage() {
     try {
         const storeId = localStorage.getItem('storeId');
         
-        // Construcción del paquete de datos para el backend
+        // PAYLOAD OPTIMIZADO PARA EL BACKEND (VERIFICA LA FACTURA)
         const payload = {
             ...form.getValues(),
             totalAmount: totals.ves,

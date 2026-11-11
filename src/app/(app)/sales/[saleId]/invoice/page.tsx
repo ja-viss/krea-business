@@ -6,12 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Printer, ArrowLeft, Share2, Download, CheckCircle2, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { 
+    AlertTriangle, 
+    Printer, 
+    ArrowLeft, 
+    Share2, 
+    Download, 
+    CheckCircle2, 
+    ShieldCheck, 
+    ShoppingBag, 
+    Loader2, 
+    User 
+} from 'lucide-react';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/logo';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 export default function InvoicePage() {
     const params = useParams();
@@ -247,4 +260,3 @@ export default function InvoicePage() {
         </div>
     );
 }
-
