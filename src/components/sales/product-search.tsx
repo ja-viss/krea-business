@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -6,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Search, Camera, Zap, Package } from 'lucide-react';
 import { IProduct } from '@/models/Product';
 import { Button } from '@/components/ui/button';
-import { BarcodeScanner } from '../inventory/barcode-scanner';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -21,11 +19,9 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<IProduct[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   
   const [multiplier, setMultiplier] = useState<number>(1);
-
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,8 +61,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
       }
     };
 
-    // Latencia ultra-baja para escaneo y búsqueda
-    const debounce = setTimeout(fetchProducts, 80);
+    const debounce = setTimeout(fetchProducts, 100);
     return () => clearTimeout(debounce);
   }, [query]);
   
@@ -110,9 +105,9 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
             </div>
             <Input
                 ref={inputRef}
-                placeholder="Escanea o busca (ej: 12*Leche)..."
+                placeholder="Escanea o busca producto (ej: 12*Harina)..."
                 className={cn(
-                    "h-12 text-lg font-bold transition-all border-none focus-visible:ring-0",
+                    "h-12 text-lg font-bold transition-all border-none focus-visible:ring-0 italic",
                     multiplier > 1 ? "pl-16" : "pl-10"
                 )}
                 value={query}
@@ -129,7 +124,7 @@ export function ProductSearch({ onProductSelect, inputRef }: ProductSearchProps)
       </div>
 
       {(results.length > 0) && (
-        <div className="absolute top-full mt-2 w-full rounded-2xl border-2 bg-white shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
+        <div className="absolute top-full mt-2 w-full rounded-2xl border-2 bg-white shadow-3xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
           <ul className="max-h-64 overflow-y-auto">
             {results.map((product, idx) => (
               <li
