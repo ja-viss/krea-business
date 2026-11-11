@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
@@ -23,6 +23,7 @@ import { IProduct } from '@/models/Product';
 import { useToast } from '@/hooks/use-toast';
 import { useExchangeRates } from '@/hooks/use-exchange-rates';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface LabelItem extends IProduct {
     quantityToPrint: number;
