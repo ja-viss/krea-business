@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, use, useRef } from 'react';
@@ -73,35 +72,42 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
         setIsSharing(true);
         try {
             // Capturamos el ticket como imagen PNG
+            // Se añade fontEmbedCSS: '' para evitar SecurityError con fuentes externas
             const dataUrl = await toPng(ticketRef.current, { 
                 quality: 1.0,
                 backgroundColor: '#ffffff',
+                fontEmbedCSS: '', 
                 style: {
                     transform: 'scale(1)',
-                    margin: '0'
+                    margin: '0',
+                    padding: '0'
                 }
             });
             
             const blob = await (await fetch(dataUrl)).blob();
             const file = new File([blob], `nota-entrega-${sale.invoiceNumber}.png`, { type: 'image/png' });
 
-            if (navigator.share && navigator.canShare({ files: [file] })) {
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title: `Nota de Entrega ${sale.invoiceNumber}`,
-                    text: `Hola, adjunto el comprobante de despacho de ${store?.name || 'Krea Business'}.`,
+                    text: `Comprobante de despacho - ${store?.name || 'Krea Business'}.`,
                 });
             } else {
-                // Fallback: Descarga directa para compartir manualmente
+                // Fallback: Descarga directa
                 const link = document.createElement('a');
                 link.download = `nota-entrega-${sale.invoiceNumber}.png`;
                 link.href = dataUrl;
                 link.click();
-                toast({ title: "Imagen lista", description: "Se ha descargado el comprobante para compartir manualmente." });
+                toast({ title: "Imagen preparada", description: "Se ha descargado el ticket para compartir manualmente." });
             }
-        } catch (err) {
-            console.error(err);
-            toast({ variant: 'destructive', title: "Error", description: "No se pudo generar la imagen para compartir." });
+        } catch (err: any) {
+            console.error('Error sharing invoice:', err);
+            toast({ 
+                variant: 'destructive', 
+                title: "Error de captura", 
+                description: "No se pudo generar la imagen. Intenta imprimir o tomar una captura de pantalla." 
+            });
         } finally {
             setIsSharing(false);
         }
@@ -136,7 +142,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
     return (
         <div className="fixed inset-0 z-[100] bg-slate-100 flex flex-col overflow-y-auto print:bg-white print:static print:inset-auto">
             
-            {/* BARRA DE ACCIONES (OCULTA AL IMPRIMIR) */}
+            {/* BARRA DE ACCIONES */}
             <div className="w-full bg-white border-b px-6 h-14 flex items-center justify-between shrink-0 print:hidden sticky top-0 z-50 shadow-sm">
                 <Button variant="ghost" onClick={() => router.push('/sales')} className="font-black text-[10px] uppercase text-slate-400">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Volver
@@ -163,14 +169,14 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                     className="w-full max-w-[300px] p-2 pt-0 shadow-2xl border-none print:shadow-none print:p-0 print:w-[58mm] print:max-w-none bg-white text-slate-950 rounded-xl print:rounded-none mx-auto overflow-hidden"
                 >
                     
-                    {/* CABECERA PEGADA AL BORDE SUPERIOR */}
-                    <div className="flex flex-col items-center text-center mb-1 border-b-2 border-slate-950 pb-1 pt-0">
-                        <div className="mb-0 scale-50 print:scale-40 origin-top pt-0 h-auto overflow-hidden"><Logo /></div>
-                        <h1 className="text-[11px] font-black uppercase leading-none print:text-[11pt] mb-0.5">{store?.name || 'KREA BUSINESS'}</h1>
+                    {/* CABECERA SIN MÁRGENES - PEGADA AL TOPE */}
+                    <div className="flex flex-col items-center text-center mb-1 border-b-2 border-slate-950 pb-1 pt-0 mt-0">
+                        <div className="mb-0 scale-50 print:scale-40 origin-top pt-0 h-auto overflow-hidden -mt-2"><Logo /></div>
+                        <h1 className="text-[11px] font-black uppercase leading-none print:text-[11pt] mb-0.5 -mt-1">{store?.name || 'KREA BUSINESS'}</h1>
                         <p className="text-[9px] font-black print:text-[8pt] leading-none">RIF: {store?.rif || 'J-00000000-0'}</p>
                     </div>
 
-                    {/* CONTROL DE VENTA COMPACTO */}
+                    {/* CONTROL DE VENTA */}
                     <div className="mb-1">
                         <div className="bg-slate-950 text-white text-center py-0.5 print:bg-transparent print:text-slate-950 print:border-b-2 print:border-slate-950">
                             <p className="text-[10px] font-black uppercase print:text-[9pt] leading-none">NOTA ENTREGA: {String(sale.invoiceNumber).padStart(6, '0')}</p>
@@ -187,12 +193,11 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                         <span className="text-[9px] font-black font-mono print:text-[8pt] opacity-70">{sale.customer?.idNumber || 'V-00000000'}</span>
                     </div>
 
-                    {/* MONEDA DE COMPRA */}
                     <div className="text-center py-0.5 border-b border-slate-950 mb-1">
                         <p className="text-[8px] font-black uppercase print:text-[7pt] tracking-widest">MONEDA: BOLIVARES (VES)</p>
                     </div>
 
-                    {/* ITEMS - MÁXIMA DENSIDAD Y CANTIDADES GRANDES */}
+                    {/* ITEMS */}
                     <div className="mb-1">
                         <div className="flex justify-between border-b border-slate-950 pb-0.5 mb-0.5 px-0.5 text-[8px] font-black uppercase print:text-[7pt]">
                             <span>DESCRIPCIÓN</span>
@@ -206,7 +211,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                                         <span className="text-[11px] font-black print:text-[10pt] shrink-0">{formatCurrency(item.price * item.quantity)}</span>
                                     </div>
                                     <div className="flex justify-between text-[9px] font-black text-slate-950 print:text-[9pt] leading-none mt-0.5">
-                                        <span>CANT: {item.quantity}</span>
+                                        <span className="bg-slate-100 px-1 rounded">CANT: {item.quantity}</span>
                                         <span className="opacity-50">@ {formatCurrency(item.price)}</span>
                                     </div>
                                 </div>
@@ -214,7 +219,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                         </div>
                     </div>
 
-                    {/* TOTALES REFORZADOS - SIN ESPACIOS */}
+                    {/* TOTALES */}
                     <div className="pt-1 border-t-2 border-slate-950 px-0.5 leading-tight">
                         <div className="flex justify-between items-center text-[9px] font-black uppercase print:text-[8pt]">
                             <span>SUBTOTAL</span>
@@ -232,7 +237,7 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                         </div>
                     </div>
 
-                    {/* LIQUIDACIÓN PEGADA */}
+                    {/* LIQUIDACIÓN */}
                     <div className="mt-1 p-1 bg-slate-50 border-y border-slate-950 print:bg-transparent print:border-x-0">
                         <p className="text-[8px] font-black uppercase text-center mb-0.5 print:text-[7pt]">PAGO / LIQUIDACIÓN</p>
                         <div className="space-y-0.5">
@@ -250,16 +255,18 @@ export default function InvoicePage({ params }: { params: Promise<{ saleId: stri
                         </div>
                     </div>
 
-                    {/* PIE DE PÁGINA - AVISO FISCAL MÁS GRANDE */}
+                    {/* PIE DE PÁGINA */}
                     <div className="mt-2 text-center pb-1">
                         <div className="px-4 mb-1">
                             <div className="border-t border-slate-950 w-full"></div>
                             <p className="text-[8px] font-black uppercase print:text-[8pt] mt-0.5">RECIBIDO CONFORME</p>
                         </div>
-                        <p className="text-[9px] font-black text-slate-950 uppercase leading-tight print:text-[8pt] px-1 bg-slate-100 print:bg-transparent">
-                            ESTE DOCUMENTO NO ES VÁLIDO<br/>COMO FACTURA FISCAL.
-                        </p>
-                        <p className="text-[7px] font-black uppercase print:text-[6pt] mt-1 opacity-60">
+                        <div className="border-2 border-slate-950 p-1 mx-0.5 bg-slate-100 print:bg-transparent">
+                            <p className="text-[9px] font-black text-slate-950 uppercase leading-tight print:text-[8pt]">
+                                ESTE DOCUMENTO NO ES VÁLIDO<br/>COMO FACTURA FISCAL.
+                            </p>
+                        </div>
+                        <p className="text-[7px] font-black uppercase print:text-[6pt] mt-1 opacity-60 italic">
                             CONTROL ADMINISTRATIVO KREA
                         </p>
                     </div>

@@ -5,13 +5,13 @@ import { cn } from '@/lib/utils';
 export function Logo({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center justify-center p-0 select-none', className)}>
-      <div className="flex flex-col items-center justify-center">
-        {/* Logotipo Tipográfico Premium v2.1 - Tamaño Ajustado */}
-        <span className="text-4xl font-black tracking-tighter text-primary italic transform -skew-x-6 drop-shadow-sm select-none">
+      <div className="flex flex-col items-center justify-center pt-0 mt-0">
+        {/* Logotipo Tipográfico Premium v2.2 - Espaciado Superior Cero */}
+        <span className="text-4xl font-black tracking-tighter text-primary italic transform -skew-x-6 drop-shadow-sm select-none leading-none pt-0 -mt-1">
           KREA
         </span>
         {/* Barra de acento con el color rosa institucional */}
-        <div className="h-1 w-12 bg-secondary mt-[-4px] rounded-full self-end mr-1 shadow-lg shadow-secondary/20" />
+        <div className="h-1 w-12 bg-secondary mt-[-2px] rounded-full self-end mr-1 shadow-lg shadow-secondary/20" />
       </div>
     </div>
   );
